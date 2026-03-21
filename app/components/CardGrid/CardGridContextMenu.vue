@@ -7,12 +7,12 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'openInfo'): void
-  (e: 'remove'): void
-  (e: 'duplicate'): void
-  (e: 'addCount'): void
-  (e: 'addModifier'): void
+  close: []
+  openInfo: []
+  remove: []
+  duplicate: []
+  addCount: []
+  addModifier: []
 }>()
 
 const menuEl = ref<HTMLElement | null>(null)
@@ -57,11 +57,11 @@ useEventListener(document, 'keydown', (e: KeyboardEvent) => {
 })
 
 const items = [
-  { label: 'Open info', icon: 'i-lucide-external-link', event: 'openInfo' as const, class: '' },
-  { label: 'Duplicate', icon: 'i-lucide-copy', event: 'duplicate' as const, class: '' },
-  { label: 'Add count', icon: 'i-lucide-hash', event: 'addCount' as const, class: '' },
-  { label: 'Add modifier', icon: 'i-lucide-tag', event: 'addModifier' as const, class: '' },
-  { label: 'Remove', icon: 'i-lucide-trash-2', event: 'remove' as const, class: 'text-red-500' },
+  { label: 'Open info', icon: 'i-lucide-external-link', action: () => emit('openInfo'), class: '' },
+  { label: 'Duplicate', icon: 'i-lucide-copy', action: () => emit('duplicate'), class: '' },
+  { label: 'Add count', icon: 'i-lucide-hash', action: () => emit('addCount'), class: '' },
+  { label: 'Add modifier', icon: 'i-lucide-tag', action: () => emit('addModifier'), class: '' },
+  { label: 'Remove', icon: 'i-lucide-trash-2', action: () => emit('remove'), class: 'text-red-500' },
 ]
 </script>
 
@@ -75,11 +75,11 @@ const items = [
   >
     <button
       v-for="item in items"
-      :key="item.event"
+      :key="item.label"
       role="menuitem"
       class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-700"
       :class="item.class"
-      @click="emit(item.event)"
+      @click="item.action()"
     >
       <UIcon :name="item.icon" class="size-4 shrink-0" />
       {{ item.label }}

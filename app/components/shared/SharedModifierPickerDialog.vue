@@ -47,7 +47,7 @@ const counts = reactive<Record<string, number>>(
 function initCounts() {
   for (const key of Object.keys(counts)) counts[key] = 0
   for (const mod of props.currentModifiers) {
-    if (mod.type in counts) counts[mod.type]++
+    if (mod.type in counts) counts[mod.type] = (counts[mod.type] ?? 0) + 1
   }
 }
 
@@ -131,7 +131,7 @@ useEventListener(document, 'keydown', (e: KeyboardEvent) => {
                 :key="mod.type"
                 :class="[
                   'flex flex-col items-center gap-1 rounded-md border p-2 text-center transition-colors',
-                  counts[mod.type] > 0
+                  (counts[mod.type] ?? 0) > 0
                     ? 'border-green-500 bg-green-50 dark:border-green-400 dark:bg-green-900/20'
                     : 'border-slate-200 dark:border-slate-600',
                 ]"

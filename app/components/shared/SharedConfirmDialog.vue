@@ -8,9 +8,9 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'confirm'): void
-  (e: 'cancel'): void
-  (e: 'update:open', value: boolean): void
+  confirm: []
+  cancel: []
+  'update:open': [value: boolean]
 }>()
 
 function onCancel() {

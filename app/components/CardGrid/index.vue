@@ -148,13 +148,7 @@ function handleSplitModifier() {
   activeCardId.value = null
 }
 
-// ─── Size toggle ──────────────────────────────────────────────────────────────
 
-const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
-  { value: 'small',  label: 'S' },
-  { value: 'medium', label: 'M' },
-  { value: 'large',  label: 'L' },
-]
 </script>
 
 <template>

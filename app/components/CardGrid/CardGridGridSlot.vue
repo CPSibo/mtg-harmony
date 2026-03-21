@@ -7,8 +7,8 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'requestRemove', cardId: string): void
-  (e: 'requestAddModifier', cardId: string): void
+  requestRemove: [cardId: string]
+  requestAddModifier: [cardId: string]
 }>()
 
 const gridStore = useGridStore()
@@ -131,7 +131,7 @@ const groupedModifiers = computed(() => {
           class="w-14 rounded border-b border-white bg-transparent text-center text-lg text-white outline-none"
           @keydown.enter="commitCount"
           @keydown.escape="cancelCount"
-        />
+        >
         <button
           class="flex size-8 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30"
           @click="localCount++"
@@ -161,7 +161,7 @@ const groupedModifiers = computed(() => {
         :src="card.image_uri"
         :alt="card.name"
         class="h-full w-full object-contain"
-      />
+      >
       <span class="absolute bottom-5 left-1 rounded bg-black/60 px-1 text-xs text-white">
         ×{{ card.instanceCount }}
       </span>

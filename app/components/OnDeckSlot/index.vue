@@ -15,7 +15,7 @@ const toggleIcon = computed(() =>
 
 function parseManaSymbols(manaCost: string): string[] {
   return [...manaCost.matchAll(/\{([^}]+)\}/g)].map((m) => {
-    let key = m[1].toLowerCase().replace('/', '')
+    let key = m[1]!.toLowerCase().replace('/', '')
     if (key === 't') key = 'tap'
     if (key === 'q') key = 'untap'
     return `ms ms-${key} ms-cost`
@@ -62,7 +62,7 @@ const manaSymbols = computed(() =>
         :src="card.image_uri"
         :alt="card.name"
         class="mx-auto max-h-80 rounded-lg object-contain"
-      />
+      >
       <p v-else class="py-4 text-center text-sm text-slate-400 dark:text-slate-500">
         Press Fetch to draw a card
       </p>

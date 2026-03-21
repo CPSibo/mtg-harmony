@@ -103,6 +103,15 @@ All commands must be run from the `src/` directory.
 - Test descriptions use plain English: `'addCard appends a card'`, not `'should append a card'`.
 - One logical assertion per `it` block where practical; group related boundary cases in a nested `describe`.
 
+## Technical decisions
+
+| Decision | What | Why |
+|---|---|---|
+| `vue-router` pinned in `overrides` + `devDependencies` | `package.json` pins `vue-router@5.0.3` in both `overrides` and `devDependencies`. | Nuxt 4 installs vue-router nested under `nuxt/node_modules/` rather than hoisting it. `@vue/language-core` auto-registers it as a Volar plugin via a bare `require('vue-router/volar/sfc-route-blocks')`, which fails unless the package is reachable at the top level. The explicit `devDependency` forces hoisting; the `override` pins the version and suppresses `@nuxt/ui`'s optional peer-dep conflict against vue-router v4. |
+| Object-style `defineEmits` | All components use the Vue 3.3 object syntax (`{ eventName: [arg: Type] }`) rather than the overload call signature syntax (`(e: 'name', arg: Type): void`). | TypeScript cannot distribute overloaded call signatures over a union type, so `emit(unionVar)` produces a TS2769 error with the overload style. The object style avoids generating overloads and resolves cleanly. |
+| `<Teleport to="body">` for all modals | `SharedConfirmDialog`, `SharedModifierPickerDialog`, and `CardGridContextMenu` are teleported to `<body>`. | Card grid slots use `overflow-hidden` for image containment. Any modal rendered inside a slot would be clipped. Teleporting to `<body>` guarantees modals are never clipped regardless of their position in the component tree. |
+| `useEventListener` for ESC / outside-click | Dialogs and the context menu close on ESC via `useEventListener(document, 'keydown', ...)` and on outside-click via `onClickOutside`. | Using VueUse's helpers rather than `addEventListener` / `removeEventListener` directly ensures the listeners are automatically removed when the component is unmounted, with no manual cleanup. |
+
 ## Quality checks
 
 Run the following before concluding any increment of work:
@@ -115,3 +124,5 @@ npm run test        # all tests pass
 ```
 
 All three must exit cleanly (exit code 0) before a task is considered complete. If a lint rule or type error is introduced by new code, fix it in the same increment — do not suppress errors with `// eslint-disable` or `// @ts-ignore` unless there is a documented external constraint.
+
+If a non-obvious workaround is required to keep the checks passing (a dependency override, a type assertion, a structural change made for TypeScript's benefit rather than the app's), add a row to the **Technical decisions** table explaining what was done and why.

@@ -36,7 +36,7 @@ export const useGridStore = defineStore('grid', () => {
   function duplicateCard(id: string) {
     const originalIndex = cards.value.findIndex(c => c.id === id)
     if (originalIndex === -1) return
-    const original = cards.value[originalIndex]
+    const original = cards.value[originalIndex]!
     const copy: GridCard = {
       ...original,
       id: crypto.randomUUID(),
