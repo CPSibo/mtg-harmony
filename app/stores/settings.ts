@@ -1,21 +1,29 @@
 import { defineStore } from 'pinia'
-import type { AppSettings } from '~/types/card'
+import type { AppSettings, SlotSize } from '~/types/card'
 
 const STORAGE_KEY = 'mtg-settings'
 
 const defaults: AppSettings = {
-  slotsPerPage: 9,
+  slotSize: 'medium',
   gridDisplayMode: 'full',
   onDeckExpanded: true,
 }
 
 export const useSettingsStore = defineStore('settings', () => {
-  const slotsPerPage = ref<number>(defaults.slotsPerPage)
+  const slotSize = ref<SlotSize>(defaults.slotSize)
   const gridDisplayMode = ref<'full' | 'compact'>(defaults.gridDisplayMode)
   const onDeckExpanded = ref<boolean>(defaults.onDeckExpanded)
 
+  // Runtime-only: computed by CardGrid from container dimensions + slotSize.
+  // Not persisted — recalculated on every mount / resize.
+  const slotsPerPage = ref<number>(9)
+
+  function setSlotSize(size: SlotSize) {
+    slotSize.value = size
+  }
+
   function setSlotsPerPage(n: number) {
-    slotsPerPage.value = Math.max(1, Math.min(100, n))
+    slotsPerPage.value = Math.max(1, n)
   }
 
   function setDisplayMode(mode: 'full' | 'compact') {
@@ -29,7 +37,7 @@ export const useSettingsStore = defineStore('settings', () => {
   function save() {
     const { save: persist } = useLocalStorage()
     persist(STORAGE_KEY, {
-      slotsPerPage: slotsPerPage.value,
+      slotSize: slotSize.value,
       gridDisplayMode: gridDisplayMode.value,
       onDeckExpanded: onDeckExpanded.value,
     })
@@ -39,7 +47,9 @@ export const useSettingsStore = defineStore('settings', () => {
     const { load: retrieve } = useLocalStorage()
     const data = retrieve<AppSettings>(STORAGE_KEY)
     if (!data) return false
-    if (typeof data.slotsPerPage === 'number') slotsPerPage.value = data.slotsPerPage
+    if (data.slotSize === 'small' || data.slotSize === 'medium' || data.slotSize === 'large') {
+      slotSize.value = data.slotSize
+    }
     if (data.gridDisplayMode === 'full' || data.gridDisplayMode === 'compact') {
       gridDisplayMode.value = data.gridDisplayMode
     }
@@ -47,14 +57,16 @@ export const useSettingsStore = defineStore('settings', () => {
     return true
   }
 
-  watch([slotsPerPage, gridDisplayMode, onDeckExpanded], () => {
+  watch([slotSize, gridDisplayMode, onDeckExpanded], () => {
     save()
   })
 
   return {
+    slotSize,
     slotsPerPage,
     gridDisplayMode,
     onDeckExpanded,
+    setSlotSize,
     setSlotsPerPage,
     setDisplayMode,
     toggleOnDeckExpanded,

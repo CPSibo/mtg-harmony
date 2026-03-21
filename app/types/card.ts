@@ -32,8 +32,10 @@ export interface HistoryEntry {
   wasCast: boolean
 }
 
+export type SlotSize = 'small' | 'medium' | 'large'
+
 export interface AppSettings {
-  slotsPerPage: number         // 1–100, default 9
+  slotSize: SlotSize           // controls card dimensions; column/row count auto-fits to screen
   gridDisplayMode: 'full' | 'compact'
   onDeckExpanded: boolean
 }

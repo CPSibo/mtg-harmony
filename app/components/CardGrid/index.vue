@@ -1,16 +1,56 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import type { GridCard, Modifier } from '~/types/card'
+import type { GridCard, Modifier, SlotSize } from '~/types/card'
 
 const gridStore = useGridStore()
 const { pageCards, cards } = storeToRefs(gridStore)
 
 const settingsStore = useSettingsStore()
-const { gridDisplayMode, slotsPerPage } = storeToRefs(settingsStore)
+const { gridDisplayMode, slotsPerPage, slotSize } = storeToRefs(settingsStore)
+
+// ─── Slot sizing & auto-fit ───────────────────────────────────────────────────
+
+// Pixel widths for each named size. The CSS aspect ratio on each slot is 5:7,
+// so height = width × 7/5.
+const SLOT_WIDTHS: Record<SlotSize, number> = { small: 80, medium: 120, large: 160 }
+const GAP = 8 // gap-2
+
+// Measure the card-area element only (excludes the controls row at the bottom).
+const cardsAreaEl = ref<HTMLElement | null>(null)
+const { width: areaWidth, height: areaHeight } = useElementSize(cardsAreaEl)
+
+const slotMinWidth = computed(() => SLOT_WIDTHS[slotSize.value])
+const slotMinHeight = computed(() => Math.round(slotMinWidth.value * 7 / 5))
+
+const columns = computed(() =>
+  areaWidth.value > 0
+    ? Math.max(1, Math.floor((areaWidth.value + GAP) / (slotMinWidth.value + GAP)))
+    : 3
+)
+
+const rows = computed(() =>
+  areaHeight.value > slotMinHeight.value
+    ? Math.max(1, Math.floor((areaHeight.value + GAP) / (slotMinHeight.value + GAP)))
+    : 3
+)
+
+// Push the computed page size into the store so the grid store's pagination
+// stays in sync when the container or size setting changes.
+watchEffect(() => {
+  settingsStore.setSlotsPerPage(columns.value * rows.value)
+})
+
+const gridStyle = computed(() => ({
+  gridTemplateColumns: `repeat(auto-fill, minmax(${slotMinWidth.value}px, 1fr))`,
+}))
+
+// ─── Empty-slot padding ───────────────────────────────────────────────────────
 
 const emptySlots = computed(() =>
   Math.max(0, slotsPerPage.value - pageCards.value.length)
 )
+
+// ─── Swipe pagination ─────────────────────────────────────────────────────────
 
 const gridEl = ref<HTMLElement | null>(null)
 
@@ -22,15 +62,15 @@ useSwipe(gridEl, {
   },
 })
 
+// ─── Dialogs ──────────────────────────────────────────────────────────────────
+
 const toast = useToast()
 
-// Active card for dialogs
 const activeCardId = ref<string | null>(null)
 const activeCard = computed<GridCard | undefined>(() =>
   cards.value.find(c => c.id === activeCardId.value)
 )
 
-// Dialog visibility
 const isRemoveConfirmOpen = ref(false)
 const isModifierPickerOpen = ref(false)
 const isModifierSplitOpen = ref(false)
@@ -102,28 +142,62 @@ function handleSplitModifier() {
   pendingModifiers.value = []
   activeCardId.value = null
 }
+
+// ─── Size toggle ──────────────────────────────────────────────────────────────
+
+const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
+  { value: 'small',  label: 'S' },
+  { value: 'medium', label: 'M' },
+  { value: 'large',  label: 'L' },
+]
 </script>
 
 <template>
-  <div ref="gridEl" class="flex flex-col gap-2 select-none touch-pan-y overflow-hidden">
-    <div class="grid gap-2" style="grid-template-columns: repeat(auto-fill, minmax(120px, 1fr))">
-      <CardGridGridSlot
-        v-for="card in pageCards"
-        :key="card.id"
-        :card="card"
-        :display-mode="gridDisplayMode"
-        @request-remove="onRequestRemove"
-        @request-add-modifier="onRequestAddModifier"
-      />
-      <CardGridGridSlot
-        v-for="i in emptySlots"
-        :key="`empty-${i}`"
-        :card="null"
-        :display-mode="gridDisplayMode"
-      />
+  <div
+    ref="gridEl"
+    class="flex select-none flex-col gap-2 overflow-hidden touch-pan-y"
+  >
+    <!-- Cards area: fills remaining height so useElementSize gets a real value -->
+    <div ref="cardsAreaEl" class="min-h-0 flex-1 overflow-hidden">
+      <div class="grid gap-2" :style="gridStyle">
+        <CardGridGridSlot
+          v-for="card in pageCards"
+          :key="card.id"
+          :card="card"
+          :display-mode="gridDisplayMode"
+          @request-remove="onRequestRemove"
+          @request-add-modifier="onRequestAddModifier"
+        />
+        <CardGridGridSlot
+          v-for="i in emptySlots"
+          :key="`empty-${i}`"
+          :card="null"
+          :display-mode="gridDisplayMode"
+        />
+      </div>
     </div>
-    <CardGridGridPaginator />
 
+    <!-- Controls row: paginator + slot-size toggle -->
+    <div class="flex shrink-0 items-center justify-between">
+      <CardGridGridPaginator />
+      <div class="flex gap-0.5">
+        <button
+          v-for="opt in SIZE_OPTIONS"
+          :key="opt.value"
+          class="flex size-7 items-center justify-center rounded text-xs font-semibold transition-colors"
+          :class="slotSize === opt.value
+            ? 'bg-green-600 text-white'
+            : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-700 dark:hover:text-slate-200'"
+          :aria-label="`${opt.value} card size`"
+          :aria-pressed="slotSize === opt.value"
+          @click="settingsStore.setSlotSize(opt.value)"
+        >
+          {{ opt.label }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Dialogs (rendered at grid root so they're outside any overflow-hidden subtree) -->
     <SharedConfirmDialog
       :open="isRemoveConfirmOpen"
       title="Remove card?"
@@ -146,7 +220,7 @@ function handleSplitModifier() {
 
     <SharedConfirmDialog
       :open="isModifierSplitOpen"
-      title="Apply modifier"
+      title="Apply modifiers"
       :message="activeCard ? `'${activeCard.name}' has ${activeCard.instanceCount} instances. Apply to all or split one off?` : ''"
       confirm-label="Apply to all"
       cancel-label="Split one off"
