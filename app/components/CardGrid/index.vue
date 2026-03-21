@@ -214,7 +214,7 @@ function handleSplitModifier() {
       </span>
       <span
         v-if="showBoardLabel"
-        class="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500"
+        class="text-xs font-medium uppercase tracking-wider text-slate-600 dark:text-slate-300"
       >
         Board
       </span>
