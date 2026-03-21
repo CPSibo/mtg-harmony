@@ -204,7 +204,7 @@ function handleSplitModifier() {
     ref="gridEl"
     class="flex select-none flex-col gap-2 overflow-hidden touch-pan-y p-2"
   >
-    <!-- Section labels: "On Deck" aligned to the OnDeck slot, "Board" for the rest -->
+    <!-- Section labels + paginator in a single stable-height header row -->
     <div v-if="hasOnDeck" class="flex shrink-0 items-center gap-2">
       <span
         class="shrink-0 text-xs font-semibold uppercase tracking-wider text-green-600"
@@ -218,6 +218,8 @@ function handleSplitModifier() {
       >
         Board
       </span>
+      <div class="flex-1" />
+      <CardGridGridPaginator />
     </div>
 
     <!-- Cards area: fills remaining height so useElementSize gets a real value -->
@@ -249,11 +251,6 @@ function handleSplitModifier() {
           :display-mode="gridDisplayMode"
         />
       </div>
-    </div>
-
-    <!-- Controls row: paginator + slot-size toggle -->
-    <div class="flex shrink-0 items-center justify-between">
-      <CardGridGridPaginator />
     </div>
 
     <!-- Dialogs (rendered at grid root so they're outside any overflow-hidden subtree) -->
