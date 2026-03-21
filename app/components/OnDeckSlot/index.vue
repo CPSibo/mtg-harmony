@@ -21,13 +21,19 @@ function parseManaSymbols(manaCost: string): string[] {
 const manaSymbols = computed(() =>
   card.value ? parseManaSymbols(card.value.mana_cost) : []
 )
+
+function handleEmptyClick() {
+  if (!card.value && !loading.value) fetch()
+}
 </script>
 
 <template>
   <!-- Expanded: fills the 2×2 grid span, shows card image prominently -->
   <div
     v-if="onDeckExpanded"
-    class="flex h-full flex-col overflow-hidden rounded-md border-2 border-green-600 bg-green-950/20 dark:bg-green-950/40"
+    class="flex h-full flex-col overflow-hidden rounded-md border-2 border-green-600 bg-green-950/20 dark:bg-green-950/20"
+    :class="{ 'cursor-pointer': !card && !loading }"
+    @click="handleEmptyClick"
   >
     <div class="flex min-h-0 flex-1 items-center justify-center p-2">
       <USkeleton v-if="loading" class="aspect-5/7 h-full max-h-full rounded" />
@@ -37,29 +43,33 @@ const manaSymbols = computed(() =>
         :alt="card.name"
         class="h-full max-h-full rounded object-contain"
       >
-      <p v-else class="text-center text-sm text-slate-400 dark:text-slate-500">
-        Press Fetch to draw a card
-      </p>
+      <div v-else class="flex flex-col items-center gap-2">
+        <UIcon name="i-lucide-arrow-down-to-line" class="size-10 text-green-700 dark:text-green-400" />
+        <p class="text-center text-sm font-medium text-green-700 dark:text-green-400">
+          Tap to draw a card
+        </p>
+      </div>
     </div>
     <UProgress v-if="loading" animation="carousel" />
     <div class="flex shrink-0 items-center justify-between gap-2 border-t border-green-600/40 px-2 py-1.5">
-      <div class="flex gap-2">
-        <UButton size="sm" :loading="loading" :disabled="loading" @click="fetch">
+      <div v-if="card" class="flex gap-2">
+        <UButton size="sm" :loading="loading" :disabled="loading" @click.stop="fetch">
           Fetch
         </UButton>
-        <UButton size="sm" variant="outline" :disabled="!card" @click="onDeckStore.castCard()">
+        <UButton size="sm" variant="outline" @click.stop="onDeckStore.castCard()">
           Cast
         </UButton>
-        <UButton size="sm" variant="ghost" :disabled="!card" @click="onDeckStore.clearCard()">
+        <UButton size="sm" variant="ghost" @click.stop="onDeckStore.clearCard()">
           Clear
         </UButton>
       </div>
+      <div v-else />
       <UButton
         icon="i-lucide-minimize-2"
         variant="ghost"
         size="sm"
         aria-label="Shrink"
-        @click="settingsStore.toggleOnDeckExpanded()"
+        @click.stop="settingsStore.toggleOnDeckExpanded()"
       />
     </div>
   </div>
@@ -68,29 +78,45 @@ const manaSymbols = computed(() =>
   <div
     v-else
     :class="[
-      'relative flex flex-col overflow-hidden rounded-md border-2 border-green-600 bg-green-950/10 dark:bg-green-950/30',
+      'relative flex flex-col overflow-hidden rounded-md border-2 border-green-600 bg-green-950/10 dark:bg-green-950/20',
       gridDisplayMode === 'full' ? 'aspect-5/7' : 'min-h-16',
+      !card && !loading ? 'cursor-pointer' : '',
     ]"
+    @click="handleEmptyClick"
   >
-    <div class="flex min-h-0 flex-1 flex-col justify-center px-2 py-1.5">
+    <div class="flex min-h-0 flex-1 flex-col items-center justify-center px-2 py-1.5" :class="{ 'items-start justify-start': card || loading }">
       <template v-if="loading">
         <USkeleton class="mb-1 h-4 w-3/4 rounded" />
         <USkeleton class="h-4 w-1/2 rounded" />
       </template>
       <template v-else-if="card">
         <p class="truncate text-sm font-medium leading-tight">{{ card.name }}</p>
-        <span class="flex gap-0.5">
+        <span class="mt-0.5 flex gap-0.5 [&>i:first-child]:ms-0">
           <i v-for="sym in manaSymbols" :key="sym" :class="[sym, 'text-xs']" />
         </span>
+        <div class="mt-1.5 flex flex-col items-start gap-0.5">
+          <UButton size="xs" :loading="loading" :disabled="loading" @click.stop="fetch">
+            Fetch
+          </UButton>
+          <UButton size="xs" variant="outline" @click.stop="onDeckStore.castCard()">
+            Cast
+          </UButton>
+          <UButton size="xs" variant="ghost" @click.stop="onDeckStore.clearCard()">
+            Clear
+          </UButton>
+        </div>
       </template>
-      <p v-else class="text-xs leading-tight text-slate-400 dark:text-slate-500">
-        On deck
-      </p>
+      <div v-else class="flex flex-col items-center gap-1.5">
+        <UIcon name="i-lucide-arrow-down-to-line" class="size-6 text-green-700 dark:text-green-400" />
+        <p class="text-center text-xs font-medium text-green-700 dark:text-green-400">
+          Tap to draw a card
+        </p>
+      </div>
     </div>
     <button
-      class="absolute bottom-1 right-1 rounded p-0.5 text-green-600 hover:bg-green-600/20"
+      class="absolute bottom-1 right-1 rounded p-0.5 text-green-700 dark:text-green-400"
       aria-label="Expand"
-      @click="settingsStore.toggleOnDeckExpanded()"
+      @click.stop="settingsStore.toggleOnDeckExpanded()"
     >
       <UIcon name="i-lucide-maximize-2" class="size-4" />
     </button>

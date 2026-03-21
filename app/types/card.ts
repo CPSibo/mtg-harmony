@@ -3,7 +3,7 @@ export interface ScryfallCard {
   name: string
   mana_cost: string
   image_uris: {
-    normal: string
+    border_crop: string
   }
   scryfall_uri: string
 }

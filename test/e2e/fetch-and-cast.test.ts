@@ -9,19 +9,19 @@ test.describe('fetch and cast', () => {
 
   // ─── Fetch ─────────────────────────────────────────────────────────────────
 
-  test('page loads with Fetch enabled and Cast/Clear disabled', async ({ page }) => {
-    await expect(page.getByRole('button', { name: 'Fetch' })).toBeEnabled()
-    await expect(page.getByRole('button', { name: 'Cast' })).toBeDisabled()
-    await expect(page.getByRole('button', { name: 'Clear' })).toBeDisabled()
+  test('page loads with the OnDeck slot in empty state', async ({ page }) => {
+    await expect(page.getByText('Tap to draw a card').first()).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Cast' })).not.toBeVisible()
+    await expect(page.getByRole('button', { name: 'Clear' })).not.toBeVisible()
   })
 
-  test('after clicking Fetch, the card image appears in the OnDeckSlot', async ({ page }) => {
-    await page.getByRole('button', { name: 'Fetch' }).click()
+  test('after clicking the OnDeck slot, the card image appears', async ({ page }) => {
+    await page.getByText('Tap to draw a card').first().click()
     await expect(page.getByAltText(mockCard.name)).toBeVisible()
   })
 
-  test('after clicking Fetch, Cast and Clear become enabled', async ({ page }) => {
-    await page.getByRole('button', { name: 'Fetch' }).click()
+  test('after fetching, Cast and Clear become enabled', async ({ page }) => {
+    await page.getByText('Tap to draw a card').first().click()
     await expect(page.getByAltText(mockCard.name)).toBeVisible()
     await expect(page.getByRole('button', { name: 'Cast' })).toBeEnabled()
     await expect(page.getByRole('button', { name: 'Clear' })).toBeEnabled()
@@ -30,22 +30,18 @@ test.describe('fetch and cast', () => {
   // ─── Cast ──────────────────────────────────────────────────────────────────
 
   test('after casting, the card image is visible in the grid', async ({ page }) => {
-    await page.getByRole('button', { name: 'Fetch' }).click()
+    await page.getByText('Tap to draw a card').first().click()
     await expect(page.getByAltText(mockCard.name)).toBeVisible()
     await page.getByRole('button', { name: 'Cast' }).click()
-    // OnDeckSlot clears (card = null) and the grid slot renders the card image.
-    // Both the OnDeckSlot <img> and grid <img> use alt=card.name, so we assert
-    // on the grid specifically by waiting for Cast to disable (cast completed)
-    // and then verifying the image is still present in the DOM.
-    await expect(page.getByRole('button', { name: 'Cast' })).toBeDisabled()
+    // OnDeckSlot returns to empty state; the grid slot retains the card image.
+    await expect(page.getByText('Tap to draw a card').first()).toBeVisible()
     await expect(page.getByAltText(mockCard.name)).toBeVisible()
   })
 
-  test('after casting, Cast and Clear become disabled again', async ({ page }) => {
-    await page.getByRole('button', { name: 'Fetch' }).click()
+  test('after casting, the OnDeck slot returns to empty state', async ({ page }) => {
+    await page.getByText('Tap to draw a card').first().click()
     await expect(page.getByRole('button', { name: 'Cast' })).toBeEnabled()
     await page.getByRole('button', { name: 'Cast' }).click()
-    await expect(page.getByRole('button', { name: 'Cast' })).toBeDisabled()
-    await expect(page.getByRole('button', { name: 'Clear' })).toBeDisabled()
+    await expect(page.getByText('Tap to draw a card').first()).toBeVisible()
   })
 })

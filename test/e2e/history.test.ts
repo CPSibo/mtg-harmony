@@ -13,7 +13,7 @@ test.describe('history modal', () => {
   })
 
   test('after a fetch, the card appears as an entry in history', async ({ page }) => {
-    await page.getByRole('button', { name: 'Fetch' }).click()
+    await page.getByText('Tap to draw a card').first().click()
     await expect(page.getByAltText(mockCard.name)).toBeVisible()
     await page.getByLabel('View history').click()
     await expect(page.getByRole('listitem')).toHaveCount(1)
@@ -21,7 +21,7 @@ test.describe('history modal', () => {
   })
 
   test('the history entry has no Cast badge before the card is cast', async ({ page }) => {
-    await page.getByRole('button', { name: 'Fetch' }).click()
+    await page.getByText('Tap to draw a card').first().click()
     await expect(page.getByAltText(mockCard.name)).toBeVisible()
     await page.getByLabel('View history').click()
     const entry = page.getByRole('listitem').first()
@@ -29,10 +29,10 @@ test.describe('history modal', () => {
   })
 
   test('after casting, the history entry shows a Cast badge', async ({ page }) => {
-    await page.getByRole('button', { name: 'Fetch' }).click()
+    await page.getByText('Tap to draw a card').first().click()
     await expect(page.getByAltText(mockCard.name)).toBeVisible()
     await page.getByRole('button', { name: 'Cast' }).click()
-    await expect(page.getByRole('button', { name: 'Cast' })).toBeDisabled()
+    await expect(page.getByText('Tap to draw a card').first()).toBeVisible()
     await page.getByLabel('View history').click()
     const entry = page.getByRole('listitem').first()
     await expect(entry).toContainText('Cast')
