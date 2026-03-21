@@ -99,13 +99,19 @@ const groupedModifiers = computed(() => {
   <!-- Empty slot -->
   <div
     v-if="!card"
-    class="aspect-5/7 rounded-md border-2 border-dashed border-slate-300 bg-slate-100 dark:border-slate-600 dark:bg-slate-800"
+    :class="[
+      'rounded-md border-2 border-dashed border-slate-400 bg-slate-100 dark:border-slate-800 dark:bg-slate-900',
+      displayMode === 'full' ? 'aspect-5/7' : 'min-h-[48px]',
+    ]"
   />
 
   <!-- Filled slot — count editing overlay -->
   <div
     v-else-if="isCountEditing"
-    class="relative aspect-5/7 overflow-hidden rounded-md border border-slate-200 dark:border-slate-700"
+    :class="[
+      'relative overflow-hidden rounded-md border border-slate-200 dark:border-slate-700',
+      displayMode === 'full' ? 'aspect-5/7' : 'min-h-[80px]',
+    ]"
   >
     <div
       ref="countEditorEl"
@@ -143,7 +149,10 @@ const groupedModifiers = computed(() => {
   <div
     v-else
     ref="slotEl"
-    class="relative aspect-5/7 cursor-pointer overflow-hidden rounded-md border border-slate-200 transition-transform duration-75 active:scale-95 dark:border-slate-700"
+    :class="[
+      'relative cursor-pointer rounded-md border border-slate-200 transition-transform duration-75 active:scale-95 dark:border-slate-700',
+      displayMode === 'full' ? 'aspect-5/7 overflow-hidden' : '',
+    ]"
     @contextmenu.prevent="openContextMenu"
   >
     <!-- Full mode -->
@@ -172,10 +181,10 @@ const groupedModifiers = computed(() => {
 
     <!-- Compact mode -->
     <template v-else>
-      <div class="flex h-full flex-col px-1 pt-1">
-        <p class="truncate text-sm font-medium">{{ card.name }}</p>
-        <p class="text-xs text-slate-500 dark:text-slate-400">×{{ card.instanceCount }}</p>
-        <div class="mt-0.5 flex flex-wrap gap-0.5">
+      <div class="flex flex-col px-2 py-2">
+        <p class="truncate text-sm font-medium leading-tight">{{ card.name }}</p>
+        <p class="text-xs leading-tight text-slate-500 dark:text-slate-400">×{{ card.instanceCount }}</p>
+        <div v-if="groupedModifiers.length" class="mt-1 flex flex-wrap gap-0.5">
           <button
             v-for="group in groupedModifiers"
             :key="group.type"

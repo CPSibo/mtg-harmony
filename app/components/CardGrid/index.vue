@@ -10,9 +10,10 @@ const { gridDisplayMode, slotsPerPage, slotSize } = storeToRefs(settingsStore)
 
 // ─── Slot sizing & auto-fit ───────────────────────────────────────────────────
 
-// Pixel widths for each named size. The CSS aspect ratio on each slot is 5:7,
-// so height = width × 7/5.
+// Pixel widths for each named size. Full-mode height follows the 5:7 card aspect
+// ratio. Compact mode slots shrink to content (~2 text lines + padding ≈ 48px).
 const SLOT_WIDTHS: Record<SlotSize, number> = { small: 80, medium: 120, large: 160 }
+const COMPACT_SLOT_HEIGHT = 48
 const GAP = 8 // gap-2
 
 // Measure the card-area element only (excludes the controls row at the bottom).
@@ -20,7 +21,11 @@ const cardsAreaEl = ref<HTMLElement | null>(null)
 const { width: areaWidth, height: areaHeight } = useElementSize(cardsAreaEl)
 
 const slotMinWidth = computed(() => SLOT_WIDTHS[slotSize.value])
-const slotMinHeight = computed(() => Math.round(slotMinWidth.value * 7 / 5))
+const slotMinHeight = computed(() =>
+  gridDisplayMode.value === 'compact'
+    ? COMPACT_SLOT_HEIGHT
+    : Math.round(slotMinWidth.value * 7 / 5)
+)
 
 const columns = computed(() =>
   areaWidth.value > 0
@@ -180,21 +185,6 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
     <!-- Controls row: paginator + slot-size toggle -->
     <div class="flex shrink-0 items-center justify-between">
       <CardGridGridPaginator />
-      <div class="flex gap-0.5">
-        <button
-          v-for="opt in SIZE_OPTIONS"
-          :key="opt.value"
-          class="flex size-7 items-center justify-center rounded text-xs font-semibold transition-colors"
-          :class="slotSize === opt.value
-            ? 'bg-green-600 text-white'
-            : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-700 dark:hover:text-slate-200'"
-          :aria-label="`${opt.value} card size`"
-          :aria-pressed="slotSize === opt.value"
-          @click="settingsStore.setSlotSize(opt.value)"
-        >
-          {{ opt.label }}
-        </button>
-      </div>
     </div>
 
     <!-- Dialogs (rendered at grid root so they're outside any overflow-hidden subtree) -->

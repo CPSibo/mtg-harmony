@@ -84,6 +84,14 @@ export const useGridStore = defineStore('grid', () => {
     return true
   }
 
+  // Clamp currentPage whenever slotsPerPage changes (display-mode switch, resize, etc.)
+  // so the visible page never overshoots the new totalPages.
+  watch(slotsPerPage, () => {
+    if (currentPage.value >= totalPages.value) {
+      currentPage.value = Math.max(0, totalPages.value - 1)
+    }
+  })
+
   watch([cards, currentPage], () => {
     save()
   }, { deep: true })
