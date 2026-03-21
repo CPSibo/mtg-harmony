@@ -207,7 +207,7 @@ function handleSplitModifier() {
     <!-- Section labels + paginator in a single stable-height header row -->
     <div v-if="hasOnDeck" class="flex shrink-0 items-center gap-2">
       <span
-        class="shrink-0 text-xs font-semibold uppercase tracking-wider text-green-600"
+        class="shrink-0 text-xs font-semibold uppercase tracking-wider text-gold-500"
         :style="{ width: `${onDeckLabelWidth}px` }"
       >
         On Deck

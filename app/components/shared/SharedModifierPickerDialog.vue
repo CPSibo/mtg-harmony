@@ -132,7 +132,7 @@ useEventListener(document, 'keydown', (e: KeyboardEvent) => {
                 :class="[
                   'flex flex-col items-center gap-1 rounded-md border p-2 text-center transition-colors',
                   (counts[mod.type] ?? 0) > 0
-                    ? 'border-green-500 bg-green-50 dark:border-green-400 dark:bg-green-900/20'
+                    ? 'border-gold-500 bg-gold-50 dark:border-gold-400 dark:bg-gold-900/20'
                     : 'border-slate-200 dark:border-slate-600',
                 ]"
               >

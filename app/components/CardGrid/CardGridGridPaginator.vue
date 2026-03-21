@@ -10,7 +10,7 @@ const showPaginator = computed(() => totalPages.value > 1)
 </script>
 
 <template>
-  <div v-show="showPaginator" class="flex items-center gap-1">
+  <div v-if="showPaginator" class="flex items-center gap-1">
     <UButton
       icon="i-lucide-chevron-left"
       variant="ghost"

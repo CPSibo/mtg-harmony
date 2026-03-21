@@ -81,7 +81,7 @@ function formatDate(iso: string): string {
                 :href="entry.scryfall_uri"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="flex-1 truncate text-sm font-medium text-green-700 hover:underline dark:text-green-400"
+                class="flex-1 truncate text-sm font-medium text-gold-700 hover:underline dark:text-gold-400"
               >
                 {{ entry.cardName }}
               </a>

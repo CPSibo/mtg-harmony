@@ -4,17 +4,32 @@
 @theme static {
   --font-sans: 'Public Sans', sans-serif;
 
-  --color-green-50: #EFFDF5;
-  --color-green-100: #D9FBE8;
-  --color-green-200: #B3F5D1;
-  --color-green-300: #75EDAE;
-  --color-green-400: #00DC82;
-  --color-green-500: #00C16A;
-  --color-green-600: #00A155;
-  --color-green-700: #007F45;
-  --color-green-800: #016538;
-  --color-green-900: #0A5331;
-  --color-green-950: #052E16;
+  /* Rich dark navy — overrides Tailwind's default slate so all slate-* classes
+     carry a deep-blue character throughout the app. */
+  --color-slate-50:  #f0f4fb;
+  --color-slate-100: #dde6f5;
+  --color-slate-200: #bccfe0;
+  --color-slate-300: #93afcb;
+  --color-slate-400: #658daf;
+  --color-slate-500: #446d93;
+  --color-slate-600: #315577;
+  --color-slate-700: #1e3d5e;
+  --color-slate-800: #142d4a;
+  --color-slate-900: #0c1d33;
+  --color-slate-950: #060e1c;
+
+  /* Warm metallic gold — used as the primary accent / highlight colour. */
+  --color-gold-50:  #fdfaeb;
+  --color-gold-100: #faf3c7;
+  --color-gold-200: #f5e48a;
+  --color-gold-300: #eed046;
+  --color-gold-400: #e5b921;
+  --color-gold-500: #d4a017;
+  --color-gold-600: #b8860b;
+  --color-gold-700: #926708;
+  --color-gold-800: #755207;
+  --color-gold-900: #5b3f05;
+  --color-gold-950: #3b2803;
 }
 
 button:not(:disabled){

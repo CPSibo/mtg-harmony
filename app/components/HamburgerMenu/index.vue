@@ -142,7 +142,7 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
                     :key="opt.value"
                     class="rounded px-3 py-1 text-sm font-medium transition-colors"
                     :class="gridDisplayMode === opt.value
-                      ? 'bg-green-600 text-white'
+                      ? 'bg-gold-600 text-white'
                       : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-700 dark:hover:text-slate-200'"
                     :aria-pressed="gridDisplayMode === opt.value"
                     @click="settingsStore.setDisplayMode(opt.value)"
@@ -161,7 +161,7 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
                     :key="opt.value"
                     class="flex size-8 items-center justify-center rounded text-sm font-semibold transition-colors"
                     :class="slotSize === opt.value
-                      ? 'bg-green-600 text-white'
+                      ? 'bg-gold-600 text-white'
                       : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-700 dark:hover:text-slate-200'"
                     :aria-pressed="slotSize === opt.value"
                     :aria-label="`${opt.value} card size`"

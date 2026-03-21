@@ -31,7 +31,7 @@ function handleEmptyClick() {
   <!-- Expanded: fills the 2×2 grid span, shows card image prominently -->
   <div
     v-if="onDeckExpanded"
-    class="flex h-full flex-col overflow-hidden rounded-md border-2 border-green-600 bg-green-950/20 dark:bg-green-950/20"
+    class="flex h-full flex-col overflow-hidden rounded-md border-2 border-gold-600 bg-gold-950/10 dark:bg-gold-950/20"
     :class="{ 'cursor-pointer': !card && !loading }"
     @click="handleEmptyClick"
   >
@@ -44,14 +44,14 @@ function handleEmptyClick() {
         class="h-full max-h-full rounded object-contain"
       >
       <div v-else class="flex flex-col items-center gap-2">
-        <UIcon name="i-lucide-arrow-down-to-line" class="size-10 text-green-700 dark:text-green-400" />
-        <p class="text-center text-sm font-medium text-green-700 dark:text-green-400">
+        <UIcon name="i-lucide-arrow-down-to-line" class="size-10 text-gold-600 dark:text-gold-400" />
+        <p class="text-center text-sm font-medium text-gold-600 dark:text-gold-400">
           Tap to draw a card
         </p>
       </div>
     </div>
     <UProgress v-if="loading" animation="carousel" />
-    <div class="flex shrink-0 items-center justify-between gap-2 border-t border-green-600/40 px-2 py-1.5">
+    <div class="flex shrink-0 items-center justify-between gap-2 border-t border-gold-600/40 px-2 py-1.5">
       <div v-if="card" class="flex gap-2">
         <UButton size="sm" :loading="loading" :disabled="loading" @click.stop="fetch">
           Fetch
@@ -78,7 +78,7 @@ function handleEmptyClick() {
   <div
     v-else
     :class="[
-      'relative flex flex-col overflow-hidden rounded-md border-2 border-green-600 bg-green-950/10 dark:bg-green-950/20',
+      'relative flex flex-col overflow-hidden rounded-md border-2 border-gold-600 bg-gold-950/10 dark:bg-gold-950/20',
       gridDisplayMode === 'full' ? 'aspect-5/7' : 'min-h-16',
       !card && !loading ? 'cursor-pointer' : '',
     ]"
@@ -107,14 +107,14 @@ function handleEmptyClick() {
         </div>
       </template>
       <div v-else class="flex flex-col items-center gap-1.5">
-        <UIcon name="i-lucide-arrow-down-to-line" class="size-6 text-green-700 dark:text-green-400" />
-        <p class="text-center text-xs font-medium text-green-700 dark:text-green-400">
+        <UIcon name="i-lucide-arrow-down-to-line" class="size-6 text-gold-600 dark:text-gold-400" />
+        <p class="text-center text-xs font-medium text-gold-600 dark:text-gold-400">
           Tap to draw a card
         </p>
       </div>
     </div>
     <button
-      class="absolute bottom-1 right-1 rounded p-0.5 text-green-700 dark:text-green-400"
+      class="absolute bottom-1 right-1 rounded p-0.5 text-gold-600 dark:text-gold-400"
       aria-label="Expand"
       @click.stop="settingsStore.toggleOnDeckExpanded()"
     >
