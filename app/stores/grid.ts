@@ -39,7 +39,7 @@ export const useGridStore = defineStore('grid', () => {
     const original = cards.value[originalIndex]!
     const copy: GridCard = {
       ...original,
-      id: crypto.randomUUID(),
+      id: randomUUID(),
       instanceCount: 1,
       modifiers: [],
     }

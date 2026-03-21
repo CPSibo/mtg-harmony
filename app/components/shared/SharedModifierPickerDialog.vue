@@ -72,7 +72,7 @@ function onApply() {
     for (let i = 0; i < count; i++) {
       newModifiers.push(i < existing.length
         ? existing[i]!
-        : { id: crypto.randomUUID(), ...def }
+        : { id: randomUUID(), ...def }
       )
     }
   }

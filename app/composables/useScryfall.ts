@@ -22,7 +22,7 @@ export function useScryfall() {
       onDeckStore.setCard(response)
 
       historyStore.addEntry({
-        id: crypto.randomUUID(),
+        id: randomUUID(),
         cardName: response.name,
         scryfall_uri: response.scryfall_uri,
         fetchedAt: new Date().toISOString(),
