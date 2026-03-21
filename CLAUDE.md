@@ -97,9 +97,11 @@ All commands must be run from the `src/` directory.
 
 ### Testing
 
-- Test files live under `test/nuxt/stores/` for Pinia store tests (Nuxt + happy-dom environment).
+- **Store tests** live under `test/nuxt/stores/` (Nuxt + happy-dom environment).
+- **Component tests** live under `test/nuxt/components/` (same Nuxt + happy-dom environment). Use `mountSuspended` from `@nuxt/test-utils/runtime`.
 - Mock `useLocalStorage` at the top of each test file with `mockNuxtImport` to prevent side-effects on `localStorage` and `useToast`.
-- Each `describe` block resets Pinia state with `setActivePinia(createPinia())` in `beforeEach`.
+- Store tests reset Pinia state with `setActivePinia(createPinia())` in `beforeEach`. Component tests that depend on stores use the **mount-first pattern**: mount the component first, then call `useXxxStore()` after mounting (so it returns the Nuxt app's Pinia instance), then set up state and `await nextTick()` before asserting. Clean up with `useXxxStore().clearAll()` in `afterEach`.
+- Teleported content (`<Teleport to="body">`) is not accessible via `wrapper.find()`. Query it via `document.body.querySelector()` instead.
 - Test descriptions use plain English: `'addCard appends a card'`, not `'should append a card'`.
 - One logical assertion per `it` block where practical; group related boundary cases in a nested `describe`.
 
