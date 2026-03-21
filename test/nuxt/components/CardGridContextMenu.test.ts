@@ -40,12 +40,13 @@ describe('CardGridContextMenu', () => {
 
   // ─── Rendering ─────────────────────────────────────────────────────────────
 
-  it('renders all five menu item labels', async () => {
+  it('renders all six menu item labels', async () => {
     wrapper = await mountSuspended(CardGridContextMenu, {
       props: { card: makeCard(), anchorEl },
     })
     const items = wrapper.findAll('[role="menuitem"]')
     const labels = items.map(i => i.text())
+    expect(labels).toContain('Zoom')
     expect(labels).toContain('Open info')
     expect(labels).toContain('Duplicate')
     expect(labels).toContain('Add count')
@@ -54,6 +55,15 @@ describe('CardGridContextMenu', () => {
   })
 
   // ─── Menu item clicks ──────────────────────────────────────────────────────
+
+  it('emits zoom when "Zoom" is clicked', async () => {
+    wrapper = await mountSuspended(CardGridContextMenu, {
+      props: { card: makeCard(), anchorEl },
+    })
+    const btn = wrapper.findAll('[role="menuitem"]').find(b => b.text().includes('Zoom'))!
+    await btn.trigger('click')
+    expect(wrapper.emitted('zoom')).toHaveLength(1)
+  })
 
   it('emits openInfo when "Open info" is clicked', async () => {
     wrapper = await mountSuspended(CardGridContextMenu, {

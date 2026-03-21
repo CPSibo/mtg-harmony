@@ -69,6 +69,42 @@ function cancelCount() {
   isCountEditing.value = false
 }
 
+// Zoom
+const isZoomed = ref(false)
+
+function handleZoom() {
+  isContextMenuOpen.value = false
+  isZoomed.value = true
+  history.pushState({ zoom: true }, '')
+}
+
+function closeZoom() {
+  if (!isZoomed.value) return
+  isZoomed.value = false
+  // Clean up the history entry we pushed on open, but only if it's still
+  // there (i.e. the user closed via click/ESC rather than a back gesture).
+  if (history.state?.zoom) {
+    history.back()
+  }
+}
+
+// Back gesture (e.g. Android swipe-from-edge) pops the state we pushed.
+useEventListener(window, 'popstate', () => {
+  if (isZoomed.value) isZoomed.value = false
+})
+
+useEventListener(document, 'keydown', (e: KeyboardEvent) => {
+  if (e.key === 'Escape') closeZoom()
+})
+
+onUnmounted(() => {
+  // If this slot is removed while zoomed (e.g. pagination), clean up the
+  // history entry so the user doesn't get a dangling back-navigation.
+  if (isZoomed.value && history.state?.zoom) {
+    history.back()
+  }
+})
+
 // Context menu action handlers
 function handleOpenInfo() {
   isContextMenuOpen.value = false
@@ -164,7 +200,7 @@ const groupedModifiers = computed(() => {
     v-else
     ref="slotEl"
     :class="[
-      'relative cursor-pointer rounded-md border border-slate-200 transition-transform duration-75 active:scale-95 dark:border-slate-700',
+      'relative rounded-md border border-slate-200 transition-transform duration-75 active:scale-95 dark:border-slate-700',
       displayMode === 'full' ? 'aspect-5/7 overflow-hidden' : '',
       displayMode === 'compact' && card.tapped ? 'opacity-60' : '',
     ]"
@@ -226,12 +262,29 @@ const groupedModifiers = computed(() => {
         :card="card"
         :anchor-el="slotEl!"
         @close="isContextMenuOpen = false"
+        @zoom="handleZoom"
         @open-info="handleOpenInfo"
         @remove="handleRemoveRequest"
         @duplicate="handleDuplicate"
         @add-count="handleAddCount"
         @add-modifier="handleAddModifier"
       />
+    </Teleport>
+
+    <!-- Zoom overlay (teleported to body to escape overflow/stacking) -->
+    <Teleport to="body">
+      <div
+        v-if="isZoomed && card"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+        @click="closeZoom"
+      >
+        <img
+          :src="card.image_uri"
+          :alt="card.name"
+          class="rounded-lg object-contain shadow-2xl"
+          style="max-height: min(80svh, 800px); width: auto;"
+        >
+      </div>
     </Teleport>
   </div>
 </template>
