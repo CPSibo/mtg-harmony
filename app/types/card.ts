@@ -22,6 +22,7 @@ export interface GridCard {
   scryfall_uri: string
   instanceCount: number  // minimum 1
   modifiers: Modifier[]
+  tapped: boolean
 }
 
 export interface HistoryEntry {

@@ -15,6 +15,7 @@ export const useOnDeckStore = defineStore('onDeck', () => {
       scryfall_uri: scryfallCard.scryfall_uri,
       instanceCount: 1,
       modifiers: [],
+      tapped: false,
     }
   }
 

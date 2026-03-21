@@ -42,6 +42,7 @@ export const useGridStore = defineStore('grid', () => {
       id: randomUUID(),
       instanceCount: 1,
       modifiers: [],
+      tapped: false,
     }
     cards.value.splice(originalIndex + 1, 0, copy)
   }
@@ -50,6 +51,13 @@ export const useGridStore = defineStore('grid', () => {
     const card = cards.value.find(c => c.id === id)
     if (card) {
       Object.assign(card, partial)
+    }
+  }
+
+  function toggleTapped(id: string) {
+    const card = cards.value.find(c => c.id === id)
+    if (card) {
+      card.tapped = !card.tapped
     }
   }
 
@@ -105,6 +113,7 @@ export const useGridStore = defineStore('grid', () => {
     removeCard,
     duplicateCard,
     updateCard,
+    toggleTapped,
     clearAll,
     setPage,
     nextPage,

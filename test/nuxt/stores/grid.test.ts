@@ -27,6 +27,7 @@ function makeCard(overrides: Partial<GridCard> = {}): GridCard {
     scryfall_uri: `https://scryfall.com/card/test-${i}`,
     instanceCount: 1,
     modifiers: [],
+    tapped: false,
     ...overrides,
   }
 }
@@ -170,6 +171,36 @@ describe('useGridStore', () => {
     grid.addCard(card)
     grid.updateCard('non-existent', { instanceCount: 99 })
     expect(grid.cards[0]!.instanceCount).toBe(1)
+  })
+
+  // ─── toggleTapped ───────────────────────────────────────────────────────
+
+  it('toggleTapped sets tapped to true on an untapped card', () => {
+    const card = makeCard()
+    grid.addCard(card)
+    grid.toggleTapped(card.id)
+    expect(grid.cards[0]!.tapped).toBe(true)
+  })
+
+  it('toggleTapped sets tapped to false on a tapped card', () => {
+    const card = makeCard({ tapped: true })
+    grid.addCard(card)
+    grid.toggleTapped(card.id)
+    expect(grid.cards[0]!.tapped).toBe(false)
+  })
+
+  it('toggleTapped is a no-op for an unknown ID', () => {
+    const card = makeCard()
+    grid.addCard(card)
+    grid.toggleTapped('non-existent')
+    expect(grid.cards[0]!.tapped).toBe(false)
+  })
+
+  it('duplicateCard resets tapped to false on the copy', () => {
+    const card = makeCard({ tapped: true })
+    grid.addCard(card)
+    grid.duplicateCard(card.id)
+    expect(grid.cards[1]!.tapped).toBe(false)
   })
 
   // ─── clearAll ──────────────────────────────────────────────────────────

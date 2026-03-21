@@ -20,7 +20,7 @@ function makeScryfallCard(overrides: Partial<ScryfallCard> = {}): ScryfallCard {
     name: 'Lightning Bolt',
     mana_cost: '{R}',
     scryfall_uri: 'https://scryfall.com/card/lea/161/lightning-bolt',
-    image_uris: { normal: 'https://cards.scryfall.io/normal/front/lightning-bolt.jpg' },
+    image_uris: { border_crop: 'https://cards.scryfall.io/border_crop/front/lightning-bolt.jpg' },
     ...overrides,
   }
 }
@@ -68,7 +68,7 @@ describe('useOnDeckStore', () => {
       expect(store.card!.id).toBe(scryfall.id)
       expect(store.card!.name).toBe(scryfall.name)
       expect(store.card!.mana_cost).toBe(scryfall.mana_cost)
-      expect(store.card!.image_uri).toBe(scryfall.image_uris.normal)
+      expect(store.card!.image_uri).toBe(scryfall.image_uris.border_crop)
       expect(store.card!.scryfall_uri).toBe(scryfall.scryfall_uri)
     })
 

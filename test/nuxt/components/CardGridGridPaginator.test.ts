@@ -25,6 +25,7 @@ function makeCard(overrides: Partial<GridCard> = {}): GridCard {
     scryfall_uri: `https://scryfall.com/card/test-${i}`,
     instanceCount: 1,
     modifiers: [],
+    tapped: false,
     ...overrides,
   }
 }

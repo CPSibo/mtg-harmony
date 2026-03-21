@@ -26,8 +26,22 @@ function openContextMenu() {
   isContextMenuOpen.value = true
 }
 
-// Long press
-onLongPress(slotEl, openContextMenu, { delay: 500 })
+// Tap / untap
+let didLongPress = false
+
+onLongPress(slotEl, () => {
+  didLongPress = true
+  openContextMenu()
+}, { delay: 500 })
+
+function handleSlotClick() {
+  if (didLongPress) {
+    didLongPress = false
+    return
+  }
+  if (!props.card) return
+  gridStore.toggleTapped(props.card.id)
+}
 
 // Count editing
 const isCountEditing = ref(false)
@@ -152,15 +166,18 @@ const groupedModifiers = computed(() => {
     :class="[
       'relative cursor-pointer rounded-md border border-slate-200 transition-transform duration-75 active:scale-95 dark:border-slate-700',
       displayMode === 'full' ? 'aspect-5/7 overflow-hidden' : '',
+      displayMode === 'compact' && card.tapped ? 'opacity-60' : '',
     ]"
     @contextmenu.prevent="openContextMenu"
+    @click="handleSlotClick"
   >
     <!-- Full mode -->
     <template v-if="displayMode === 'full'">
       <img
         :src="card.image_uri"
         :alt="card.name"
-        class="h-full w-full object-contain"
+        class="h-full w-full object-contain transition-[transform] duration-200"
+        :class="{ 'rotate-90 scale-[0.714]': card.tapped }"
       >
       <span class="absolute bottom-5 left-1 rounded bg-black/60 px-1 text-sm text-white">
         ×{{ card.instanceCount }}
@@ -182,7 +199,10 @@ const groupedModifiers = computed(() => {
     <!-- Compact mode -->
     <template v-else>
       <div class="flex flex-col px-3 py-2">
-        <p class="truncate text-base font-medium leading-tight">{{ card.name }}</p>
+        <div class="flex items-center gap-1.5">
+          <i v-if="card.tapped" class="ms ms-tap ms-2x text-red-700 dark:text-red-500" />
+          <p class="truncate text-base font-medium leading-tight">{{ card.name }}</p>
+        </div>
         <p class="text-sm leading-tight text-slate-500 dark:text-slate-400">×{{ card.instanceCount }}</p>
         <div v-if="groupedModifiers.length" class="mt-1 flex flex-wrap gap-0.5">
           <button
