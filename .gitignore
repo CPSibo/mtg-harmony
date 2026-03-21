@@ -25,3 +25,7 @@ logs
 
 # Test coverage
 coverage/
+
+# Playwright output
+playwright-report/
+test-results/

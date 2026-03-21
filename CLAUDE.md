@@ -43,6 +43,9 @@ src/
     unit/                # Pure Node environment (vitest project: unit)
     nuxt/                # Nuxt + happy-dom environment (vitest project: nuxt)
       stores/            # Store-level unit tests
+      components/        # Component-level unit tests
+      composables/       # Composable unit tests (e.g. useScryfall)
+    e2e/                 # Playwright end-to-end tests (real browser)
 ```
 
 ## Commands
@@ -61,6 +64,8 @@ All commands must be run from the `src/` directory.
 | `npm run test:coverage` | Run tests and emit a v8 coverage report |
 | `npm run test:unit` | Run only the Node-environment unit tests |
 | `npm run test:nuxt` | Run only the Nuxt-environment store/component tests |
+| `npm run test:e2e` | Run Playwright end-to-end tests (starts dev server automatically) |
+| `npm run test:e2e:ui` | Run Playwright tests in interactive UI mode |
 
 ## Code style
 
@@ -99,7 +104,9 @@ All commands must be run from the `src/` directory.
 
 - **Store tests** live under `test/nuxt/stores/` (Nuxt + happy-dom environment).
 - **Component tests** live under `test/nuxt/components/` (same Nuxt + happy-dom environment). Use `mountSuspended` from `@nuxt/test-utils/runtime`.
-- Mock `useLocalStorage` at the top of each test file with `mockNuxtImport` to prevent side-effects on `localStorage` and `useToast`.
+- **Composable tests** live under `test/nuxt/composables/`. Mock `$fetch` with `vi.stubGlobal('$fetch', vi.fn())` and restore with `vi.unstubAllGlobals()` in `afterEach`.
+- **E2E tests** live under `test/e2e/` and run via Playwright (`npm run test:e2e`). Use `page.route('**/api.scryfall.com/**', ...)` to intercept Scryfall API calls. E2E tests are intentionally excluded from `npm run test` — they require a running dev server and form a separate CI stage.
+- Mock `useLocalStorage` at the top of each Vitest file with `mockNuxtImport` to prevent side-effects on `localStorage` and `useToast`.
 - Store tests reset Pinia state with `setActivePinia(createPinia())` in `beforeEach`. Component tests that depend on stores use the **mount-first pattern**: mount the component first, then call `useXxxStore()` after mounting (so it returns the Nuxt app's Pinia instance), then set up state and `await nextTick()` before asserting. Clean up with `useXxxStore().clearAll()` in `afterEach`.
 - Teleported content (`<Teleport to="body">`) is not accessible via `wrapper.find()`. Query it via `document.body.querySelector()` instead.
 - Test descriptions use plain English: `'addCard appends a card'`, not `'should append a card'`.
@@ -113,6 +120,7 @@ All commands must be run from the `src/` directory.
 | Object-style `defineEmits` | All components use the Vue 3.3 object syntax (`{ eventName: [arg: Type] }`) rather than the overload call signature syntax (`(e: 'name', arg: Type): void`). | TypeScript cannot distribute overloaded call signatures over a union type, so `emit(unionVar)` produces a TS2769 error with the overload style. The object style avoids generating overloads and resolves cleanly. |
 | `<Teleport to="body">` for all modals | `SharedConfirmDialog`, `SharedModifierPickerDialog`, and `CardGridContextMenu` are teleported to `<body>`. | Card grid slots use `overflow-hidden` for image containment. Any modal rendered inside a slot would be clipped. Teleporting to `<body>` guarantees modals are never clipped regardless of their position in the component tree. |
 | `useEventListener` for ESC / outside-click | Dialogs and the context menu close on ESC via `useEventListener(document, 'keydown', ...)` and on outside-click via `onClickOutside`. | Using VueUse's helpers rather than `addEventListener` / `removeEventListener` directly ensures the listeners are automatically removed when the component is unmounted, with no manual cleanup. |
+| Playwright `webServer` config | `playwright.config.ts` uses `webServer: { command: 'npm run dev', reuseExistingServer: !process.env.CI }`. | Playwright needs a running Nuxt dev server. The `reuseExistingServer` flag avoids starting a second server when a dev server is already running locally, while still spawning a fresh one in CI. E2E tests are kept out of `npm run test` (Vitest only) to avoid requiring a dev server for the standard test run. |
 
 ## Quality checks
 
