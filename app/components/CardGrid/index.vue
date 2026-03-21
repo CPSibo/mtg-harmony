@@ -172,6 +172,30 @@ function handleApplyModifierToAll() {
   activeCardId.value = null
 }
 
+// ─── Grid card leave animation ────────────────────────────────────────────────
+
+/**
+ * Positions the leaving card absolutely at its current grid coordinates so
+ * it can fade out in place while the remaining cards FLIP to their new
+ * positions at the same time (rather than snapping after the leave ends).
+ * The grid container has `position: relative` so offsetLeft/offsetTop are
+ * relative to it, matching the absolute positioning origin.
+ */
+function onGridCardLeave(el: Element, done: () => void) {
+  const htmlEl = el as HTMLElement
+  htmlEl.style.left = `${htmlEl.offsetLeft}px`
+  htmlEl.style.top = `${htmlEl.offsetTop}px`
+  htmlEl.style.width = `${htmlEl.offsetWidth}px`
+  htmlEl.style.height = `${htmlEl.offsetHeight}px`
+  htmlEl.style.position = 'absolute'
+  requestAnimationFrame(() => {
+    htmlEl.style.opacity = '0'
+    htmlEl.style.transform = 'scale(0.85)'
+    htmlEl.style.transition = 'opacity 150ms ease-in, transform 150ms ease-in'
+    htmlEl.addEventListener('transitionend', done, { once: true })
+  })
+}
+
 function handleSplitModifier() {
   if (!activeCard.value) return
   const originalId = activeCard.value.id
@@ -224,10 +248,27 @@ function handleSplitModifier() {
 
     <!-- Cards area: fills remaining height so useElementSize gets a real value -->
     <div ref="cardsAreaEl" class="min-h-0 flex-1 overflow-hidden">
-      <div class="grid gap-2" :style="gridStyle">
+      <!--
+        TransitionGroup renders as the grid container.
+        Enter: cards pop in with a fade + scale.
+        Leave: JS hook positions the leaving card absolutely so remaining
+               cards FLIP-animate to their new positions simultaneously.
+        Move:  remaining cards slide smoothly via FLIP transform.
+      -->
+      <TransitionGroup
+        tag="div"
+        class="relative grid gap-2"
+        :style="gridStyle"
+        enter-active-class="transition-[opacity,transform] duration-200 ease-out"
+        enter-from-class="opacity-0 scale-90"
+        enter-to-class="opacity-100 scale-100"
+        move-class="transition-transform duration-200 ease-out"
+        @leave="onGridCardLeave"
+      >
         <!-- OnDeck slot: sits inline at the top-left of the grid -->
         <div
           v-if="hasOnDeck"
+          key="ondeck"
           class="h-full"
           :style="{
             gridColumn: `span ${onDeckColSpan}`,
@@ -250,7 +291,7 @@ function handleSplitModifier() {
           :card="null"
           :display-mode="gridDisplayMode"
         />
-      </div>
+      </TransitionGroup>
     </div>
 
     <!-- Dialogs (rendered at grid root so they're outside any overflow-hidden subtree) -->
