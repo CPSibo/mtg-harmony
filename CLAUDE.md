@@ -131,6 +131,7 @@ Run the following before concluding any increment of work:
 npm run typecheck   # no type errors
 npm run lint        # no lint errors or warnings
 npm run test        # all tests pass
+npm run test:e2e    # all tests pass
 ```
 
 All three must exit cleanly (exit code 0) before a task is considered complete. If a lint rule or type error is introduced by new code, fix it in the same increment — do not suppress errors with `// eslint-disable` or `// @ts-ignore` unless there is a documented external constraint.

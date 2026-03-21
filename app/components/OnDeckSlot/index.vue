@@ -5,13 +5,9 @@ const onDeckStore = useOnDeckStore()
 const { card } = storeToRefs(onDeckStore)
 
 const settingsStore = useSettingsStore()
-const { onDeckExpanded } = storeToRefs(settingsStore)
+const { onDeckExpanded, gridDisplayMode } = storeToRefs(settingsStore)
 
 const { loading, fetch } = useScryfall()
-
-const toggleIcon = computed(() =>
-  onDeckExpanded.value ? 'i-lucide-chevron-down' : 'i-lucide-chevron-up'
-)
 
 function parseManaSymbols(manaCost: string): string[] {
   return [...manaCost.matchAll(/\{([^}]+)\}/g)].map((m) => {
@@ -28,61 +24,75 @@ const manaSymbols = computed(() =>
 </script>
 
 <template>
-  <div class="flex flex-col gap-2 p-2">
-    <!-- Controls row -->
-    <div class="flex items-center justify-between gap-2">
-      <UButton
-        :icon="toggleIcon"
-        variant="ghost"
-        size="sm"
-        :aria-label="onDeckExpanded ? 'Collapse' : 'Expand'"
-        @click="settingsStore.toggleOnDeckExpanded()"
-      />
-      <div class="flex gap-2">
-        <UButton size="sm" :loading="loading" :disabled="loading" @click="fetch">
-          Fetch
-        </UButton>
-        <UButton size="sm" variant="outline" :disabled="!card" @click="onDeckStore.castCard()">
-          Cast
-        </UButton>
-        <UButton size="sm" variant="ghost" :disabled="!card" @click="onDeckStore.clearCard()">
-          Clear
-        </UButton>
-      </div>
-    </div>
-
-    <!-- Loading progress bar -->
-    <UProgress v-if="loading" animation="carousel" />
-
-    <!-- Card display — Expanded -->
-    <template v-if="onDeckExpanded">
-      <USkeleton v-if="loading" class="mx-auto aspect-[5/7] w-full max-w-[200px] rounded-lg" />
+  <!-- Expanded: fills the 2×2 grid span, shows card image prominently -->
+  <div
+    v-if="onDeckExpanded"
+    class="flex h-full flex-col overflow-hidden rounded-md border-2 border-green-600 bg-green-950/20 dark:bg-green-950/40"
+  >
+    <div class="flex min-h-0 flex-1 items-center justify-center p-1.5">
+      <USkeleton v-if="loading" class="aspect-[5/7] h-full max-h-full rounded" />
       <img
         v-else-if="card"
         :src="card.image_uri"
         :alt="card.name"
-        class="mx-auto max-h-80 rounded-lg object-contain"
+        class="h-full max-h-full rounded object-contain"
       >
-      <p v-else class="py-4 text-center text-sm text-slate-400 dark:text-slate-500">
+      <p v-else class="text-center text-xs text-slate-400 dark:text-slate-500">
         Press Fetch to draw a card
       </p>
-    </template>
+    </div>
+    <UProgress v-if="loading" animation="carousel" />
+    <div class="flex shrink-0 items-center justify-between gap-1 border-t border-green-600/40 px-1.5 py-1">
+      <div class="flex gap-1">
+        <UButton size="xs" :loading="loading" :disabled="loading" @click="fetch">
+          Fetch
+        </UButton>
+        <UButton size="xs" variant="outline" :disabled="!card" @click="onDeckStore.castCard()">
+          Cast
+        </UButton>
+        <UButton size="xs" variant="ghost" :disabled="!card" @click="onDeckStore.clearCard()">
+          Clear
+        </UButton>
+      </div>
+      <UButton
+        icon="i-lucide-minimize-2"
+        variant="ghost"
+        size="xs"
+        aria-label="Shrink"
+        @click="settingsStore.toggleOnDeckExpanded()"
+      />
+    </div>
+  </div>
 
-    <!-- Card display — Collapsed -->
-    <template v-else>
-      <div v-if="loading" class="flex flex-col gap-1">
-        <USkeleton class="h-4 w-36 rounded" />
-        <USkeleton class="h-4 w-20 rounded" />
-      </div>
-      <div v-else-if="card" class="flex flex-wrap items-center gap-x-3 gap-y-1 py-1">
-        <span class="text-sm font-medium">{{ card.name }}</span>
+  <!-- Shrunk: occupies one grid slot, visually distinct with green accent -->
+  <div
+    v-else
+    :class="[
+      'relative flex flex-col overflow-hidden rounded-md border-2 border-green-600 bg-green-950/10 dark:bg-green-950/30',
+      gridDisplayMode === 'full' ? 'aspect-5/7' : 'min-h-[48px]',
+    ]"
+  >
+    <div class="flex min-h-0 flex-1 flex-col justify-center px-1.5 py-1">
+      <template v-if="loading">
+        <USkeleton class="mb-1 h-3 w-3/4 rounded" />
+        <USkeleton class="h-3 w-1/2 rounded" />
+      </template>
+      <template v-else-if="card">
+        <p class="truncate text-xs font-medium leading-tight">{{ card.name }}</p>
         <span class="flex gap-0.5">
-          <i v-for="sym in manaSymbols" :key="sym" :class="sym" />
+          <i v-for="sym in manaSymbols" :key="sym" :class="[sym, 'text-[10px]']" />
         </span>
-      </div>
-      <p v-else class="py-1 text-sm text-slate-400 dark:text-slate-500">
-        Press Fetch to draw a card
+      </template>
+      <p v-else class="text-[10px] leading-tight text-slate-400 dark:text-slate-500">
+        On deck
       </p>
-    </template>
+    </div>
+    <button
+      class="absolute bottom-0.5 right-0.5 rounded p-0.5 text-green-600 hover:bg-green-600/20"
+      aria-label="Expand"
+      @click="settingsStore.toggleOnDeckExpanded()"
+    >
+      <UIcon name="i-lucide-maximize-2" class="size-3" />
+    </button>
   </div>
 </template>

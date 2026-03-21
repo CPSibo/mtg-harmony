@@ -6,7 +6,7 @@ const gridStore = useGridStore()
 const { pageCards, cards } = storeToRefs(gridStore)
 
 const settingsStore = useSettingsStore()
-const { gridDisplayMode, slotsPerPage, slotSize } = storeToRefs(settingsStore)
+const { gridDisplayMode, slotsPerPage, slotSize, onDeckExpanded } = storeToRefs(settingsStore)
 
 // ─── Slot sizing & auto-fit ───────────────────────────────────────────────────
 
@@ -39,14 +39,36 @@ const rows = computed(() =>
     : 3
 )
 
-// Push the computed page size into the store so the grid store's pagination
-// stays in sync when the container or size setting changes.
+// ─── OnDeck slot span ─────────────────────────────────────────────────────────
+
+const slots = useSlots()
+const hasOnDeck = computed(() => !!slots['on-deck'])
+
+// When expanded the OnDeck cell spans 2 columns × 2 rows; when shrunk, 1 × 1.
+// Column span is clamped to the available column count so we never ask the grid
+// for more columns than actually exist.
+const onDeckColSpan = computed(() =>
+  hasOnDeck.value ? (onDeckExpanded.value ? Math.min(2, columns.value) : 1) : 0
+)
+const onDeckRowSpan = computed(() =>
+  hasOnDeck.value ? (onDeckExpanded.value ? 2 : 1) : 0
+)
+
+// Push the computed page size into the store so grid pagination stays in sync
+// when the container, size setting, or OnDeck span changes.
+// OnDeck cells are subtracted from the total so slotsPerPage reflects only
+// the slots available for cast cards.
 watchEffect(() => {
-  settingsStore.setSlotsPerPage(columns.value * rows.value)
+  const total = columns.value * rows.value
+  const onDeckCells = hasOnDeck.value ? onDeckColSpan.value * onDeckRowSpan.value : 0
+  settingsStore.setSlotsPerPage(Math.max(1, total - onDeckCells))
 })
 
 const gridStyle = computed(() => ({
   gridTemplateColumns: `repeat(auto-fill, minmax(${slotMinWidth.value}px, 1fr))`,
+  // Ensure rows have a minimum height so the OnDeck expanded span never
+  // collapses when it is the only item occupying those rows.
+  gridAutoRows: `minmax(${slotMinHeight.value}px, auto)`,
 }))
 
 // ─── Empty-slot padding ───────────────────────────────────────────────────────
@@ -159,6 +181,17 @@ function handleSplitModifier() {
     <!-- Cards area: fills remaining height so useElementSize gets a real value -->
     <div ref="cardsAreaEl" class="min-h-0 flex-1 overflow-hidden">
       <div class="grid gap-2" :style="gridStyle">
+        <!-- OnDeck slot: sits inline at the top-left of the grid -->
+        <div
+          v-if="hasOnDeck"
+          class="h-full"
+          :style="{
+            gridColumn: `span ${onDeckColSpan}`,
+            gridRow: `span ${onDeckRowSpan}`,
+          }"
+        >
+          <slot name="on-deck" />
+        </div>
         <CardGridGridSlot
           v-for="card in pageCards"
           :key="card.id"
