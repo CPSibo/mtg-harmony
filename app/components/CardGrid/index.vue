@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
+import type { GridCard, Modifier } from '~/types/card'
 
 const gridStore = useGridStore()
-const { pageCards } = storeToRefs(gridStore)
+const { pageCards, cards } = storeToRefs(gridStore)
 
 const settingsStore = useSettingsStore()
 const { gridDisplayMode, slotsPerPage } = storeToRefs(settingsStore)
@@ -20,6 +21,86 @@ useSwipe(gridEl, {
     else if (direction === 'right') gridStore.prevPage()
   },
 })
+
+const toast = useToast()
+
+// Active card for dialogs
+const activeCardId = ref<string | null>(null)
+const activeCard = computed<GridCard | undefined>(() =>
+  cards.value.find(c => c.id === activeCardId.value)
+)
+
+// Dialog visibility
+const isRemoveConfirmOpen = ref(false)
+const isModifierPickerOpen = ref(false)
+const isModifierSplitOpen = ref(false)
+const pendingModifier = ref<Modifier | null>(null)
+
+function onRequestRemove(cardId: string) {
+  activeCardId.value = cardId
+  isRemoveConfirmOpen.value = true
+}
+
+function onRequestAddModifier(cardId: string) {
+  activeCardId.value = cardId
+  isModifierPickerOpen.value = true
+}
+
+function handleRemoveConfirmed() {
+  if (activeCardId.value) {
+    gridStore.removeCard(activeCardId.value)
+    toast.add({ title: 'Card removed', color: 'neutral' })
+  }
+  isRemoveConfirmOpen.value = false
+  activeCardId.value = null
+}
+
+function handleModifierSelected(modifier: Modifier) {
+  isModifierPickerOpen.value = false
+  if (!activeCard.value) return
+  if (activeCard.value.instanceCount === 1) {
+    gridStore.updateCard(activeCard.value.id, {
+      modifiers: [...activeCard.value.modifiers, modifier],
+    })
+    toast.add({ title: 'Modifier added', color: 'success' })
+    activeCardId.value = null
+  } else {
+    pendingModifier.value = modifier
+    isModifierSplitOpen.value = true
+  }
+}
+
+function handleApplyModifierToAll() {
+  if (activeCard.value && pendingModifier.value) {
+    gridStore.updateCard(activeCard.value.id, {
+      modifiers: [...activeCard.value.modifiers, pendingModifier.value],
+    })
+    toast.add({ title: 'Modifier applied to all', color: 'success' })
+  }
+  isModifierSplitOpen.value = false
+  pendingModifier.value = null
+  activeCardId.value = null
+}
+
+function handleSplitModifier() {
+  if (!activeCard.value || !pendingModifier.value) return
+  const originalId = activeCard.value.id
+  const originalCount = activeCard.value.instanceCount
+  const originalIndex = cards.value.findIndex(c => c.id === originalId)
+
+  gridStore.duplicateCard(originalId)
+
+  const newCard = cards.value[originalIndex + 1]
+  if (newCard) {
+    gridStore.updateCard(newCard.id, { modifiers: [pendingModifier.value] })
+  }
+  gridStore.updateCard(originalId, { instanceCount: originalCount - 1 })
+
+  toast.add({ title: 'Card split off with modifier', color: 'success' })
+  isModifierSplitOpen.value = false
+  pendingModifier.value = null
+  activeCardId.value = null
+}
 </script>
 
 <template>
@@ -30,6 +111,8 @@ useSwipe(gridEl, {
         :key="card.id"
         :card="card"
         :display-mode="gridDisplayMode"
+        @request-remove="onRequestRemove"
+        @request-add-modifier="onRequestAddModifier"
       />
       <CardGridGridSlot
         v-for="i in emptySlots"
@@ -39,5 +122,35 @@ useSwipe(gridEl, {
       />
     </div>
     <CardGridGridPaginator />
+
+    <SharedConfirmDialog
+      :open="isRemoveConfirmOpen"
+      title="Remove card?"
+      :message="activeCard ? `Remove '${activeCard.name}' from the grid?` : ''"
+      confirm-label="Remove"
+      cancel-label="Cancel"
+      @confirm="handleRemoveConfirmed"
+      @cancel="isRemoveConfirmOpen = false"
+      @update:open="isRemoveConfirmOpen = $event"
+    />
+
+    <SharedModifierPickerDialog
+      :open="isModifierPickerOpen"
+      :card-name="activeCard?.name ?? ''"
+      @select="handleModifierSelected"
+      @cancel="isModifierPickerOpen = false"
+      @update:open="isModifierPickerOpen = $event"
+    />
+
+    <SharedConfirmDialog
+      :open="isModifierSplitOpen"
+      title="Apply modifier"
+      :message="activeCard ? `'${activeCard.name}' has ${activeCard.instanceCount} instances. Apply to all or split one off?` : ''"
+      confirm-label="Apply to all"
+      cancel-label="Split one off"
+      @confirm="handleApplyModifierToAll"
+      @cancel="handleSplitModifier"
+      @update:open="isModifierSplitOpen = $event"
+    />
   </div>
 </template>

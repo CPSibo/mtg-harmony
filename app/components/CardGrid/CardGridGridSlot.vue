@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import { storeToRefs } from 'pinia'
-import type { GridCard, Modifier } from '~/types/card'
+import type { GridCard } from '~/types/card'
 
 const props = defineProps<{
   card: GridCard | null
   displayMode: 'full' | 'compact'
 }>()
 
+const emit = defineEmits<{
+  (e: 'requestRemove', cardId: string): void
+  (e: 'requestAddModifier', cardId: string): void
+}>()
+
 const gridStore = useGridStore()
-const { cards } = storeToRefs(gridStore)
 const toast = useToast()
 
 // Element refs
@@ -52,12 +55,6 @@ function cancelCount() {
   isCountEditing.value = false
 }
 
-// Dialogs
-const isRemoveConfirmOpen = ref(false)
-const isModifierPickerOpen = ref(false)
-const isModifierSplitOpen = ref(false)
-const pendingModifier = ref<Modifier | null>(null)
-
 // Context menu action handlers
 function handleOpenInfo() {
   isContextMenuOpen.value = false
@@ -66,13 +63,7 @@ function handleOpenInfo() {
 
 function handleRemoveRequest() {
   isContextMenuOpen.value = false
-  isRemoveConfirmOpen.value = true
-}
-
-function handleRemoveConfirmed() {
-  gridStore.removeCard(props.card!.id)
-  isRemoveConfirmOpen.value = false
-  toast.add({ title: 'Card removed', color: 'neutral' })
+  emit('requestRemove', props.card!.id)
 }
 
 function handleDuplicate() {
@@ -88,46 +79,7 @@ function handleAddCount() {
 
 function handleAddModifier() {
   isContextMenuOpen.value = false
-  isModifierPickerOpen.value = true
-}
-
-function handleModifierSelected(modifier: Modifier) {
-  isModifierPickerOpen.value = false
-  if (!props.card) return
-  if (props.card.instanceCount === 1) {
-    gridStore.updateCard(props.card.id, { modifiers: [...props.card.modifiers, modifier] })
-    toast.add({ title: 'Modifier added', color: 'success' })
-  } else {
-    pendingModifier.value = modifier
-    isModifierSplitOpen.value = true
-  }
-}
-
-function handleApplyModifierToAll() {
-  if (!props.card || !pendingModifier.value) return
-  gridStore.updateCard(props.card.id, { modifiers: [...props.card.modifiers, pendingModifier.value] })
-  isModifierSplitOpen.value = false
-  pendingModifier.value = null
-  toast.add({ title: 'Modifier applied to all', color: 'success' })
-}
-
-function handleSplitModifier() {
-  if (!props.card || !pendingModifier.value) return
-  const originalId = props.card.id
-  const originalCount = props.card.instanceCount
-  const originalIndex = cards.value.findIndex(c => c.id === originalId)
-
-  gridStore.duplicateCard(originalId)
-
-  const newCard = cards.value[originalIndex + 1]
-  if (newCard) {
-    gridStore.updateCard(newCard.id, { modifiers: [pendingModifier.value] })
-  }
-  gridStore.updateCard(originalId, { instanceCount: originalCount - 1 })
-
-  isModifierSplitOpen.value = false
-  pendingModifier.value = null
-  toast.add({ title: 'Card split off with modifier', color: 'success' })
+  emit('requestAddModifier', props.card!.id)
 }
 
 function removeModifier(modId: string) {
@@ -245,38 +197,5 @@ function removeModifier(modId: string) {
         @add-modifier="handleAddModifier"
       />
     </Teleport>
-
-    <!-- Remove confirmation -->
-    <SharedConfirmDialog
-      :open="isRemoveConfirmOpen"
-      title="Remove card?"
-      :message="`Remove '${card.name}' from the grid?`"
-      confirm-label="Remove"
-      cancel-label="Cancel"
-      @confirm="handleRemoveConfirmed"
-      @cancel="isRemoveConfirmOpen = false"
-      @update:open="isRemoveConfirmOpen = $event"
-    />
-
-    <!-- Modifier picker -->
-    <SharedModifierPickerDialog
-      :open="isModifierPickerOpen"
-      :card-name="card.name"
-      @select="handleModifierSelected"
-      @cancel="isModifierPickerOpen = false"
-      @update:open="isModifierPickerOpen = $event"
-    />
-
-    <!-- Modifier split choice -->
-    <SharedConfirmDialog
-      :open="isModifierSplitOpen"
-      title="Apply modifier"
-      :message="`'${card.name}' has ${card.instanceCount} instances. Apply to all or split one off?`"
-      confirm-label="Apply to all"
-      cancel-label="Split one off"
-      @confirm="handleApplyModifierToAll"
-      @cancel="handleSplitModifier"
-      @update:open="isModifierSplitOpen = $event"
-    />
   </div>
 </template>
