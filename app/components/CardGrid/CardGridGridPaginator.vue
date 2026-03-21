@@ -16,6 +16,7 @@ const showPaginator = computed(() => totalPages.value > 1)
       variant="ghost"
       :disabled="isAtStart"
       aria-label="Previous page"
+      title="Previous page"
       @click="gridStore.prevPage()"
     />
     <UButton
@@ -23,6 +24,7 @@ const showPaginator = computed(() => totalPages.value > 1)
       variant="ghost"
       :disabled="isAtEnd"
       aria-label="Next page"
+      title="Next page"
       @click="gridStore.nextPage()"
     />
   </div>

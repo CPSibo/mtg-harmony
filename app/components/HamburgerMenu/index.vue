@@ -70,6 +70,7 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
         variant="ghost"
         size="lg"
         aria-label="View history"
+        title="View history"
         @click="isHistoryOpen = true"
       />
       <UButton
@@ -77,6 +78,7 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
         variant="ghost"
         size="lg"
         aria-label="Open settings"
+        title="Open settings"
         @click="isSettingsOpen = true"
       />
     </div>
