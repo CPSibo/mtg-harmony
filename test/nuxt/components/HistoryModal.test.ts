@@ -1,4 +1,4 @@
-import { describe, beforeEach, afterEach, it, expect, vi } from 'vitest'
+import { describe, beforeEach, afterEach, it, expect, vi, type MockInstance } from 'vitest'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import type { VueWrapper } from '@vue/test-utils'
 import type { HistoryEntry } from '~/types/card'
@@ -106,5 +106,92 @@ describe('HistoryModal', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     await nextTick()
     expect(wrapper.emitted('update:open')).toEqual([[false]])
+  })
+
+  // ─── Copy history dropdown ─────────────────────────────────────────────────
+
+  describe('copy history dropdown', () => {
+    it('copy trigger is not rendered when there are no entries', async () => {
+      wrapper = await mountSuspended(HistoryModal, { props: { open: true } })
+      expect(document.body.querySelector('[aria-label="Copy history"]')).toBeNull()
+    })
+
+    it('copy trigger is rendered when entries exist', async () => {
+      wrapper = await mountSuspended(HistoryModal, { props: { open: true } })
+      useHistoryStore().addEntry(makeEntry())
+      await nextTick()
+      expect(document.body.querySelector('[aria-label="Copy history"]')).not.toBeNull()
+    })
+
+    // ─── Format options ───────────────────────────────────────────────────────
+    // Open the dropdown, click each format item, and verify the clipboard text.
+
+    describe('format options', () => {
+      let writeText: MockInstance
+
+      beforeEach(async () => {
+        writeText = vi.fn().mockResolvedValue(undefined)
+        Object.defineProperty(navigator, 'clipboard', {
+          value: { writeText },
+          configurable: true,
+        })
+        wrapper = await mountSuspended(HistoryModal, { props: { open: true } })
+        const history = useHistoryStore()
+        history.addEntry(makeEntry({ cardName: 'Lightning Bolt', wasCast: false }))
+        history.addEntry(makeEntry({ cardName: 'Black Lotus', wasCast: true }))
+        await nextTick()
+      })
+
+      afterEach(() => {
+        vi.restoreAllMocks()
+      })
+
+      async function openDropdownAndClickItem(label: string): Promise<void> {
+        const trigger = document.body.querySelector<HTMLElement>('[aria-label="Copy history"]')!
+        trigger.click()
+        await nextTick()
+        const items = Array.from(document.body.querySelectorAll<HTMLElement>('[role="menuitem"]'))
+        const item = items.find(el => el.textContent?.includes(label))!
+        item.click()
+        await nextTick()
+      }
+
+      it('raw list copies one card name per line', async () => {
+        await openDropdownAndClickItem('Raw list')
+        expect(writeText).toHaveBeenCalledWith('Lightning Bolt\nBlack Lotus (Cast)')
+      })
+
+      it('markdown unordered copies lines prefixed with "- "', async () => {
+        await openDropdownAndClickItem('Markdown unordered')
+        expect(writeText).toHaveBeenCalledWith('- Lightning Bolt\n- Black Lotus (Cast)')
+      })
+
+      it('markdown ordered copies lines all prefixed with "1. "', async () => {
+        await openDropdownAndClickItem('Markdown ordered')
+        expect(writeText).toHaveBeenCalledWith('1. Lightning Bolt\n1. Black Lotus (Cast)')
+      })
+
+      it('numbered list copies lines with sequential integers', async () => {
+        await openDropdownAndClickItem('Numbered list')
+        expect(writeText).toHaveBeenCalledWith('1. Lightning Bolt\n2. Black Lotus (Cast)')
+      })
+
+      // ─── Clipboard fallback ────────────────────────────────────────────────
+
+      it('falls back to execCommand when navigator.clipboard is unavailable', async () => {
+        // happy-dom does not implement execCommand, so define it before spying.
+        const execCommand = vi.fn().mockReturnValue(true)
+        Object.defineProperty(document, 'execCommand', {
+          value: execCommand,
+          configurable: true,
+          writable: true,
+        })
+        Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true })
+
+        await openDropdownAndClickItem('Raw list')
+
+        expect(execCommand).toHaveBeenCalledWith('copy')
+      })
+    })
   })
 })

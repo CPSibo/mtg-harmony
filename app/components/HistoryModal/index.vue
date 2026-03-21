@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
+import type { CopyFormat } from '~/utils/historyExport'
 
 const props = defineProps<{
   open: boolean
@@ -11,6 +12,8 @@ const emit = defineEmits<{
 
 const historyStore = useHistoryStore()
 const { entries } = storeToRefs(historyStore)
+
+const toast = useToast()
 
 function close() {
   emit('update:open', false)
@@ -26,6 +29,63 @@ function formatDate(iso: string): string {
     minute: '2-digit',
   })
 }
+
+/**
+ * Writes text to the clipboard. Falls back to `document.execCommand('copy')`
+ * for non-HTTPS contexts and older browsers that lack the Clipboard API.
+ */
+async function copyToClipboard(text: string): Promise<void> {
+  if (navigator.clipboard) {
+    await navigator.clipboard.writeText(text)
+    return
+  }
+  // Fallback: create an off-screen textarea, select its content, and use the
+  // legacy execCommand to copy. The element is always removed in the finally block.
+  const el = document.createElement('textarea')
+  el.value = text
+  el.setAttribute('readonly', '')
+  el.style.cssText = 'position:fixed;opacity:0'
+  document.body.appendChild(el)
+  try {
+    el.select()
+    document.execCommand('copy')
+  } finally {
+    document.body.removeChild(el)
+  }
+}
+
+async function copyInFormat(format: CopyFormat): Promise<void> {
+  const text = formatEntries(entries.value, format)
+  try {
+    await copyToClipboard(text)
+    toast.add({ title: 'Copied to clipboard', color: 'neutral' })
+  } catch {
+    toast.add({ title: 'Copy failed', color: 'error' })
+  }
+}
+
+const copyMenuItems = [
+  {
+    label: 'Raw list',
+    icon: 'i-lucide-align-left',
+    onSelect: () => copyInFormat('raw'),
+  },
+  {
+    label: 'Markdown unordered',
+    icon: 'i-lucide-list',
+    onSelect: () => copyInFormat('md-unordered'),
+  },
+  {
+    label: 'Markdown ordered',
+    icon: 'i-lucide-list-ordered',
+    onSelect: () => copyInFormat('md-ordered'),
+  },
+  {
+    label: 'Numbered list',
+    icon: 'i-lucide-hash',
+    onSelect: () => copyInFormat('numbered'),
+  },
+]
 </script>
 
 <template>
@@ -47,13 +107,27 @@ function formatDate(iso: string): string {
           <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">
             History
           </h2>
-          <UButton
-            icon="i-lucide-x"
-            variant="ghost"
-            size="md"
-            aria-label="Close history"
-            @click="close"
-          />
+          <div class="flex items-center gap-1">
+            <UDropdownMenu
+              v-if="entries.length"
+              :items="copyMenuItems"
+              :ui="{ content: 'z-[60]' }"
+            >
+              <UButton
+                icon="i-lucide-copy"
+                variant="ghost"
+                size="md"
+                aria-label="Copy history"
+              />
+            </UDropdownMenu>
+            <UButton
+              icon="i-lucide-x"
+              variant="ghost"
+              size="md"
+              aria-label="Close history"
+              @click="close"
+            />
+          </div>
         </div>
 
         <!-- Scrollable entry list -->
