@@ -169,7 +169,8 @@ const groupedModifiers = computed(() => {
     >
       <div class="flex items-center gap-2">
         <button
-          class="flex size-10 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30"
+          class="flex size-10 cursor-pointer items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30"
+          title="Decrease count"
           @click="localCount = Math.max(1, localCount - 1)"
         >
           -
@@ -183,13 +184,14 @@ const groupedModifiers = computed(() => {
           @keydown.escape="cancelCount"
         >
         <button
-          class="flex size-10 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30"
+          class="flex size-10 cursor-pointer items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30"
+          title="Increase count"
           @click="localCount++"
         >
           +
         </button>
       </div>
-      <button class="text-sm text-white underline" @click="commitCount">
+      <button class="cursor-pointer text-sm text-white underline" @click="commitCount">
         Done
       </button>
     </div>
@@ -200,7 +202,7 @@ const groupedModifiers = computed(() => {
     v-else
     ref="slotEl"
     :class="[
-      'relative rounded-md border border-slate-200 transition-transform duration-75 active:scale-95 dark:border-slate-700',
+      'relative cursor-pointer rounded-md border border-slate-200 transition-transform duration-75 active:scale-95 dark:border-slate-700',
       displayMode === 'full' ? 'aspect-5/7 overflow-hidden' : '',
       displayMode === 'compact' && card.tapped ? 'opacity-60' : '',
     ]"
@@ -222,7 +224,7 @@ const groupedModifiers = computed(() => {
         <button
           v-for="group in groupedModifiers"
           :key="group.type"
-          class="flex items-center gap-0.5 rounded-full bg-slate-900/80 px-1.5 py-0.5 text-white hover:bg-slate-900"
+          class="flex cursor-pointer items-center gap-0.5 rounded-full bg-slate-900/80 px-1.5 py-0.5 text-white hover:bg-slate-900"
           :title="group.type"
           @click.stop="emit('requestAddModifier', card!.id)"
         >
@@ -244,7 +246,7 @@ const groupedModifiers = computed(() => {
           <button
             v-for="group in groupedModifiers"
             :key="group.type"
-            class="flex items-center gap-0.5 rounded-full bg-slate-900/80 px-1.5 py-0.5 text-white hover:bg-slate-900"
+            class="flex cursor-pointer items-center gap-0.5 rounded-full bg-slate-900/80 px-1.5 py-0.5 text-white hover:bg-slate-900"
             :title="group.type"
             @click.stop="emit('requestAddModifier', card!.id)"
           >

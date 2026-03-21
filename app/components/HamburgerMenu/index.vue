@@ -99,7 +99,7 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
         class="fixed inset-0 z-50 flex items-center justify-center p-4"
       >
         <!-- Backdrop -->
-        <div class="absolute inset-0 bg-black/50" @click="isSettingsOpen = false" />
+        <div class="absolute inset-0 cursor-pointer bg-black/50" @click="isSettingsOpen = false" />
 
         <!-- Panel -->
         <Transition
@@ -125,6 +125,7 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
                 variant="ghost"
                 size="md"
                 aria-label="Close settings"
+                title="Close settings"
                 @click="isSettingsOpen = false"
               />
             </div>
@@ -142,7 +143,7 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
                   <button
                     v-for="opt in DISPLAY_OPTIONS"
                     :key="opt.value"
-                    class="rounded px-3 py-1 text-sm font-medium transition-colors"
+                    class="cursor-pointer rounded px-3 py-1 text-sm font-medium transition-colors"
                     :class="gridDisplayMode === opt.value
                       ? 'bg-gold-600 text-white'
                       : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-700 dark:hover:text-slate-200'"
@@ -161,7 +162,7 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
                   <button
                     v-for="opt in SIZE_OPTIONS"
                     :key="opt.value"
-                    class="flex size-8 items-center justify-center rounded text-sm font-semibold transition-colors"
+                    class="flex size-8 cursor-pointer items-center justify-center rounded text-sm font-semibold transition-colors"
                     :class="slotSize === opt.value
                       ? 'bg-gold-600 text-white'
                       : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-700 dark:hover:text-slate-200'"
@@ -183,14 +184,14 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
 
               <div class="-mx-2 flex flex-col">
                 <button
-                  class="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                  class="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
                   @click="isClearConfirmOpen = true"
                 >
                   <UIcon name="i-lucide-trash-2" class="size-4 shrink-0" />
                   Clear grid
                 </button>
                 <button
-                  class="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                  class="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
                   @click="isResetConfirmOpen = true"
                 >
                   <UIcon name="i-lucide-rotate-ccw" class="size-4 shrink-0" />

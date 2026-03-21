@@ -105,7 +105,7 @@ useEventListener(document, 'keydown', (e: KeyboardEvent) => {
         class="fixed inset-0 z-50 flex items-center justify-center p-4"
       >
         <!-- Backdrop -->
-        <div class="absolute inset-0 bg-black/50" @click="onCancel" />
+        <div class="absolute inset-0 cursor-pointer bg-black/50" @click="onCancel" />
 
         <!-- Panel -->
         <Transition
@@ -142,8 +142,9 @@ useEventListener(document, 'keydown', (e: KeyboardEvent) => {
                 </span>
                 <div class="flex items-center gap-1">
                   <button
-                    class="flex size-5 items-center justify-center rounded-full bg-slate-200 text-xs hover:bg-slate-300 disabled:opacity-30 dark:bg-slate-600 dark:hover:bg-slate-500"
+                    class="flex size-5 cursor-pointer items-center justify-center rounded-full bg-slate-200 text-xs hover:bg-slate-300 disabled:opacity-30 dark:bg-slate-600 dark:hover:bg-slate-500"
                     :disabled="counts[mod.type] === 0"
+                    :title="`Remove ${mod.type}`"
                     @click="decrement(mod.type)"
                   >
                     −
@@ -152,7 +153,8 @@ useEventListener(document, 'keydown', (e: KeyboardEvent) => {
                     {{ counts[mod.type] }}
                   </span>
                   <button
-                    class="flex size-5 items-center justify-center rounded-full bg-slate-200 text-xs hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500"
+                    class="flex size-5 cursor-pointer items-center justify-center rounded-full bg-slate-200 text-xs hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500"
+                    :title="`Add ${mod.type}`"
                     @click="increment(mod.type)"
                   >
                     +

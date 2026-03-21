@@ -118,6 +118,7 @@ const copyMenuItems = [
                 variant="ghost"
                 size="md"
                 aria-label="Copy history"
+                title="Copy history"
               />
             </UDropdownMenu>
             <UButton
@@ -125,6 +126,7 @@ const copyMenuItems = [
               variant="ghost"
               size="md"
               aria-label="Close history"
+              title="Close history"
               @click="close"
             />
           </div>
@@ -155,6 +157,7 @@ const copyMenuItems = [
                 :href="entry.scryfall_uri"
                 target="_blank"
                 rel="noopener noreferrer"
+                :title="`Open ${entry.cardName} in Scryfall`"
                 class="flex-1 truncate text-sm font-medium text-gold-700 hover:underline dark:text-gold-400"
               >
                 {{ entry.cardName }}

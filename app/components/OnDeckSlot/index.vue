@@ -98,6 +98,7 @@ function handleEmptyClick() {
         color="neutral"
         size="sm"
         aria-label="Shrink"
+        title="Shrink"
         @click.stop="settingsStore.toggleOnDeckExpanded()"
       />
     </div>
