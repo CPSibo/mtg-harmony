@@ -202,7 +202,7 @@ function handleSplitModifier() {
 <template>
   <div
     ref="gridEl"
-    class="flex select-none flex-col gap-2 overflow-hidden touch-pan-y"
+    class="flex select-none flex-col gap-2 overflow-hidden touch-pan-y p-2"
   >
     <!-- Section labels: "On Deck" aligned to the OnDeck slot, "Board" for the rest -->
     <div v-if="hasOnDeck" class="flex shrink-0 items-center gap-2">
