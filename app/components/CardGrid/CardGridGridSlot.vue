@@ -101,7 +101,7 @@ const groupedModifiers = computed(() => {
     v-if="!card"
     :class="[
       'rounded-md border-2 border-dashed border-slate-400 bg-slate-100 dark:border-slate-800 dark:bg-slate-900',
-      displayMode === 'full' ? 'aspect-5/7' : 'min-h-[48px]',
+      displayMode === 'full' ? 'aspect-5/7' : 'min-h-12',
     ]"
   />
 
@@ -110,7 +110,7 @@ const groupedModifiers = computed(() => {
     v-else-if="isCountEditing"
     :class="[
       'relative overflow-hidden rounded-md border border-slate-200 dark:border-slate-700',
-      displayMode === 'full' ? 'aspect-5/7' : 'min-h-[80px]',
+      displayMode === 'full' ? 'aspect-5/7' : 'min-h-20',
     ]"
   >
     <div

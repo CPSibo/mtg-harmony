@@ -30,7 +30,7 @@ const manaSymbols = computed(() =>
     class="flex h-full flex-col overflow-hidden rounded-md border-2 border-green-600 bg-green-950/20 dark:bg-green-950/40"
   >
     <div class="flex min-h-0 flex-1 items-center justify-center p-1.5">
-      <USkeleton v-if="loading" class="aspect-[5/7] h-full max-h-full rounded" />
+      <USkeleton v-if="loading" class="aspect-5/7 h-full max-h-full rounded" />
       <img
         v-else-if="card"
         :src="card.image_uri"
@@ -69,7 +69,7 @@ const manaSymbols = computed(() =>
     v-else
     :class="[
       'relative flex flex-col overflow-hidden rounded-md border-2 border-green-600 bg-green-950/10 dark:bg-green-950/30',
-      gridDisplayMode === 'full' ? 'aspect-5/7' : 'min-h-[48px]',
+      gridDisplayMode === 'full' ? 'aspect-5/7' : 'min-h-12',
     ]"
   >
     <div class="flex min-h-0 flex-1 flex-col justify-center px-1.5 py-1">

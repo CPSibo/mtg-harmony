@@ -54,6 +54,18 @@ const onDeckRowSpan = computed(() =>
   hasOnDeck.value ? (onDeckExpanded.value ? 2 : 1) : 0
 )
 
+// The pixel width of the OnDeck label, matched to the OnDeck slot's column span.
+const onDeckLabelWidth = computed(() => {
+  if (!hasOnDeck.value || areaWidth.value === 0) return 0
+  const colWidth = (areaWidth.value - (columns.value - 1) * GAP) / columns.value
+  return onDeckColSpan.value * colWidth + (onDeckColSpan.value - 1) * GAP
+})
+
+// Hide the Board label when the OnDeck slot fills the entire first row.
+const showBoardLabel = computed(() =>
+  hasOnDeck.value && onDeckColSpan.value < columns.value
+)
+
 // Push the computed page size into the store so grid pagination stays in sync
 // when the container, size setting, or OnDeck span changes.
 // OnDeck cells are subtracted from the total so slotsPerPage reflects only
@@ -178,6 +190,22 @@ function handleSplitModifier() {
     ref="gridEl"
     class="flex select-none flex-col gap-2 overflow-hidden touch-pan-y"
   >
+    <!-- Section labels: "On Deck" aligned to the OnDeck slot, "Board" for the rest -->
+    <div v-if="hasOnDeck" class="flex shrink-0 items-center gap-2">
+      <span
+        class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-green-600"
+        :style="{ width: `${onDeckLabelWidth}px` }"
+      >
+        On Deck
+      </span>
+      <span
+        v-if="showBoardLabel"
+        class="text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500"
+      >
+        Board
+      </span>
+    </div>
+
     <!-- Cards area: fills remaining height so useElementSize gets a real value -->
     <div ref="cardsAreaEl" class="min-h-0 flex-1 overflow-hidden">
       <div class="grid gap-2" :style="gridStyle">

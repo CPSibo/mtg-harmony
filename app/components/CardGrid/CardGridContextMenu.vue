@@ -71,7 +71,7 @@ const items = [
     role="menu"
     tabindex="-1"
     :style="menuStyle"
-    class="min-w-[160px] rounded-lg border border-slate-200 bg-white py-1 shadow-lg outline-none dark:border-slate-700 dark:bg-slate-800"
+    class="min-w-40 rounded-lg border border-slate-200 bg-white py-1 shadow-lg outline-none dark:border-slate-700 dark:bg-slate-800"
   >
     <button
       v-for="item in items"
