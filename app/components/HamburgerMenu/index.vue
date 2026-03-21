@@ -58,18 +58,18 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
 
 <template>
   <!-- ── Header bar ─────────────────────────────────────────────────────────── -->
-  <div class="flex shrink-0 items-center justify-end gap-1 px-2 py-1">
+  <div class="flex shrink-0 items-center justify-end gap-1 px-2 py-1.5">
     <UButton
       icon="i-lucide-history"
       variant="ghost"
-      size="sm"
+      size="lg"
       aria-label="View history"
       @click="isHistoryOpen = true"
     />
     <UButton
       icon="i-lucide-settings-2"
       variant="ghost"
-      size="sm"
+      size="lg"
       aria-label="Open settings"
       @click="isSettingsOpen = true"
     />
@@ -114,7 +114,7 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
               <UButton
                 icon="i-lucide-x"
                 variant="ghost"
-                size="xs"
+                size="md"
                 aria-label="Close settings"
                 @click="isSettingsOpen = false"
               />
@@ -133,7 +133,7 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
                   <button
                     v-for="opt in DISPLAY_OPTIONS"
                     :key="opt.value"
-                    class="rounded px-3 py-1 text-sm font-medium transition-colors"
+                    class="rounded px-3 py-1 text-sm font-medium transition-colors cursor-pointer"
                     :class="gridDisplayMode === opt.value
                       ? 'bg-green-600 text-white'
                       : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-700 dark:hover:text-slate-200'"
@@ -152,7 +152,7 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
                   <button
                     v-for="opt in SIZE_OPTIONS"
                     :key="opt.value"
-                    class="flex size-7 items-center justify-center rounded text-xs font-semibold transition-colors"
+                    class="flex size-8 items-center justify-center rounded text-sm font-semibold transition-colors cursor-pointer"
                     :class="slotSize === opt.value
                       ? 'bg-green-600 text-white'
                       : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-700 dark:hover:text-slate-200'"
@@ -174,14 +174,14 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
 
               <div class="-mx-2 flex flex-col">
                 <button
-                  class="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                  class="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 cursor-pointer"
                   @click="isClearConfirmOpen = true"
                 >
                   <UIcon name="i-lucide-trash-2" class="size-4 shrink-0" />
                   Clear grid
                 </button>
                 <button
-                  class="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                  class="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 cursor-pointer"
                   @click="isResetConfirmOpen = true"
                 >
                   <UIcon name="i-lucide-rotate-ccw" class="size-4 shrink-0" />

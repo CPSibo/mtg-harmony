@@ -50,7 +50,7 @@ function formatDate(iso: string): string {
           <UButton
             icon="i-lucide-x"
             variant="ghost"
-            size="sm"
+            size="md"
             aria-label="Close history"
             @click="close"
           />

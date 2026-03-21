@@ -11,9 +11,9 @@ const { gridDisplayMode, slotsPerPage, slotSize, onDeckExpanded } = storeToRefs(
 // ─── Slot sizing & auto-fit ───────────────────────────────────────────────────
 
 // Pixel widths for each named size. Full-mode height follows the 5:7 card aspect
-// ratio. Compact mode slots shrink to content (~2 text lines + padding ≈ 48px).
-const SLOT_WIDTHS: Record<SlotSize, number> = { small: 80, medium: 120, large: 160 }
-const COMPACT_SLOT_HEIGHT = 48
+// ratio. Compact mode slots shrink to content (~2 text lines + padding ≈ 64px).
+const SLOT_WIDTHS: Record<SlotSize, number> = { small: 100, medium: 150, large: 200 }
+const COMPACT_SLOT_HEIGHT = 64
 const GAP = 8 // gap-2
 
 // Measure the card-area element only (excludes the controls row at the bottom).
@@ -193,14 +193,14 @@ function handleSplitModifier() {
     <!-- Section labels: "On Deck" aligned to the OnDeck slot, "Board" for the rest -->
     <div v-if="hasOnDeck" class="flex shrink-0 items-center gap-2">
       <span
-        class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-green-600"
+        class="shrink-0 text-xs font-semibold uppercase tracking-wider text-green-600"
         :style="{ width: `${onDeckLabelWidth}px` }"
       >
         On Deck
       </span>
       <span
         v-if="showBoardLabel"
-        class="text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500"
+        class="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500"
       >
         Board
       </span>

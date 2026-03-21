@@ -101,7 +101,7 @@ const groupedModifiers = computed(() => {
     v-if="!card"
     :class="[
       'rounded-md border-2 border-dashed border-slate-400 bg-slate-100 dark:border-slate-800 dark:bg-slate-900',
-      displayMode === 'full' ? 'aspect-5/7' : 'min-h-12',
+      displayMode === 'full' ? 'aspect-5/7' : 'min-h-16',
     ]"
   />
 
@@ -110,7 +110,7 @@ const groupedModifiers = computed(() => {
     v-else-if="isCountEditing"
     :class="[
       'relative overflow-hidden rounded-md border border-slate-200 dark:border-slate-700',
-      displayMode === 'full' ? 'aspect-5/7' : 'min-h-20',
+      displayMode === 'full' ? 'aspect-5/7' : 'min-h-24',
     ]"
   >
     <div
@@ -119,7 +119,7 @@ const groupedModifiers = computed(() => {
     >
       <div class="flex items-center gap-2">
         <button
-          class="flex size-8 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30"
+          class="flex size-10 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30"
           @click="localCount = Math.max(1, localCount - 1)"
         >
           -
@@ -128,18 +128,18 @@ const groupedModifiers = computed(() => {
           v-model.number="localCount"
           type="number"
           min="1"
-          class="w-14 rounded border-b border-white bg-transparent text-center text-lg text-white outline-none"
+          class="w-16 rounded border-b border-white bg-transparent text-center text-xl text-white outline-none"
           @keydown.enter="commitCount"
           @keydown.escape="cancelCount"
         >
         <button
-          class="flex size-8 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30"
+          class="flex size-10 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30"
           @click="localCount++"
         >
           +
         </button>
       </div>
-      <button class="text-xs text-white underline" @click="commitCount">
+      <button class="text-sm text-white underline" @click="commitCount">
         Done
       </button>
     </div>
@@ -162,7 +162,7 @@ const groupedModifiers = computed(() => {
         :alt="card.name"
         class="h-full w-full object-contain"
       >
-      <span class="absolute bottom-5 left-1 rounded bg-black/60 px-1 text-xs text-white">
+      <span class="absolute bottom-5 left-1 rounded bg-black/60 px-1 text-sm text-white">
         ×{{ card.instanceCount }}
       </span>
       <div class="absolute bottom-1 left-1 right-1 flex flex-wrap gap-0.5">
@@ -174,16 +174,16 @@ const groupedModifiers = computed(() => {
           @click.stop="emit('requestAddModifier', card!.id)"
         >
           <span :class="group.symbol" class="text-xs" />
-          <span v-if="group.count > 1" class="text-[9px] font-medium leading-none">×{{ group.count }}</span>
+          <span v-if="group.count > 1" class="text-xs font-medium leading-none">×{{ group.count }}</span>
         </button>
       </div>
     </template>
 
     <!-- Compact mode -->
     <template v-else>
-      <div class="flex flex-col px-2 py-2">
-        <p class="truncate text-sm font-medium leading-tight">{{ card.name }}</p>
-        <p class="text-xs leading-tight text-slate-500 dark:text-slate-400">×{{ card.instanceCount }}</p>
+      <div class="flex flex-col px-3 py-2">
+        <p class="truncate text-base font-medium leading-tight">{{ card.name }}</p>
+        <p class="text-sm leading-tight text-slate-500 dark:text-slate-400">×{{ card.instanceCount }}</p>
         <div v-if="groupedModifiers.length" class="mt-1 flex flex-wrap gap-0.5">
           <button
             v-for="group in groupedModifiers"
@@ -193,7 +193,7 @@ const groupedModifiers = computed(() => {
             @click.stop="emit('requestAddModifier', card!.id)"
           >
             <span :class="group.symbol" class="text-xs" />
-            <span v-if="group.count > 1" class="text-[9px] font-medium leading-none">×{{ group.count }}</span>
+            <span v-if="group.count > 1" class="text-xs font-medium leading-none">×{{ group.count }}</span>
           </button>
         </div>
       </div>
