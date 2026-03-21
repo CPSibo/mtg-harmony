@@ -21,11 +21,6 @@ const cardsAreaEl = ref<HTMLElement | null>(null)
 const { width: areaWidth, height: areaHeight } = useElementSize(cardsAreaEl)
 
 const slotMinWidth = computed(() => SLOT_WIDTHS[slotSize.value])
-const slotMinHeight = computed(() =>
-  gridDisplayMode.value === 'compact'
-    ? COMPACT_SLOT_HEIGHT
-    : Math.round(slotMinWidth.value * 7 / 5)
-)
 
 const columns = computed(() =>
   areaWidth.value > 0
@@ -33,9 +28,25 @@ const columns = computed(() =>
     : 3
 )
 
+// Actual column width after CSS distributes the 1fr columns across the area.
+// Deriving row height from this (rather than from slotMinWidth) ensures
+// gridAutoRows exactly matches what aspect-5/7 slots produce, so there is no
+// height mismatch that would collapse or expand the inter-row gap.
+const columnWidth = computed(() =>
+  columns.value > 0 && areaWidth.value > 0
+    ? (areaWidth.value - (columns.value - 1) * GAP) / columns.value
+    : slotMinWidth.value
+)
+
+const slotHeight = computed(() =>
+  gridDisplayMode.value === 'compact'
+    ? COMPACT_SLOT_HEIGHT
+    : Math.round(columnWidth.value * 7 / 5)
+)
+
 const rows = computed(() =>
-  areaHeight.value > slotMinHeight.value
-    ? Math.max(1, Math.floor((areaHeight.value + GAP) / (slotMinHeight.value + GAP)))
+  areaHeight.value > slotHeight.value
+    ? Math.max(1, Math.floor((areaHeight.value + GAP) / (slotHeight.value + GAP)))
     : 3
 )
 
@@ -57,8 +68,7 @@ const onDeckRowSpan = computed(() =>
 // The pixel width of the OnDeck label, matched to the OnDeck slot's column span.
 const onDeckLabelWidth = computed(() => {
   if (!hasOnDeck.value || areaWidth.value === 0) return 0
-  const colWidth = (areaWidth.value - (columns.value - 1) * GAP) / columns.value
-  return onDeckColSpan.value * colWidth + (onDeckColSpan.value - 1) * GAP
+  return onDeckColSpan.value * columnWidth.value + (onDeckColSpan.value - 1) * GAP
 })
 
 // Hide the Board label when the OnDeck slot fills the entire first row.
@@ -78,9 +88,13 @@ watchEffect(() => {
 
 const gridStyle = computed(() => ({
   gridTemplateColumns: `repeat(auto-fill, minmax(${slotMinWidth.value}px, 1fr))`,
-  // Ensure rows have a minimum height so the OnDeck expanded span never
-  // collapses when it is the only item occupying those rows.
-  gridAutoRows: `minmax(${slotMinHeight.value}px, auto)`,
+  // Full mode: fix row height to the card aspect ratio so a loading image's
+  // natural size cannot push rows taller and shift the grid.
+  // Compact mode: allow growth so the OnDeck shrunk slot's button stack can
+  // expand beyond the minimum row height.
+  gridAutoRows: gridDisplayMode.value === 'full'
+    ? `${slotHeight.value}px`
+    : `minmax(${slotHeight.value}px, auto)`,
 }))
 
 // ─── Empty-slot padding ───────────────────────────────────────────────────────
