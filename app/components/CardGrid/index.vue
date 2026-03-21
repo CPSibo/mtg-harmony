@@ -34,7 +34,7 @@ const activeCard = computed<GridCard | undefined>(() =>
 const isRemoveConfirmOpen = ref(false)
 const isModifierPickerOpen = ref(false)
 const isModifierSplitOpen = ref(false)
-const pendingModifier = ref<Modifier | null>(null)
+const pendingModifiers = ref<Modifier[]>([])
 
 function onRequestRemove(cardId: string) {
   activeCardId.value = cardId
@@ -55,50 +55,51 @@ function handleRemoveConfirmed() {
   activeCardId.value = null
 }
 
-function handleModifierSelected(modifier: Modifier) {
+function handleModifiersApplied(newModifiers: Modifier[]) {
   isModifierPickerOpen.value = false
   if (!activeCard.value) return
-  if (activeCard.value.instanceCount === 1) {
-    gridStore.updateCard(activeCard.value.id, {
-      modifiers: [...activeCard.value.modifiers, modifier],
-    })
-    toast.add({ title: 'Modifier added', color: 'success' })
-    activeCardId.value = null
-  } else {
-    pendingModifier.value = modifier
+  const wasAdded = newModifiers.length > activeCard.value.modifiers.length
+  if (wasAdded && activeCard.value.instanceCount > 1) {
+    pendingModifiers.value = newModifiers
     isModifierSplitOpen.value = true
+  } else {
+    gridStore.updateCard(activeCard.value.id, { modifiers: newModifiers })
+    toast.add({ title: 'Modifiers updated', color: 'success' })
+    activeCardId.value = null
   }
 }
 
 function handleApplyModifierToAll() {
-  if (activeCard.value && pendingModifier.value) {
-    gridStore.updateCard(activeCard.value.id, {
-      modifiers: [...activeCard.value.modifiers, pendingModifier.value],
-    })
-    toast.add({ title: 'Modifier applied to all', color: 'success' })
+  if (activeCard.value) {
+    gridStore.updateCard(activeCard.value.id, { modifiers: pendingModifiers.value })
+    toast.add({ title: 'Modifiers applied to all', color: 'success' })
   }
   isModifierSplitOpen.value = false
-  pendingModifier.value = null
+  pendingModifiers.value = []
   activeCardId.value = null
 }
 
 function handleSplitModifier() {
-  if (!activeCard.value || !pendingModifier.value) return
+  if (!activeCard.value) return
   const originalId = activeCard.value.id
   const originalCount = activeCard.value.instanceCount
   const originalIndex = cards.value.findIndex(c => c.id === originalId)
+  const originalModifiers = activeCard.value.modifiers
 
   gridStore.duplicateCard(originalId)
 
   const newCard = cards.value[originalIndex + 1]
   if (newCard) {
-    gridStore.updateCard(newCard.id, { modifiers: [pendingModifier.value] })
+    gridStore.updateCard(newCard.id, { modifiers: pendingModifiers.value })
   }
-  gridStore.updateCard(originalId, { instanceCount: originalCount - 1 })
+  gridStore.updateCard(originalId, {
+    instanceCount: originalCount - 1,
+    modifiers: originalModifiers,
+  })
 
-  toast.add({ title: 'Card split off with modifier', color: 'success' })
+  toast.add({ title: 'Card split off with modifiers', color: 'success' })
   isModifierSplitOpen.value = false
-  pendingModifier.value = null
+  pendingModifiers.value = []
   activeCardId.value = null
 }
 </script>
@@ -137,7 +138,8 @@ function handleSplitModifier() {
     <SharedModifierPickerDialog
       :open="isModifierPickerOpen"
       :card-name="activeCard?.name ?? ''"
-      @select="handleModifierSelected"
+      :current-modifiers="activeCard?.modifiers ?? []"
+      @apply="handleModifiersApplied"
       @cancel="isModifierPickerOpen = false"
       @update:open="isModifierPickerOpen = $event"
     />

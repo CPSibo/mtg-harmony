@@ -4,10 +4,11 @@ import type { Modifier } from '~/types/card'
 const props = defineProps<{
   open: boolean
   cardName: string
+  currentModifiers: Modifier[]
 }>()
 
 const emit = defineEmits<{
-  (e: 'select', modifier: Modifier): void
+  (e: 'apply', modifiers: Modifier[]): void
   (e: 'cancel'): void
   (e: 'update:open', value: boolean): void
 }>()
@@ -38,8 +39,44 @@ const MODIFIERS: Array<Omit<Modifier, 'id'>> = [
   { type: 'Tapped',         symbol: 'ms ms-tap' },
 ]
 
-function onSelect(mod: Omit<Modifier, 'id'>) {
-  emit('select', { id: crypto.randomUUID(), ...mod })
+// Count per modifier type, keyed by type string
+const counts = reactive<Record<string, number>>(
+  Object.fromEntries(MODIFIERS.map(m => [m.type, 0]))
+)
+
+function initCounts() {
+  for (const key of Object.keys(counts)) counts[key] = 0
+  for (const mod of props.currentModifiers) {
+    if (mod.type in counts) counts[mod.type]++
+  }
+}
+
+watch(() => props.open, (val) => {
+  if (val) initCounts()
+})
+
+function increment(type: string) {
+  counts[type] = (counts[type] ?? 0) + 1
+}
+
+function decrement(type: string) {
+  counts[type] = Math.max(0, (counts[type] ?? 0) - 1)
+}
+
+function onApply() {
+  const newModifiers: Modifier[] = []
+  for (const def of MODIFIERS) {
+    const count = counts[def.type] ?? 0
+    // Preserve existing IDs where possible so store updates are stable
+    const existing = props.currentModifiers.filter(m => m.type === def.type)
+    for (let i = 0; i < count; i++) {
+      newModifiers.push(i < existing.length
+        ? existing[i]!
+        : { id: crypto.randomUUID(), ...def }
+      )
+    }
+  }
+  emit('apply', newModifiers)
   emit('update:open', false)
 }
 
@@ -85,26 +122,51 @@ useEventListener(document, 'keydown', (e: KeyboardEvent) => {
             class="relative w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-slate-800"
           >
             <h2 class="mb-4 text-base font-semibold text-slate-900 dark:text-slate-100">
-              Add modifier to "{{ cardName }}"
+              Modifiers — {{ cardName }}
             </h2>
 
             <div class="mb-6 grid grid-cols-3 gap-2 sm:grid-cols-4">
-              <button
+              <div
                 v-for="mod in MODIFIERS"
                 :key="mod.type"
-                class="flex cursor-pointer flex-col items-center gap-1 rounded-md border border-slate-200 p-2 text-center hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-700"
-                @click="onSelect(mod)"
+                :class="[
+                  'flex flex-col items-center gap-1 rounded-md border p-2 text-center transition-colors',
+                  counts[mod.type] > 0
+                    ? 'border-green-500 bg-green-50 dark:border-green-400 dark:bg-green-900/20'
+                    : 'border-slate-200 dark:border-slate-600',
+                ]"
               >
                 <span :class="mod.symbol" class="text-2xl" />
                 <span class="w-full truncate text-xs text-slate-700 dark:text-slate-300">
                   {{ mod.type }}
                 </span>
-              </button>
+                <div class="flex items-center gap-1">
+                  <button
+                    class="flex size-5 items-center justify-center rounded-full bg-slate-200 text-xs hover:bg-slate-300 disabled:opacity-30 dark:bg-slate-600 dark:hover:bg-slate-500"
+                    :disabled="counts[mod.type] === 0"
+                    @click="decrement(mod.type)"
+                  >
+                    −
+                  </button>
+                  <span class="w-4 text-center text-sm font-medium tabular-nums text-slate-800 dark:text-slate-200">
+                    {{ counts[mod.type] }}
+                  </span>
+                  <button
+                    class="flex size-5 items-center justify-center rounded-full bg-slate-200 text-xs hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500"
+                    @click="increment(mod.type)"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
             </div>
 
-            <div class="flex justify-end">
+            <div class="flex justify-end gap-2">
               <UButton variant="ghost" @click="onCancel">
                 Cancel
+              </UButton>
+              <UButton color="primary" @click="onApply">
+                Apply
               </UButton>
             </div>
           </div>

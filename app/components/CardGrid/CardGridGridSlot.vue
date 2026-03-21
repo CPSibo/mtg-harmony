@@ -82,12 +82,17 @@ function handleAddModifier() {
   emit('requestAddModifier', props.card!.id)
 }
 
-function removeModifier(modId: string) {
-  if (!props.card) return
-  gridStore.updateCard(props.card.id, {
-    modifiers: props.card.modifiers.filter(m => m.id !== modId),
-  })
-}
+// Modifiers grouped by type so duplicates (e.g. three +1/+1 counters) are shown as one chip
+const groupedModifiers = computed(() => {
+  if (!props.card) return []
+  const groups = new Map<string, { type: string, symbol: string, count: number }>()
+  for (const mod of props.card.modifiers) {
+    const g = groups.get(mod.type)
+    if (g) g.count++
+    else groups.set(mod.type, { type: mod.type, symbol: mod.symbol, count: 1 })
+  }
+  return [...groups.values()]
+})
 </script>
 
 <template>
@@ -153,13 +158,14 @@ function removeModifier(modId: string) {
       </span>
       <div class="absolute bottom-1 left-1 right-1 flex flex-wrap gap-0.5">
         <button
-          v-for="mod in card.modifiers"
-          :key="mod.id"
-          class="group relative"
-          @click.stop="removeModifier(mod.id)"
+          v-for="group in groupedModifiers"
+          :key="group.type"
+          class="flex items-center gap-0.5 rounded-full bg-slate-900/80 px-1.5 py-0.5 text-white hover:bg-slate-900"
+          :title="group.type"
+          @click.stop="emit('requestAddModifier', card!.id)"
         >
-          <span :class="mod.symbol" class="text-base" />
-          <span class="absolute -right-1 -top-1 hidden rounded-full bg-red-500 px-0.5 text-[8px] text-white group-hover:block group-focus:block">×</span>
+          <span :class="group.symbol" class="text-xs" />
+          <span v-if="group.count > 1" class="text-[9px] font-medium leading-none">×{{ group.count }}</span>
         </button>
       </div>
     </template>
@@ -171,13 +177,14 @@ function removeModifier(modId: string) {
         <p class="text-xs text-slate-500 dark:text-slate-400">×{{ card.instanceCount }}</p>
         <div class="mt-0.5 flex flex-wrap gap-0.5">
           <button
-            v-for="mod in card.modifiers"
-            :key="mod.id"
-            class="group relative"
-            @click.stop="removeModifier(mod.id)"
+            v-for="group in groupedModifiers"
+            :key="group.type"
+            class="flex items-center gap-0.5 rounded-full bg-slate-900/80 px-1.5 py-0.5 text-white hover:bg-slate-900"
+            :title="group.type"
+            @click.stop="emit('requestAddModifier', card!.id)"
           >
-            <span :class="mod.symbol" class="text-base" />
-            <span class="absolute -right-1 -top-1 hidden rounded-full bg-red-500 px-0.5 text-[8px] text-white group-hover:block group-focus:block">×</span>
+            <span :class="group.symbol" class="text-xs" />
+            <span v-if="group.count > 1" class="text-[9px] font-medium leading-none">×{{ group.count }}</span>
           </button>
         </div>
       </div>
