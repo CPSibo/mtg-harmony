@@ -33,10 +33,10 @@ test.describe('clear grid', () => {
 
   test('confirming Clear grid removes all cards from the grid', async ({ page }) => {
     // Add a card to the grid first.
-    await page.getByText('Tap to draw a card').first().click()
+    await page.getByText('Tap to fetch a random card').first().click()
     await expect(page.getByAltText(mockCard.name)).toBeVisible()
     await page.getByRole('button', { name: 'Cast' }).click()
-    await expect(page.getByText('Tap to draw a card').first()).toBeVisible()
+    await expect(page.getByText('Tap to fetch a random card').first()).toBeVisible()
     // The card image should now be in the grid.
     await expect(page.getByAltText(mockCard.name)).toBeVisible()
     // Clear the grid via the settings modal.

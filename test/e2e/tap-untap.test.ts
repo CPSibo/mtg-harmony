@@ -6,10 +6,10 @@ test.describe('tap and untap', () => {
     await mockScryfallRoute(page)
     await page.goto('/')
     // Cast a card onto the grid to have something to tap.
-    await page.getByText('Tap to draw a card').first().click()
+    await page.getByText('Tap to fetch a random card').first().click()
     await expect(page.getByAltText(mockCard.name)).toBeVisible()
     await page.getByRole('button', { name: 'Cast' }).click()
-    await expect(page.getByText('Tap to draw a card').first()).toBeVisible()
+    await expect(page.getByText('Tap to fetch a random card').first()).toBeVisible()
   })
 
   test('clicking a grid card rotates it (tapped state)', async ({ page }) => {

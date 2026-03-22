@@ -6,10 +6,10 @@ test.describe('zoom', () => {
     await mockScryfallRoute(page)
     await page.goto('/')
     // Cast a card onto the grid to have something to zoom.
-    await page.getByText('Tap to draw a card').first().click()
+    await page.getByText('Tap to fetch a random card').first().click()
     await expect(page.getByAltText(mockCard.name)).toBeVisible()
     await page.getByRole('button', { name: 'Cast' }).click()
-    await expect(page.getByText('Tap to draw a card').first()).toBeVisible()
+    await expect(page.getByText('Tap to fetch a random card').first()).toBeVisible()
   })
 
   test('Zoom context menu item opens the zoom overlay', async ({ page }) => {
