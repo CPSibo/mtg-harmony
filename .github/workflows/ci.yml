@@ -55,7 +55,7 @@ jobs:
         run: npm ci
 
       - name: Cache Nuxt build artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .nuxt
           key: nuxt-${{ hashFiles('app/**', 'nuxt.config.ts', 'package-lock.json') }}
