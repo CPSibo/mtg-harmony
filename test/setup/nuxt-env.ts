@@ -10,7 +10,7 @@ const localStorageMock = (() => {
   return {
     getItem: (key: string): string | null => store[key] ?? null,
     setItem: (key: string, value: string): void => { store[key] = String(value) },
-    removeItem: (key: string): void => { delete store[key] },
+    removeItem: (key: string): void => { Reflect.deleteProperty(store, key) },
     clear: (): void => { store = {} },
     get length(): number { return Object.keys(store).length },
     key: (index: number): string | null => Object.keys(store)[index] ?? null,
