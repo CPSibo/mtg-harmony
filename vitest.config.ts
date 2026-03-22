@@ -17,6 +17,7 @@ export default defineConfig({
           name: 'nuxt',
           include: ['test/nuxt/**/*.{test,spec}.ts'],
           environment: 'nuxt',
+          setupFiles: ['./test/setup/nuxt-env.ts'],
           environmentOptions: {
             nuxt: {
               rootDir: fileURLToPath(new URL('.', import.meta.url)),
@@ -29,6 +30,14 @@ export default defineConfig({
     coverage: {
       enabled: true,
       provider: 'v8',
+    },
+    onConsoleLog(log: string) {
+      if (
+        log.includes(
+          '<Suspense> is an experimental feature and its API will likely change.'
+        )
+      )
+        return false;
     },
   },
 })

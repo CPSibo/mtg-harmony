@@ -7,7 +7,7 @@
     "dev": "nuxt dev",
     "dev-host": "nuxt dev --host",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare",
+    "postinstall": "nuxt prepare && node scripts/patch-deps.mjs",
     "lint": "eslint .",
     "typecheck": "nuxt typecheck",
     "test": "vitest",
