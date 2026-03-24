@@ -40,4 +40,5 @@ export interface AppSettings {
   gridDisplayMode: 'full' | 'compact'
   onDeckExpanded: boolean
   prefetchEnabled: boolean     // whether the background prefetch queue is active
+  wakeLockEnabled: boolean     // whether the Screen Wake Lock API is requested
 }
