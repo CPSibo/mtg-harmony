@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import type { HistoryEntry } from '~/types/card'
+import type { HistoryEntry } from '~/types/HistoryEntry'
 
 const STORAGE_KEY = 'mtg-history'
 
