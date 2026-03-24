@@ -184,7 +184,7 @@ onUnmounted(() => {
     <!-- providing a backdrop for the buttons without a hard seam.              -->
     <div
       v-if="card || loading"
-      class="pointer-events-none absolute inset-0 bg-linear-to-b from-transparent from-20% to-90% to-black/100"
+      class="pointer-events-none absolute inset-0 bg-linear-to-b from-transparent from-20% to-90% to-black"
     />
 
     <!-- Action buttons in a full-width column at the bottom -->

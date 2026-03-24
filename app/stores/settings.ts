@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import type { AppSettings, SlotSize } from '~/types/card'
+import type { AppSettings, SlotSize } from '~/types/AppSettings'
 
 const STORAGE_KEY = 'mtg-settings'
 

@@ -1,7 +1,8 @@
 import { describe, beforeEach, it, expect, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
-import type { ScryfallCard, HistoryEntry } from '~/types/card'
+import type { HistoryEntry } from '~/types/HistoryEntry'
+import type { ScryfallCard } from '~/types/card'
 
 // ─── Mock persistence ────────────────────────────────────────────────────────
 
