@@ -78,6 +78,11 @@ describe('useOnDeckStore', () => {
       expect(store.card!.modifiers).toHaveLength(0)
     })
 
+    it('initialises tapped to false', () => {
+      store.setCard(makeScryfallCard())
+      expect(store.card!.tapped).toBe(false)
+    })
+
     it('overwrites the previous on-deck card', () => {
       store.setCard(makeScryfallCard({ name: 'First' }))
       store.setCard(makeScryfallCard({ name: 'Second' }))
@@ -199,6 +204,7 @@ describe('useOnDeckStore', () => {
         scryfall_uri: 'https://scryfall.com/card/counterspell',
         instanceCount: 1,
         modifiers: [],
+        tapped: false,
       }
       mockLoad.mockReturnValue(saved)
       expect(store.load()).toBe(true)

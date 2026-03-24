@@ -18,7 +18,7 @@ const mockScryfallCard = {
   id: 'test-scryfall-001',
   name: 'Lightning Bolt',
   mana_cost: '{R}',
-  image_uris: { normal: 'https://example.com/lightning-bolt.jpg' },
+  image_uris: { border_crop: 'https://example.com/lightning-bolt.jpg' },
   scryfall_uri: 'https://scryfall.com/card/test-001',
 }
 
@@ -107,5 +107,16 @@ describe('useScryfall', () => {
     const { fetch, loading } = useScryfall()
     await fetch()
     expect(loading.value).toBe(false)
+  })
+
+  it('error is cleared to null on a subsequent successful fetch', async () => {
+    const { fetch, error } = useScryfall()
+    mockFetch.mockRejectedValueOnce(new Error('Network failure'))
+    await fetch()
+    expect(error.value).toBeTruthy() // sanity-check: error was set
+
+    mockFetch.mockResolvedValueOnce(mockScryfallCard)
+    await fetch()
+    expect(error.value).toBeNull()
   })
 })

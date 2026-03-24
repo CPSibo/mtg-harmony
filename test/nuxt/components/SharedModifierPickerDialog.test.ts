@@ -199,4 +199,15 @@ describe('SharedModifierPickerDialog', () => {
     expect(wrapper.emitted('cancel')).toHaveLength(1)
     expect(wrapper.emitted('update:open')).toEqual([[false]])
   })
+
+  it('emits cancel and update:open false when the backdrop is clicked', async () => {
+    wrapper = await mountSuspended(SharedModifierPickerDialog, {
+      props: { open: true, cardName: 'Test', currentModifiers: [] },
+    })
+    const backdrop = document.body.querySelector<HTMLElement>('.absolute.inset-0')!
+    backdrop.click()
+    await nextTick()
+    expect(wrapper.emitted('cancel')).toHaveLength(1)
+    expect(wrapper.emitted('update:open')).toEqual([[false]])
+  })
 })
