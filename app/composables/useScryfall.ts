@@ -5,6 +5,7 @@ const SCRYFALL_ENDPOINT = 'https://api.scryfall.com/cards/random?q=-t:land+game:
 export function useScryfall() {
   const onDeckStore = useOnDeckStore()
   const historyStore = useHistoryStore()
+  const prefetchStore = usePrefetchStore()
   const toast = useToast()
 
   const card = ref<ScryfallCard | null>(null)
@@ -16,7 +17,8 @@ export function useScryfall() {
     error.value = null
 
     try {
-      const response = await $fetch<ScryfallCard>(SCRYFALL_ENDPOINT)
+      const queued = prefetchStore.dequeue()
+      const response = queued ?? await $fetch<ScryfallCard>(SCRYFALL_ENDPOINT)
       card.value = response
 
       onDeckStore.setCard(response)

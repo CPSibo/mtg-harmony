@@ -199,5 +199,45 @@ describe('useSettingsStore', () => {
       expect(store.slotSize).toBe('small')
       expect(store.gridDisplayMode).toBe('full') // unchanged default
     })
+
+    it('hydrates prefetchEnabled from saved data', () => {
+      mockLoad.mockReturnValue({
+        slotSize: 'medium',
+        gridDisplayMode: 'full',
+        onDeckExpanded: true,
+        prefetchEnabled: false,
+      })
+      const store = useSettingsStore()
+      store.load()
+      expect(store.prefetchEnabled).toBe(false)
+    })
+
+    it('ignores a non-boolean prefetchEnabled and leaves the default unchanged', () => {
+      mockLoad.mockReturnValue({ prefetchEnabled: 'yes' })
+      const store = useSettingsStore()
+      store.load()
+      expect(store.prefetchEnabled).toBe(true) // default unchanged
+    })
+  })
+
+  // ─── prefetchEnabled ────────────────────────────────────────────────────
+
+  describe('prefetchEnabled', () => {
+    it('defaults to true', () => {
+      expect(useSettingsStore().prefetchEnabled).toBe(true)
+    })
+
+    it('setPrefetchEnabled(false) disables prefetch', () => {
+      const store = useSettingsStore()
+      store.setPrefetchEnabled(false)
+      expect(store.prefetchEnabled).toBe(false)
+    })
+
+    it('setPrefetchEnabled(true) re-enables prefetch', () => {
+      const store = useSettingsStore()
+      store.setPrefetchEnabled(false)
+      store.setPrefetchEnabled(true)
+      expect(store.prefetchEnabled).toBe(true)
+    })
   })
 })
