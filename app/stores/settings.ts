@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import type { AppSettings, SlotSize } from '~/types/card'
+import type { AppSettings, SlotSize } from '~/types/AppSettings'
 
 const STORAGE_KEY = 'mtg-settings'
 
@@ -8,6 +8,7 @@ const defaults: AppSettings = {
   gridDisplayMode: 'full',
   onDeckExpanded: true,
   prefetchEnabled: true,
+  wakeLockEnabled: true,
 }
 
 /**
@@ -31,6 +32,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const gridDisplayMode = ref<'full' | 'compact'>(defaults.gridDisplayMode)
   const onDeckExpanded = ref<boolean>(defaults.onDeckExpanded)
   const prefetchEnabled = ref<boolean>(defaults.prefetchEnabled)
+  const wakeLockEnabled = ref<boolean>(defaults.wakeLockEnabled)
 
   // Runtime-only: computed by CardGrid from container dimensions + slotSize.
   // Not persisted — recalculated on every mount / resize.
@@ -56,6 +58,10 @@ export const useSettingsStore = defineStore('settings', () => {
     prefetchEnabled.value = value
   }
 
+  function setWakeLockEnabled(value: boolean) {
+    wakeLockEnabled.value = value
+  }
+
   function save() {
     const { save: persist } = useLocalStorage()
     persist(STORAGE_KEY, {
@@ -63,6 +69,7 @@ export const useSettingsStore = defineStore('settings', () => {
       gridDisplayMode: gridDisplayMode.value,
       onDeckExpanded: onDeckExpanded.value,
       prefetchEnabled: prefetchEnabled.value,
+      wakeLockEnabled: wakeLockEnabled.value,
     })
   }
 
@@ -83,10 +90,11 @@ export const useSettingsStore = defineStore('settings', () => {
     }
     if (typeof data.onDeckExpanded === 'boolean') onDeckExpanded.value = data.onDeckExpanded
     if (typeof data.prefetchEnabled === 'boolean') prefetchEnabled.value = data.prefetchEnabled
+    if (typeof data.wakeLockEnabled === 'boolean') wakeLockEnabled.value = data.wakeLockEnabled
     return true
   }
 
-  watch([slotSize, gridDisplayMode, onDeckExpanded, prefetchEnabled], () => {
+  watch([slotSize, gridDisplayMode, onDeckExpanded, prefetchEnabled, wakeLockEnabled], () => {
     save()
   })
 
@@ -101,6 +109,8 @@ export const useSettingsStore = defineStore('settings', () => {
     toggleOnDeckExpanded,
     prefetchEnabled,
     setPrefetchEnabled,
+    wakeLockEnabled,
+    setWakeLockEnabled,
     save,
     load,
   }

@@ -218,6 +218,26 @@ describe('useSettingsStore', () => {
       store.load()
       expect(store.prefetchEnabled).toBe(true) // default unchanged
     })
+
+    it('hydrates wakeLockEnabled from saved data', () => {
+      mockLoad.mockReturnValue({
+        slotSize: 'medium',
+        gridDisplayMode: 'full',
+        onDeckExpanded: true,
+        prefetchEnabled: true,
+        wakeLockEnabled: true,
+      })
+      const store = useSettingsStore()
+      store.load()
+      expect(store.wakeLockEnabled).toBe(true)
+    })
+
+    it('ignores a non-boolean wakeLockEnabled and leaves the default unchanged', () => {
+      mockLoad.mockReturnValue({ wakeLockEnabled: 'yes' })
+      const store = useSettingsStore()
+      store.load()
+      expect(store.wakeLockEnabled).toBe(true) // default unchanged
+    })
   })
 
   // ─── prefetchEnabled ────────────────────────────────────────────────────
@@ -238,6 +258,28 @@ describe('useSettingsStore', () => {
       store.setPrefetchEnabled(false)
       store.setPrefetchEnabled(true)
       expect(store.prefetchEnabled).toBe(true)
+    })
+  })
+
+  // ─── wakeLockEnabled ────────────────────────────────────────────────────
+
+  describe('wakeLockEnabled', () => {
+    it('defaults to true', () => {
+      expect(useSettingsStore().wakeLockEnabled).toBe(true)
+    })
+
+    it('setWakeLockEnabled(true) enables wake lock', () => {
+      const store = useSettingsStore()
+      store.setWakeLockEnabled(false)
+      store.setWakeLockEnabled(true)
+      expect(store.wakeLockEnabled).toBe(true)
+    })
+
+    it('setWakeLockEnabled(false) disables wake lock', () => {
+      const store = useSettingsStore()
+      store.setWakeLockEnabled(true)
+      store.setWakeLockEnabled(false)
+      expect(store.wakeLockEnabled).toBe(false)
     })
   })
 })

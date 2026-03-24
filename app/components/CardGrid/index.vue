@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import type { GridCard, Modifier, SlotSize } from '~/types/card'
+import type { GridCard, Modifier } from '~/types/card'
+import type { SlotSize } from '~/types/AppSettings' 
 
 const gridStore = useGridStore()
 const { pageCards, cards } = storeToRefs(gridStore)

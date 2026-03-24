@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { HistoryEntry } from '../../app/types/card'
+import type { HistoryEntry } from '../../app/types/HistoryEntry'
 import { formatEntries } from '../../app/utils/historyExport'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
