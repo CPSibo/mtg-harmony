@@ -1,7 +1,7 @@
 import { describe, beforeEach, afterEach, it, expect, vi, type MockInstance } from 'vitest'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import type { VueWrapper } from '@vue/test-utils'
-import type { HistoryEntry } from '~/types/card'
+import type { HistoryEntry } from '~/types/HistoryEntry'
 import HistoryModal from '~/components/HistoryModal/index.vue'
 
 // ─── Mock persistence ─────────────────────────────────────────────────────────

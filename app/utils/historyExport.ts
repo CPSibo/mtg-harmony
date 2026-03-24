@@ -1,4 +1,4 @@
-import type { HistoryEntry } from '../types/card'
+import type { HistoryEntry } from '../types/HistoryEntry'
 
 export type CopyFormat = 'raw' | 'md-unordered' | 'md-ordered' | 'numbered'
 
