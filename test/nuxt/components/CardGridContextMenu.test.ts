@@ -120,4 +120,15 @@ describe('CardGridContextMenu', () => {
     await nextTick()
     expect(wrapper.emitted('close')).toHaveLength(1)
   })
+
+  it('emits close when a click occurs outside the menu', async () => {
+    wrapper = await mountSuspended(CardGridContextMenu, {
+      props: { card: makeCard(), anchorEl },
+    })
+    // anchorEl is appended to body but is not inside the menu element,
+    // so a click on it satisfies VueUse's onClickOutside condition.
+    anchorEl.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await nextTick()
+    expect(wrapper.emitted('close')).toHaveLength(1)
+  })
 })

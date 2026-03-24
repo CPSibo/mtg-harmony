@@ -111,7 +111,7 @@ const copyMenuItems = [
             <UDropdownMenu
               v-if="entries.length"
               :items="copyMenuItems"
-              :ui="{ content: 'z-[60]' }"
+              :ui="{ content: 'z-60' }"
             >
               <UButton
                 icon="i-lucide-copy"

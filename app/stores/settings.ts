@@ -7,6 +7,7 @@ const defaults: AppSettings = {
   slotSize: 'medium', // server-side / SSR fallback only
   gridDisplayMode: 'full',
   onDeckExpanded: true,
+  prefetchEnabled: true,
 }
 
 /**
@@ -29,6 +30,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const slotSize = ref<SlotSize>(getDefaultSlotSize())
   const gridDisplayMode = ref<'full' | 'compact'>(defaults.gridDisplayMode)
   const onDeckExpanded = ref<boolean>(defaults.onDeckExpanded)
+  const prefetchEnabled = ref<boolean>(defaults.prefetchEnabled)
 
   // Runtime-only: computed by CardGrid from container dimensions + slotSize.
   // Not persisted — recalculated on every mount / resize.
@@ -50,12 +52,17 @@ export const useSettingsStore = defineStore('settings', () => {
     onDeckExpanded.value = !onDeckExpanded.value
   }
 
+  function setPrefetchEnabled(value: boolean) {
+    prefetchEnabled.value = value
+  }
+
   function save() {
     const { save: persist } = useLocalStorage()
     persist(STORAGE_KEY, {
       slotSize: slotSize.value,
       gridDisplayMode: gridDisplayMode.value,
       onDeckExpanded: onDeckExpanded.value,
+      prefetchEnabled: prefetchEnabled.value,
     })
   }
 
@@ -75,10 +82,11 @@ export const useSettingsStore = defineStore('settings', () => {
       gridDisplayMode.value = data.gridDisplayMode
     }
     if (typeof data.onDeckExpanded === 'boolean') onDeckExpanded.value = data.onDeckExpanded
+    if (typeof data.prefetchEnabled === 'boolean') prefetchEnabled.value = data.prefetchEnabled
     return true
   }
 
-  watch([slotSize, gridDisplayMode, onDeckExpanded], () => {
+  watch([slotSize, gridDisplayMode, onDeckExpanded, prefetchEnabled], () => {
     save()
   })
 
@@ -91,6 +99,8 @@ export const useSettingsStore = defineStore('settings', () => {
     setSlotsPerPage,
     setDisplayMode,
     toggleOnDeckExpanded,
+    prefetchEnabled,
+    setPrefetchEnabled,
     save,
     load,
   }

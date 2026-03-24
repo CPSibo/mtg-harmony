@@ -18,7 +18,7 @@ const mockScryfallCard = {
   id: 'test-scryfall-001',
   name: 'Lightning Bolt',
   mana_cost: '{R}',
-  image_uris: { normal: 'https://example.com/lightning-bolt.jpg' },
+  image_uris: { border_crop: 'https://example.com/lightning-bolt.jpg' },
   scryfall_uri: 'https://scryfall.com/card/test-001',
 }
 
@@ -107,5 +107,61 @@ describe('useScryfall', () => {
     const { fetch, loading } = useScryfall()
     await fetch()
     expect(loading.value).toBe(false)
+  })
+
+  it('error is cleared to null on a subsequent successful fetch', async () => {
+    const { fetch, error } = useScryfall()
+    mockFetch.mockRejectedValueOnce(new Error('Network failure'))
+    await fetch()
+    expect(error.value).toBeTruthy() // sanity-check: error was set
+
+    mockFetch.mockResolvedValueOnce(mockScryfallCard)
+    await fetch()
+    expect(error.value).toBeNull()
+  })
+
+  // ─── Prefetch queue ─────────────────────────────────────────────────────────
+
+  describe('prefetch queue integration', () => {
+    it('uses a queued card instead of calling $fetch', async () => {
+      const prefetchStore = usePrefetchStore()
+      prefetchStore.queue.push(mockScryfallCard)
+
+      const { fetch } = useScryfall()
+      await fetch()
+
+      expect(mockFetch).not.toHaveBeenCalled()
+      expect(useOnDeckStore().card?.name).toBe('Lightning Bolt')
+    })
+
+    it('falls back to $fetch when the queue is empty', async () => {
+      mockFetch.mockResolvedValueOnce(mockScryfallCard)
+      const { fetch } = useScryfall()
+      await fetch()
+      expect(mockFetch).toHaveBeenCalledOnce()
+    })
+
+    it('dequeues the card so the queue shrinks by one', async () => {
+      const prefetchStore = usePrefetchStore()
+      prefetchStore.queue.push(mockScryfallCard)
+      prefetchStore.queue.push({ ...mockScryfallCard, id: 'second' })
+
+      const { fetch } = useScryfall()
+      await fetch()
+
+      expect(prefetchStore.queue).toHaveLength(1)
+    })
+
+    it('adds a history entry when serving from the queue', async () => {
+      const prefetchStore = usePrefetchStore()
+      prefetchStore.queue.push(mockScryfallCard)
+
+      const { fetch } = useScryfall()
+      await fetch()
+
+      const entries = useHistoryStore().entries
+      expect(entries).toHaveLength(1)
+      expect(entries[0]!.cardName).toBe('Lightning Bolt')
+    })
   })
 })

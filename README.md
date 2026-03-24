@@ -24,6 +24,12 @@ The app's state is automatically saved to your device and reloaded when you visi
 ### Settings
 Multiple options to pick how compact or easy-to-see your board state and the On-deck cards are.
 
+## AI Disclosure
+
+This application was made with the help of generative AI. I've used this small app as a test of current LLM workflows and capabilities, allowing it to write most of the actual lines of code.
+
+I've manually written all architectural instructions, use cases, and this file. I've reviewed all generated code for security and performance concerns but otherwise allowed the agents to implement features and fixes as they will.
+
 
 ## Development
 

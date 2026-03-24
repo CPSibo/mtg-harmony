@@ -3,11 +3,12 @@ import { storeToRefs } from 'pinia'
 import type { SlotSize } from '~/types/card'
 
 const settingsStore = useSettingsStore()
-const { gridDisplayMode, slotSize } = storeToRefs(settingsStore)
+const { gridDisplayMode, slotSize, prefetchEnabled } = storeToRefs(settingsStore)
 
 const gridStore = useGridStore()
 const onDeckStore = useOnDeckStore()
 const historyStore = useHistoryStore()
+const prefetchStore = usePrefetchStore()
 
 const toast = useToast()
 
@@ -37,6 +38,7 @@ function handleResetApp() {
   gridStore.clearAll()
   onDeckStore.clearCard()
   historyStore.clearAll()
+  prefetchStore.clearQueue()
   isResetConfirmOpen.value = false
   isSettingsOpen.value = false
   toast.add({ title: 'App reset', color: 'neutral' })
@@ -47,6 +49,11 @@ function handleResetApp() {
 const DISPLAY_OPTIONS: Array<{ value: 'full' | 'compact', label: string }> = [
   { value: 'full',    label: 'Full' },
   { value: 'compact', label: 'Compact' },
+]
+
+const PREFETCH_OPTIONS: Array<{ value: boolean, label: string }> = [
+  { value: true,  label: 'On' },
+  { value: false, label: 'Off' },
 ]
 
 const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
@@ -156,7 +163,7 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
               </div>
 
               <!-- Card size -->
-              <div class="flex items-center justify-between gap-4">
+              <div class="mb-3 flex items-center justify-between gap-4">
                 <span class="text-sm text-slate-700 dark:text-slate-300">Card size</span>
                 <div class="flex gap-0.5">
                   <button
@@ -169,6 +176,25 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
                     :aria-pressed="slotSize === opt.value"
                     :aria-label="`${opt.value} card size`"
                     @click="settingsStore.setSlotSize(opt.value)"
+                  >
+                    {{ opt.label }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- Prefetch cards -->
+              <div class="flex items-center justify-between gap-4">
+                <span class="text-sm text-slate-700 dark:text-slate-300">Prefetch cards</span>
+                <div class="flex gap-0.5">
+                  <button
+                    v-for="opt in PREFETCH_OPTIONS"
+                    :key="String(opt.value)"
+                    class="cursor-pointer rounded px-3 py-1 text-sm font-medium transition-colors"
+                    :class="prefetchEnabled === opt.value
+                      ? 'bg-gold-600 text-white'
+                      : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-700 dark:hover:text-slate-200'"
+                    :aria-pressed="prefetchEnabled === opt.value"
+                    @click="settingsStore.setPrefetchEnabled(opt.value)"
                   >
                     {{ opt.label }}
                   </button>
