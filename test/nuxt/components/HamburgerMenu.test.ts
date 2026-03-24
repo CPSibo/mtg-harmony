@@ -1,5 +1,6 @@
 import { describe, beforeEach, afterEach, it, expect, vi } from 'vitest'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
+import { flushPromises } from '@vue/test-utils'
 import type { VueWrapper } from '@vue/test-utils'
 import type { GridCard } from '~/types/card'
 import HamburgerMenu from '~/components/HamburgerMenu/index.vue'
@@ -12,6 +13,18 @@ mockNuxtImport('useLocalStorage', () => {
 
 mockNuxtImport('useToast', () => {
   return () => ({ add: vi.fn() })
+})
+
+const mockRequestWakeLock = vi.fn()
+const mockReleaseWakeLock = vi.fn()
+
+mockNuxtImport('useWakeLock', () => {
+  return () => ({
+    isSupported: ref(true),
+    isActive: ref(false),
+    request: mockRequestWakeLock,
+    release: mockReleaseWakeLock,
+  })
 })
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -68,6 +81,8 @@ describe('HamburgerMenu', () => {
 
   beforeEach(() => {
     _cardIndex = 0
+    mockRequestWakeLock.mockClear()
+    mockReleaseWakeLock.mockClear()
   })
 
   afterEach(() => {
@@ -263,6 +278,63 @@ describe('HamburgerMenu', () => {
       await clickBodyButton('Reset app')
       await clickBodyButton('Cancel')
       expect(grid.cards).toHaveLength(1)
+    })
+  })
+
+  // ─── Wake lock toggle ────────────────────────────────────────────────────────
+
+  describe('wake lock toggle', () => {
+    it('renders the "Keep screen awake" label in the settings modal', async () => {
+      wrapper = await mountSuspended(HamburgerMenu)
+      await openSettings(wrapper)
+      expect(document.body.textContent).toContain('Keep screen awake')
+    })
+
+    it('marks the wake lock Off button as aria-pressed="true" when wakeLockEnabled is false', async () => {
+      wrapper = await mountSuspended(HamburgerMenu)
+      useSettingsStore().setWakeLockEnabled(false)
+      await openSettings(wrapper)
+      const offBtn = document.body.querySelector<HTMLElement>('[aria-label="wake lock off"]')!
+      expect(offBtn.getAttribute('aria-pressed')).toBe('true')
+    })
+
+    it('calls settingsStore.setWakeLockEnabled(true) when the wake lock On button is clicked', async () => {
+      wrapper = await mountSuspended(HamburgerMenu)
+      useSettingsStore().setWakeLockEnabled(false)
+      await openSettings(wrapper)
+      const btn = document.body.querySelector<HTMLElement>('[aria-label="wake lock on"]')!
+      btn.click()
+      await nextTick()
+      expect(useSettingsStore().wakeLockEnabled).toBe(true)
+    })
+
+    it('calls settingsStore.setWakeLockEnabled(false) when the wake lock Off button is clicked', async () => {
+      wrapper = await mountSuspended(HamburgerMenu)
+      useSettingsStore().setWakeLockEnabled(true)
+      await nextTick()
+      await openSettings(wrapper)
+      const btn = document.body.querySelector<HTMLElement>('[aria-label="wake lock off"]')!
+      btn.click()
+      await nextTick()
+      expect(useSettingsStore().wakeLockEnabled).toBe(false)
+    })
+
+    it('calls requestWakeLock when wakeLockEnabled becomes true', async () => {
+      wrapper = await mountSuspended(HamburgerMenu)
+      mockRequestWakeLock.mockClear()
+      useSettingsStore().setWakeLockEnabled(true)
+      await flushPromises()
+      expect(mockRequestWakeLock).toHaveBeenCalledWith('screen')
+    })
+
+    it('calls releaseWakeLock when wakeLockEnabled becomes false', async () => {
+      wrapper = await mountSuspended(HamburgerMenu)
+      useSettingsStore().setWakeLockEnabled(true)
+      await flushPromises()
+      mockReleaseWakeLock.mockClear()
+      useSettingsStore().setWakeLockEnabled(false)
+      await flushPromises()
+      expect(mockReleaseWakeLock).toHaveBeenCalled()
     })
   })
 })

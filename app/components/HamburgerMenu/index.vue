@@ -3,7 +3,7 @@ import { storeToRefs } from 'pinia'
 import type { SlotSize } from '~/types/AppSettings' 
 
 const settingsStore = useSettingsStore()
-const { gridDisplayMode, slotSize, prefetchEnabled } = storeToRefs(settingsStore)
+const { gridDisplayMode, slotSize, prefetchEnabled, wakeLockEnabled } = storeToRefs(settingsStore)
 
 const gridStore = useGridStore()
 const onDeckStore = useOnDeckStore()
@@ -18,6 +18,24 @@ const isSettingsOpen = ref(false)
 const isHistoryOpen = ref(false)
 const isClearConfirmOpen = ref(false)
 const isResetConfirmOpen = ref(false)
+
+// ─── Wake lock ────────────────────────────────────────────────────────────────
+
+const { request: requestWakeLock, release: releaseWakeLock } = useWakeLock()
+
+watch(wakeLockEnabled, async (enabled) => {
+  try {
+    if (enabled) {
+      await requestWakeLock('screen')
+    } else {
+      await releaseWakeLock()
+    }
+  } catch {
+    // Wake Lock requests can be denied when the document is not visible,
+    // when the browser is headless, or when permission is not granted.
+    // Silently ignore — the setting remains persisted for the next opportunity.
+  }
+}, { immediate: true })
 
 // Close settings on ESC; history has its own ESC handler inside HistoryModal
 
@@ -52,6 +70,11 @@ const DISPLAY_OPTIONS: Array<{ value: 'full' | 'compact', label: string }> = [
 ]
 
 const PREFETCH_OPTIONS: Array<{ value: boolean, label: string }> = [
+  { value: true,  label: 'On' },
+  { value: false, label: 'Off' },
+]
+
+const WAKE_LOCK_OPTIONS: Array<{ value: boolean, label: string }> = [
   { value: true,  label: 'On' },
   { value: false, label: 'Off' },
 ]
@@ -183,7 +206,7 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
               </div>
 
               <!-- Prefetch cards -->
-              <div class="flex items-center justify-between gap-4">
+              <div class="mb-3 flex items-center justify-between gap-4">
                 <span class="text-sm text-slate-700 dark:text-slate-300">Prefetch cards</span>
                 <div class="flex gap-0.5">
                   <button
@@ -195,6 +218,26 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
                       : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-700 dark:hover:text-slate-200'"
                     :aria-pressed="prefetchEnabled === opt.value"
                     @click="settingsStore.setPrefetchEnabled(opt.value)"
+                  >
+                    {{ opt.label }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- Keep screen awake -->
+              <div class="flex items-center justify-between gap-4">
+                <span class="text-sm text-slate-700 dark:text-slate-300">Keep screen awake</span>
+                <div class="flex gap-0.5">
+                  <button
+                    v-for="opt in WAKE_LOCK_OPTIONS"
+                    :key="String(opt.value)"
+                    class="cursor-pointer rounded px-3 py-1 text-sm font-medium transition-colors"
+                    :class="wakeLockEnabled === opt.value
+                      ? 'bg-gold-600 text-white'
+                      : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-700 dark:hover:text-slate-200'"
+                    :aria-label="`wake lock ${opt.label.toLowerCase()}`"
+                    :aria-pressed="wakeLockEnabled === opt.value"
+                    @click="settingsStore.setWakeLockEnabled(opt.value)"
                   >
                     {{ opt.label }}
                   </button>

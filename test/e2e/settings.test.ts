@@ -19,6 +19,32 @@ test.describe('settings modal', () => {
   })
 })
 
+test.describe('wake lock toggle', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/')
+  })
+
+  test('keep screen awake toggle is visible in the settings modal', async ({ page }) => {
+    await page.getByLabel('Open settings').click()
+    await expect(page.getByText('Keep screen awake')).toBeVisible()
+  })
+
+  test('clicking On activates the wake lock setting', async ({ page }) => {
+    await page.getByLabel('Open settings').click()
+    // Disable first, wait for re-render, then disable.
+    await page.getByRole('button', { name: 'wake lock off' }).click()
+    await expect(page.getByRole('button', { name: 'wake lock off' })).toHaveAttribute('aria-pressed', 'true')
+    await page.getByRole('button', { name: 'wake lock on' }).click()
+    await expect(page.getByRole('button', { name: 'wake lock on' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  test('clicking Off deactivates the wake lock setting', async ({ page }) => {
+    await page.getByLabel('Open settings').click()
+    await page.getByRole('button', { name: 'wake lock off' }).click()
+    await expect(page.getByRole('button', { name: 'wake lock off' })).toHaveAttribute('aria-pressed', 'true')
+  })
+})
+
 test.describe('clear grid', () => {
   test.beforeEach(async ({ page }) => {
     await mockScryfallRoute(page)

@@ -33,7 +33,7 @@ test.describe('prefetch queue', () => {
   test('disabling prefetch in settings does not break fetching', async ({ page }) => {
     // Disable prefetch.
     await page.getByLabel('Open settings').click()
-    await page.getByRole('button', { name: 'Off' }).click()
+    await page.getByRole('button', { name: 'Off', exact: true }).click()
     await page.keyboard.press('Escape')
 
     // Fetching should still work via the direct network path.
@@ -44,9 +44,10 @@ test.describe('prefetch queue', () => {
   test('prefetch toggle shows On and Off buttons in the settings modal', async ({ page }) => {
     await page.getByLabel('Open settings').click()
     // Both buttons for the Prefetch cards toggle must be visible.
+    // exact: true avoids matching the wake lock row's "wake lock on" / "wake lock off" buttons.
     const settingsPanel = page.locator('.fixed.inset-0').last()
-    await expect(settingsPanel.getByRole('button', { name: 'On' })).toBeVisible()
-    await expect(settingsPanel.getByRole('button', { name: 'Off' })).toBeVisible()
+    await expect(settingsPanel.getByRole('button', { name: 'On', exact: true }).first()).toBeVisible()
+    await expect(settingsPanel.getByRole('button', { name: 'Off', exact: true }).first()).toBeVisible()
   })
 
   test('reset app clears the prefetch queue', async ({ page }) => {
