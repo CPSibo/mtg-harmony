@@ -32,6 +32,7 @@ const onDeckStore = useOnDeckStore()
 const gridStore = useGridStore()
 const historyStore = useHistoryStore()
 const settingsStore = useSettingsStore()
+const prefetchStore = usePrefetchStore()
 
 onMounted(() => {
   const results = [
@@ -39,7 +40,12 @@ onMounted(() => {
     gridStore.load(),
     historyStore.load(),
     settingsStore.load(),
+    prefetchStore.load(),
   ]
+
+  // Seed the prefetch queue on app start / reload.
+  // The queue watcher handles ongoing refills as cards are consumed.
+  if (settingsStore.prefetchEnabled) void prefetchStore.fill()
 
   if (results.some(r => r === true)) {
     toast.add({
