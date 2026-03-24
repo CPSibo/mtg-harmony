@@ -41,6 +41,41 @@ function executePendingAction() {
 function handleEmptyClick() {
   if (!card.value && !loading.value && !pendingAction.value) fetch()
 }
+
+// ─── Zoom overlay ─────────────────────────────────────────────────────────────
+
+const isZoomed = ref(false)
+
+function handleZoom() {
+  isZoomed.value = true
+  history.pushState({ zoom: true }, '')
+}
+
+function closeZoom() {
+  if (!isZoomed.value) return
+  isZoomed.value = false
+  // Clean up the history entry we pushed on open, but only if it's still
+  // there (i.e. the user closed via click/ESC rather than a back gesture).
+  if (history.state?.zoom) {
+    history.back()
+  }
+}
+
+// Back gesture (e.g. Android swipe-from-edge) pops the state we pushed.
+useEventListener(window, 'popstate', () => {
+  if (isZoomed.value) isZoomed.value = false
+})
+
+useEventListener(document, 'keydown', (e: KeyboardEvent) => {
+  if (e.key === 'Escape') closeZoom()
+})
+
+onUnmounted(() => {
+  // Clean up any dangling history entry if the component unmounts while zoomed.
+  if (isZoomed.value && history.state?.zoom) {
+    history.back()
+  }
+})
 </script>
 
 <template>
@@ -69,7 +104,8 @@ function handleEmptyClick() {
           :key="card.id"
           :src="card.image_uri"
           :alt="card.name"
-          class="h-full max-h-full rounded object-contain"
+          class="h-full max-h-full cursor-zoom-in rounded object-contain"
+          @click.stop="handleZoom"
         >
         <div v-else key="empty" class="flex flex-col items-center gap-2">
           <UIcon name="i-lucide-rotate-cw" class="size-10 text-gold-600 dark:text-gold-400" />
@@ -133,7 +169,8 @@ function handleEmptyClick() {
         :key="card.id"
         :src="card.image_uri"
         :alt="card.name"
-        class="absolute inset-0 h-full w-full object-cover"
+        class="absolute inset-0 h-full w-full cursor-zoom-in object-cover"
+        @click.stop="handleZoom"
       >
       <div v-else key="empty" class="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
         <UIcon name="i-lucide-rotate-cw" class="size-6 text-gold-600 dark:text-gold-400" />
@@ -195,4 +232,20 @@ function handleEmptyClick() {
       </UButton>
     </div>
   </div>
+
+  <!-- Zoom overlay (teleported to body to escape overflow/stacking) -->
+  <Teleport to="body">
+    <div
+      v-if="isZoomed && card"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+      @click="closeZoom"
+    >
+      <img
+        :src="card.image_uri"
+        :alt="card.name"
+        class="rounded-lg object-contain shadow-2xl"
+        style="max-height: min(80svh, 800px); width: auto;"
+      >
+    </div>
+  </Teleport>
 </template>
