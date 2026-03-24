@@ -1,60 +1,63 @@
-# Nuxt Starter Template
+# MTG Harmony
 
-[![Nuxt UI](https://img.shields.io/badge/Made%20with-Nuxt%20UI-00DC82?logo=nuxt&labelColor=020420)](https://ui.nuxt.com)
+Pull up this [helper app](https://mtg-harmony.com) on a phone, tablet, or other device at the game table and have everything you need to play "[Discord, Lord of Disharmony](https://scryfall.com/card/sld/798/discord-lord-of-disharmony)", without stopping to draw tons of tokens.
 
-Use this template to get started with [Nuxt UI](https://ui.nuxt.com) quickly.
+Live: [mtg-harmony.com](https://mtg-harmony.com)
 
-- [Live demo](https://starter-template.nuxt.dev/)
-- [Documentation](https://ui.nuxt.com/docs/getting-started/installation/nuxt)
+## Features
 
-<a href="https://starter-template.nuxt.dev/" target="_blank">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://ui.nuxt.com/assets/templates/nuxt/starter-dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="https://ui.nuxt.com/assets/templates/nuxt/starter-light.png">
-    <img alt="Nuxt Starter Template" src="https://ui.nuxt.com/assets/templates/nuxt/starter-light.png" width="830" height="466">
-  </picture>
-</a>
+### On-deck
+Fetch a random non-land paper card from Scryfall at any time with one tap/click. Cast it or discard it.
 
-> The starter template for Vue is on https://github.com/nuxt-ui-templates/starter-vue.
+### Card grid
+A grid of permanents you cast from the On-deck slot. Swipe to change pages.
 
-## Quick Start
+### Context menu
+Long-press or right-click any grid slot to open the card in Scryfall, remove the card, duplicate it, adjust its count, or add a modifier.
 
-```bash [Terminal]
-npm create nuxt@latest -- -t ui
-```
+### Fetch history
+A log of every card fetched, with the option to export the log in multiple formats.
 
-## Deploy your own
+### Persistent sessions
+The app's state is automatically saved to your device and reloaded when you visit the page (so no worries if you accidentally refresh or close the browser). Clear the session under the settings menu.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-name=starter&repository-url=https%3A%2F%2Fgithub.com%2Fnuxt-ui-templates%2Fstarter&demo-image=https%3A%2F%2Fui.nuxt.com%2Fassets%2Ftemplates%2Fnuxt%2Fstarter-dark.png&demo-url=https%3A%2F%2Fstarter-template.nuxt.dev%2F&demo-title=Nuxt%20Starter%20Template&demo-description=A%20minimal%20template%20to%20get%20started%20with%20Nuxt%20UI.)
+### Settings
+Multiple options to pick how compact or easy-to-see your board state and the On-deck cards are.
 
-## Setup
 
-Make sure to install the dependencies:
+## Development
 
 ```bash
-pnpm install
+npm install           # Install dependencies
 ```
-
-## Development Server
-
-Start the development server on `http://localhost:3000`:
 
 ```bash
-pnpm dev
+# http://localhost:3000
+
+npm run dev           # View locally
+npm run dev-host      # View from another device
 ```
 
-## Production
-
-Build the application for production:
+### Testing
 
 ```bash
-pnpm build
+npm run lint          # ESLint
+npm run typecheck     # vue-tsc
+npm run test          # Vitest (unit)
+npm run test:e2e      # Playwright (end-to-end)
 ```
 
-Locally preview production build:
+### Production
 
 ```bash
-pnpm preview
+npm run generate      # .../.output/
 ```
 
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+The output is a fully static site with no server requirements. Deploy to any static host (Vercel, Netlify, GitHub Pages, etc.).
+
+
+## Credits
+
+- [Scryfall API](https://scryfall.com/docs/api)
+- [Mana font](https://mana.andrewgioia.com)
+- [Keyrune font](https://keyrune.andrewgioia.com)
