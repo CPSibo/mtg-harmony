@@ -64,6 +64,25 @@ async function copyInFormat(format: CopyFormat): Promise<void> {
   }
 }
 
+/** True when the browser supports the Web Share API. */
+const canShare = computed(
+  () => typeof navigator !== 'undefined' && typeof navigator.share === 'function',
+)
+
+/**
+ * Shares the history log via the Web Share API. AbortError (user cancelled) is
+ * swallowed silently; all other errors show an error toast.
+ */
+async function shareHistory(): Promise<void> {
+  const text = formatEntries(entries.value, 'raw')
+  try {
+    await navigator.share({ title: 'MTG History', text })
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') return
+    toast.add({ title: 'Share failed', color: 'error' })
+  }
+}
+
 const copyMenuItems = [
   {
     label: 'Raw list',
@@ -108,6 +127,15 @@ const copyMenuItems = [
             History
           </h2>
           <div class="flex items-center gap-1">
+            <UButton
+              v-if="entries.length && canShare"
+              icon="i-lucide-share"
+              variant="ghost"
+              size="md"
+              aria-label="Share history"
+              title="Share history"
+              @click="shareHistory"
+            />
             <UDropdownMenu
               v-if="entries.length"
               :items="copyMenuItems"
