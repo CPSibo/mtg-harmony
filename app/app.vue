@@ -11,7 +11,7 @@ useHead({
   }
 })
 
-const title = 'MTG Discord Helper'
+const title = 'MTG Harmony'
 const description = 'Pull random cards and display them in a grid when playing "Discord, Lord of Disharmony".'
 
 useSeoMeta({
