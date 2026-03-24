@@ -2,7 +2,7 @@
 
 ## Purpose
 
-A mobile-friendly browser app that acts as a scratchpad for tracking Magic: The Gathering cards during a game session. It draws a random card from Scryfall, lets the user cast it onto a grid, and tracks per-card state (instance count, keyword/counter modifiers). A history modal shows previously fetched cards. All state is persisted to `localStorage`; there is no backend.
+A mobile-friendly browser app that acts as a scratchpad for tracking Magic: The Gathering cards during a game session. It draws a random card from Scryfall, lets the user cast it onto a grid, and tracks per-card state (instance count, tap state, keyword/counter modifiers). A history modal shows previously fetched cards and supports exporting the log in multiple formats. All state is persisted to `localStorage`; there is no backend.
 
 ## Stack
 
@@ -23,9 +23,12 @@ src/
   app/
     components/
       CardGrid/          # Grid of cast cards (auto-fit columns/rows)
+        CardGridContextMenu.vue   # Right-click / long-press context menu
+        CardGridGridPaginator.vue # Page navigation controls
+        CardGridGridSlot.vue      # Individual card slot
       OnDeckSlot/        # Single card drawn from Scryfall, ready to cast
       HamburgerMenu/     # Settings modal (slot size, display mode, clear grid)
-      HistoryModal/      # Log of all fetched cards + cast status
+      HistoryModal/      # Log of all fetched cards + cast status + export
       shared/            # SharedConfirmDialog, SharedModifierPickerDialog
     composables/
       useLocalStorage.ts # JSON persistence wrapper around localStorage
@@ -38,13 +41,18 @@ src/
       history.ts         # Fetch history with wasCast flag
       onDeck.ts          # Card currently on deck; castCard() integration
     types/
-      card.ts            # ScryfallCard, GridCard, Modifier, HistoryEntry, SlotSize
+      card.ts            # ScryfallCard, GridCard, Modifier, HistoryEntry, SlotSize, AppSettings
+    utils/
+      historyExport.ts   # History log export (multiple formats)
+      randomUUID.ts      # crypto.randomUUID wrapper / polyfill helper
   test/
     unit/                # Pure Node environment (vitest project: unit)
     nuxt/                # Nuxt + happy-dom environment (vitest project: nuxt)
       stores/            # Store-level unit tests
       components/        # Component-level unit tests
       composables/       # Composable unit tests (e.g. useScryfall)
+    setup/
+      nuxt-env.ts        # Global setup file for the nuxt Vitest project
     e2e/                 # Playwright end-to-end tests (real browser)
 ```
 
@@ -122,6 +130,7 @@ All commands must be run from the `src/` directory.
 | `<Teleport to="body">` for all modals | `SharedConfirmDialog`, `SharedModifierPickerDialog`, and `CardGridContextMenu` are teleported to `<body>`. | Card grid slots use `overflow-hidden` for image containment. Any modal rendered inside a slot would be clipped. Teleporting to `<body>` guarantees modals are never clipped regardless of their position in the component tree. |
 | `useEventListener` for ESC / outside-click | Dialogs and the context menu close on ESC via `useEventListener(document, 'keydown', ...)` and on outside-click via `onClickOutside`. | Using VueUse's helpers rather than `addEventListener` / `removeEventListener` directly ensures the listeners are automatically removed when the component is unmounted, with no manual cleanup. |
 | Playwright `webServer` config | `playwright.config.ts` uses `webServer: { command: 'npm run dev', reuseExistingServer: !process.env.CI }`. | Playwright needs a running Nuxt dev server. The `reuseExistingServer` flag avoids starting a second server when a dev server is already running locally, while still spawning a fresh one in CI. E2E tests are kept out of `npm run test` (Vitest only) to avoid requiring a dev server for the standard test run. |
+| `randomUUID` polyfill (two layers) | `app/utils/randomUUID.ts` wraps `crypto.randomUUID()` with a `crypto.getRandomValues()` fallback. `nuxt.config.ts` also injects an equivalent inline `<script>` that patches `crypto.randomUUID` globally before any app code runs. | `crypto.randomUUID()` is only available in secure contexts (HTTPS). Accessing the local dev server from a mobile device over plain HTTP omits it entirely. The utility covers all in-app UUID generation; the inline script patch covers any third-party or framework code that calls `crypto.randomUUID` directly. |
 
 ## Quality checks
 
