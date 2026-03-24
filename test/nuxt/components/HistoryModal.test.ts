@@ -1,5 +1,6 @@
 import { describe, beforeEach, afterEach, it, expect, vi, type MockInstance } from 'vitest'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
+import { flushPromises } from '@vue/test-utils'
 import type { VueWrapper } from '@vue/test-utils'
 import type { HistoryEntry } from '~/types/HistoryEntry'
 import HistoryModal from '~/components/HistoryModal/index.vue'
@@ -9,6 +10,15 @@ import HistoryModal from '~/components/HistoryModal/index.vue'
 
 mockNuxtImport('useLocalStorage', () => {
   return () => ({ save: vi.fn(), load: vi.fn(() => null) })
+})
+
+// ─── Mock toast ───────────────────────────────────────────────────────────────
+// Provides a stable spy that can be asserted against in tests.
+
+const toastAddMock = vi.fn()
+
+mockNuxtImport('useToast', () => {
+  return () => ({ add: toastAddMock })
 })
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -106,6 +116,80 @@ describe('HistoryModal', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     await nextTick()
     expect(wrapper.emitted('update:open')).toEqual([[false]])
+  })
+
+  // ─── Share history button ──────────────────────────────────────────────────
+
+  describe('share history button', () => {
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it('share button is not rendered when there are no entries', async () => {
+      Object.defineProperty(navigator, 'share', { value: vi.fn(), configurable: true })
+      wrapper = await mountSuspended(HistoryModal, { props: { open: true } })
+      expect(document.body.querySelector('[aria-label="Share history"]')).toBeNull()
+    })
+
+    it('share button is not rendered when navigator.share is unavailable', async () => {
+      Object.defineProperty(navigator, 'share', { value: undefined, configurable: true })
+      wrapper = await mountSuspended(HistoryModal, { props: { open: true } })
+      useHistoryStore().addEntry(makeEntry())
+      await nextTick()
+      expect(document.body.querySelector('[aria-label="Share history"]')).toBeNull()
+    })
+
+    it('share button is rendered when entries exist and navigator.share is available', async () => {
+      Object.defineProperty(navigator, 'share', { value: vi.fn().mockResolvedValue(undefined), configurable: true })
+      wrapper = await mountSuspended(HistoryModal, { props: { open: true } })
+      useHistoryStore().addEntry(makeEntry())
+      await nextTick()
+      expect(document.body.querySelector('[aria-label="Share history"]')).not.toBeNull()
+    })
+
+    it('clicking share calls navigator.share with raw-formatted text', async () => {
+      const shareMock = vi.fn().mockResolvedValue(undefined)
+      Object.defineProperty(navigator, 'share', { value: shareMock, configurable: true })
+      wrapper = await mountSuspended(HistoryModal, { props: { open: true } })
+      const history = useHistoryStore()
+      history.addEntry(makeEntry({ cardName: 'Lightning Bolt', wasCast: false }))
+      history.addEntry(makeEntry({ cardName: 'Black Lotus', wasCast: true }))
+      await nextTick()
+      const shareBtn = document.body.querySelector<HTMLElement>('[aria-label="Share history"]')!
+      shareBtn.click()
+      await nextTick()
+      expect(shareMock).toHaveBeenCalledWith({
+        title: 'MTG History',
+        text: 'Lightning Bolt\nBlack Lotus (Cast)',
+      })
+    })
+
+    it('shows an error toast when navigator.share rejects with a non-abort error', async () => {
+      const shareMock = vi.fn().mockRejectedValue(new Error('Share failed'))
+      Object.defineProperty(navigator, 'share', { value: shareMock, configurable: true })
+      toastAddMock.mockReset()
+      wrapper = await mountSuspended(HistoryModal, { props: { open: true } })
+      useHistoryStore().addEntry(makeEntry())
+      await nextTick()
+      const shareBtn = document.body.querySelector<HTMLElement>('[aria-label="Share history"]')!
+      shareBtn.click()
+      await flushPromises()
+      expect(toastAddMock).toHaveBeenCalledWith(expect.objectContaining({ color: 'error' }))
+    })
+
+    it('swallows AbortError silently when the user cancels the share sheet', async () => {
+      const abortError = new DOMException('Share cancelled', 'AbortError')
+      const shareMock = vi.fn().mockRejectedValue(abortError)
+      Object.defineProperty(navigator, 'share', { value: shareMock, configurable: true })
+      toastAddMock.mockReset()
+      wrapper = await mountSuspended(HistoryModal, { props: { open: true } })
+      useHistoryStore().addEntry(makeEntry())
+      await nextTick()
+      const shareBtn = document.body.querySelector<HTMLElement>('[aria-label="Share history"]')!
+      shareBtn.click()
+      await flushPromises()
+      expect(toastAddMock).not.toHaveBeenCalled()
+    })
   })
 
   // ─── Copy history dropdown ─────────────────────────────────────────────────
