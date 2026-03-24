@@ -25,6 +25,15 @@ export default defineNuxtConfig({
 
   ssr: false,
 
+  router: {
+    options: {
+      hashMode: false,
+    }
+  },
+  app: {
+    baseURL: '/',
+  },
+
   css: [
     '~/assets/css/main.css',
     'mana-font/css/mana.css',
