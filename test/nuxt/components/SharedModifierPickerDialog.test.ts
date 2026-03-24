@@ -71,12 +71,12 @@ describe('SharedModifierPickerDialog', () => {
     expect(document.body.querySelector('h2')?.textContent).toContain('Lightning Bolt')
   })
 
-  it('renders a tile for every one of the 20 modifier types', async () => {
+  it('renders a tile for every one of the 22 modifier types', async () => {
     wrapper = await mountSuspended(SharedModifierPickerDialog, {
       props: { open: true, cardName: 'Test', currentModifiers: [] },
     })
     const tiles = document.body.querySelectorAll('.grid > div')
-    expect(tiles).toHaveLength(20)
+    expect(tiles).toHaveLength(22)
   })
 
   // ─── Count initialisation ──────────────────────────────────────────────────
