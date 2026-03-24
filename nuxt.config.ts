@@ -30,9 +30,6 @@ export default defineNuxtConfig({
       hashMode: false,
     }
   },
-  app: {
-    baseURL: '/',
-  },
 
   css: [
     '~/assets/css/main.css',
@@ -45,6 +42,7 @@ export default defineNuxtConfig({
   },
 
   app: {
+    baseURL: '/',
     head: {
       script: [
         {
