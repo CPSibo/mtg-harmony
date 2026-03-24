@@ -89,12 +89,23 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
 <template>
   <!-- ── Header bar ─────────────────────────────────────────────────────────── -->
   <div class="flex shrink-0 items-center justify-between gap-1 px-2 py-1.5">
-    <div class="flex items-center gap-1 text-xl">
+    <div class="flex items-center gap-1 text-xl me-6">
       <UIcon name="i-lucide-flame" :size="20" />
-      MTG Discord Helper
+        MTG Discord Helper
     </div>
 
     <div class="flex gap-1">
+      <UButton
+        icon="i-lucide-github"
+        variant="ghost"
+        color="neutral"
+        size="lg"
+        aria-label="Open code"
+        title="Open code"
+        to="https://github.com/CPSibo/mtg-harmony"
+        target="_blank"
+      />
+
       <UButton
         icon="i-lucide-history"
         variant="ghost"
@@ -103,6 +114,7 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
         title="View history"
         @click="isHistoryOpen = true"
       />
+
       <UButton
         icon="i-lucide-settings-2"
         variant="ghost"

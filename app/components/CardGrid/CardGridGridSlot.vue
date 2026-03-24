@@ -191,9 +191,9 @@ const groupedModifiers = computed(() => {
           +
         </button>
       </div>
-      <button class="cursor-pointer text-sm text-white underline" @click="commitCount">
+      <UButton class="mt-3" icon="i-lucide-check" @click="commitCount">
         Done
-      </button>
+      </UButton>
     </div>
   </div>
 
@@ -217,19 +217,26 @@ const groupedModifiers = computed(() => {
         class="h-full w-full object-contain transition-[transform] duration-200"
         :class="{ 'rotate-90 scale-[0.714]': card.tapped }"
       >
-      <span class="absolute bottom-5 left-1 rounded bg-black/60 px-1 text-sm text-white">
-        ×{{ card.instanceCount }}
-      </span>
-      <div class="absolute bottom-1 left-1 right-1 flex flex-wrap gap-0.5">
+      <div class="absolute top-8 left-1 right-1 flex flex-wrap gap-0.5">
+        <button
+          v-if="card.instanceCount > 1"
+          key="card-count"
+          class="flex cursor-pointer items-center gap-0.5 rounded-full bg-primary-400 px-1.5 py-1 text-black hover:bg-primary-300"
+          title="Card count"
+          @click.stop="startCountEdit"
+        >
+          <UIcon name="i-lucide-x" />
+          <span class="text-lg font-medium leading-none">{{ card.instanceCount }}</span>
+        </button>
         <button
           v-for="group in groupedModifiers"
           :key="group.type"
-          class="flex cursor-pointer items-center gap-0.5 rounded-full bg-slate-900/80 px-1.5 py-0.5 text-white hover:bg-slate-900"
+          class="flex cursor-pointer items-center gap-0.5 rounded-full bg-slate-900 px-1.5 py-1 text-white hover:bg-slate-800"
           :title="group.type"
           @click.stop="emit('requestAddModifier', card!.id)"
         >
-          <span :class="group.symbol" class="text-xs" />
-          <span v-if="group.count > 1" class="text-xs font-medium leading-none">×{{ group.count }}</span>
+          <span :class="group.symbol" class="ms-2x" />
+          <span v-if="group.count > 1" class="text-lg font-medium leading-none">×{{ group.count }}</span>
         </button>
       </div>
     </template>

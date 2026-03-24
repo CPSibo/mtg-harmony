@@ -19,9 +19,11 @@ const MODIFIERS: Array<Omit<Modifier, 'id'>> = [
   { type: '-1/-1',          symbol: 'ms ms-counter-minus' },
   { type: 'Loyalty',        symbol: 'ms ms-counter-loyalty' },
   { type: 'Charge',         symbol: 'ms ms-counter-charge' },
-  { type: 'Lore',           symbol: 'ms ms-counter-lore' },
-  { type: 'Poison',         symbol: 'ms ms-counter-skull' },
   { type: 'Shield',         symbol: 'ms ms-counter-shield' },
+  { type: 'Poison',         symbol: 'ms ms-counter-skull' },
+  { type: 'Lore',           symbol: 'ms ms-counter-lore' },
+  { type: 'Stun',           symbol: 'ms ms-counter-stun' },
+  { type: 'Goad',           symbol: 'ms ms-counter-goad' },
   // Keyword abilities
   { type: 'Flying',         symbol: 'ms ms-ability-flying' },
   { type: 'Haste',          symbol: 'ms ms-ability-haste' },
@@ -35,8 +37,7 @@ const MODIFIERS: Array<Omit<Modifier, 'id'>> = [
   { type: 'Double Strike',  symbol: 'ms ms-ability-double-strike' },
   { type: 'Menace',         symbol: 'ms ms-ability-menace' },
   { type: 'Reach',          symbol: 'ms ms-ability-reach' },
-  // Status
-  { type: 'Tapped',         symbol: 'ms ms-tap' },
+  { type: 'Decayed',        symbol: 'ms ms-ability-decayed' },
 ]
 
 // Count per modifier type, keyed by type string
@@ -119,7 +120,7 @@ useEventListener(document, 'keydown', (e: KeyboardEvent) => {
         >
           <div
             v-if="open"
-            class="relative w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-slate-800"
+            class="relative w-full max-w-4xl rounded-lg bg-white p-6 shadow-xl dark:bg-slate-800"
           >
             <h2 class="mb-4 text-base font-semibold text-slate-900 dark:text-slate-100">
               Modifiers — {{ cardName }}
@@ -136,24 +137,24 @@ useEventListener(document, 'keydown', (e: KeyboardEvent) => {
                     : 'border-slate-200 dark:border-slate-600',
                 ]"
               >
-                <span :class="mod.symbol" class="text-2xl" />
-                <span class="w-full truncate text-xs text-slate-700 dark:text-slate-300">
+                <span :class="mod.symbol" class="ms-2x" />
+                <span class="w-full truncate text-lg text-slate-700 dark:text-slate-300">
                   {{ mod.type }}
                 </span>
                 <div class="flex items-center gap-1">
                   <button
-                    class="flex size-5 cursor-pointer items-center justify-center rounded-full bg-slate-200 text-xs hover:bg-slate-300 disabled:opacity-30 dark:bg-slate-600 dark:hover:bg-slate-500"
+                    class="flex size-7 cursor-pointer items-center justify-center rounded-full bg-slate-200 text-lg hover:bg-slate-300 disabled:opacity-30 dark:bg-slate-600 dark:hover:bg-slate-500"
                     :disabled="counts[mod.type] === 0"
                     :title="`Remove ${mod.type}`"
                     @click="decrement(mod.type)"
                   >
                     −
                   </button>
-                  <span class="w-4 text-center text-sm font-medium tabular-nums text-slate-800 dark:text-slate-200">
+                  <span class="w-4 text-center font-medium tabular-nums text-slate-800 dark:text-slate-200">
                     {{ counts[mod.type] }}
                   </span>
                   <button
-                    class="flex size-5 cursor-pointer items-center justify-center rounded-full bg-slate-200 text-xs hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500"
+                    class="flex size-7 cursor-pointer items-center justify-center rounded-full bg-slate-200 text-lg hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500"
                     :title="`Add ${mod.type}`"
                     @click="increment(mod.type)"
                   >
@@ -163,11 +164,11 @@ useEventListener(document, 'keydown', (e: KeyboardEvent) => {
               </div>
             </div>
 
-            <div class="flex justify-end gap-2">
-              <UButton variant="ghost" @click="onCancel">
+            <div class="flex justify-between gap-2">
+              <UButton variant="ghost" color="neutral" icon="i-lucide-x" @click="onCancel">
                 Cancel
               </UButton>
-              <UButton color="primary" @click="onApply">
+              <UButton color="primary" icon="i-lucide-check" @click="onApply">
                 Apply
               </UButton>
             </div>
