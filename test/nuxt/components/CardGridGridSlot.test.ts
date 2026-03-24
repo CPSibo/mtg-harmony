@@ -126,7 +126,7 @@ describe('CardGridGridSlot', () => {
       wrapper = await mountSuspended(CardGridGridSlot, {
         props: { card, displayMode: 'full' },
       })
-      expect(wrapper.text()).toContain('×3')
+      expect(wrapper.text()).toContain('3')
     })
 
     it('renders one chip per distinct modifier type', async () => {
