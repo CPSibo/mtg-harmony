@@ -29,3 +29,5 @@ coverage/
 # Playwright output
 playwright-report/
 test-results/
+
+.claude/settings.local.json
