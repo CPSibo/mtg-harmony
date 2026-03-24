@@ -24,10 +24,16 @@ const isResetConfirmOpen = ref(false)
 const { request: requestWakeLock, release: releaseWakeLock } = useWakeLock()
 
 watch(wakeLockEnabled, async (enabled) => {
-  if (enabled) {
-    await requestWakeLock('screen')
-  } else {
-    await releaseWakeLock()
+  try {
+    if (enabled) {
+      await requestWakeLock('screen')
+    } else {
+      await releaseWakeLock()
+    }
+  } catch {
+    // Wake Lock requests can be denied when the document is not visible,
+    // when the browser is headless, or when permission is not granted.
+    // Silently ignore — the setting remains persisted for the next opportunity.
   }
 }, { immediate: true })
 
