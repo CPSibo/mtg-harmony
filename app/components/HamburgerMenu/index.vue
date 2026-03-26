@@ -91,7 +91,7 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
   <div class="flex shrink-0 items-center justify-between gap-1 px-2 py-1.5">
     <div class="flex items-center gap-1 text-xl me-6">
       <UIcon name="i-lucide-flame" :size="20" />
-        MTG Discord Helper
+        MTG Harmony
     </div>
 
     <div class="flex gap-1">
