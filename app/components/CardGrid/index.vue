@@ -294,13 +294,13 @@ function handleSplitModifier() {
           @request-remove="onRequestRemove"
           @request-add-modifier="onRequestAddModifier"
         />
-        <CardGridGridSlot
-          v-for="i in emptySlots"
-          :key="`empty-${i}`"
-          :card="null"
-          :display-mode="gridDisplayMode"
-        />
       </TransitionGroup>
+      <CardGridGridSlot
+        v-for="i in emptySlots"
+        :key="`empty-${i}`"
+        :card="null"
+        :display-mode="gridDisplayMode"
+      />
     </div>
 
     <!-- Dialogs (rendered at grid root so they're outside any overflow-hidden subtree) -->
