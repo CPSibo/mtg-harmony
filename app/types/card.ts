@@ -11,7 +11,7 @@ export interface ScryfallCard {
 export interface Modifier {
   id: string
   type: string    // e.g. '+1/+1', 'flying', 'haste'
-  symbol: string  // keyrune or mana CSS class
+  symbol: string  // mana-font CSS class (e.g. 'ms ms-ability-flying')
 }
 
 export interface GridCard {

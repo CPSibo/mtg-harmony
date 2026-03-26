@@ -100,9 +100,11 @@ export const useGridStore = defineStore('grid', () => {
     }
   })
 
-  watch([cards, currentPage], () => {
+  // Debounced to avoid a JSON.stringify + localStorage write on every pixel of a
+  // window resize (the watchEffect in CardGrid feeds slotsPerPage on each frame).
+  watchDebounced([cards, currentPage], () => {
     save()
-  }, { deep: true })
+  }, { deep: true, debounce: 200 })
 
   return {
     cards,

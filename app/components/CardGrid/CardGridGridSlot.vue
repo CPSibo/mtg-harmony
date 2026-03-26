@@ -214,6 +214,7 @@ const groupedModifiers = computed(() => {
       <img
         :src="card.image_uri"
         :alt="card.name"
+        loading="lazy"
         class="h-full w-full object-contain transition-[transform] duration-200"
         :class="{ 'rotate-90 scale-[0.714]': card.tapped }"
       >
