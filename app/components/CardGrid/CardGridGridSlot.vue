@@ -150,7 +150,7 @@ const groupedModifiers = computed(() => {
   <div
     v-if="!card"
     :class="[
-      'rounded-md border-2 border-dashed border-slate-400 bg-slate-100 dark:border-slate-800 dark:bg-slate-900',
+      'grid-slot-empty rounded-md border-2 border-dashed border-slate-400 bg-slate-100 dark:border-slate-800 dark:bg-slate-900',
       displayMode === 'full' ? 'aspect-5/7' : 'min-h-16',
     ]"
   />

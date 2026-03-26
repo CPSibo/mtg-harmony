@@ -35,3 +35,12 @@
 button:not(:disabled){
   cursor: pointer;
 }
+
+/* Empty grid slots must not participate in TransitionGroup FLIP move animations.
+   When a card is cast, empty slots shift one position right in DOM order; Vue's
+   FLIP mechanism would otherwise slide each one across row boundaries. The
+   two-class selector beats the single-class move-class Tailwind utilities that
+   Vue adds (transition-transform duration-200 ease-out). */
+.grid-slot-empty.transition-transform {
+  transition: none;
+}
