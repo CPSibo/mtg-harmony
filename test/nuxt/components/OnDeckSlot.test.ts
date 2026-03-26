@@ -28,6 +28,7 @@ function makeScryfallCard(overrides: Partial<ScryfallCard> = {}): ScryfallCard {
     id: `card-${i}`,
     name: `Card ${i}`,
     mana_cost: '{1}',
+    image_status: 'highres_scan' as const,
     image_uris: { border_crop: 'https://example.com/card.jpg' },
     scryfall_uri: `https://scryfall.com/card/test-${i}`,
     ...overrides,

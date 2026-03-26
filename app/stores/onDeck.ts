@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import type { GridCard, ScryfallCard } from '~/types/card'
+import { pickImageUri } from '~/utils/scryfallImage'
 
 const STORAGE_KEY = 'mtg-ondeck'
 
@@ -11,7 +12,7 @@ export const useOnDeckStore = defineStore('onDeck', () => {
       id: scryfallCard.id,
       name: scryfallCard.name,
       mana_cost: scryfallCard.mana_cost,
-      image_uri: scryfallCard.image_uris.border_crop,
+      image_uri: pickImageUri(scryfallCard) ?? '',
       scryfall_uri: scryfallCard.scryfall_uri,
       instanceCount: 1,
       modifiers: [],
