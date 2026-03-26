@@ -22,6 +22,7 @@ function makeScryfallCard(id = 'card-001') {
     id,
     name: 'Lightning Bolt',
     mana_cost: '{R}',
+    image_status: 'highres_scan' as const,
     image_uris: { border_crop: 'https://example.com/lightning-bolt.jpg' },
     scryfall_uri: `https://scryfall.com/card/${id}`,
   }

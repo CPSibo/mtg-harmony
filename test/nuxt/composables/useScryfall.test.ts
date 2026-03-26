@@ -1,6 +1,7 @@
 import { describe, beforeEach, afterEach, it, expect, vi } from 'vitest'
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { setActivePinia, createPinia } from 'pinia'
+import type { ScryfallCard } from '~/types/card'
 
 // ─── Mock persistence and UI side effects ────────────────────────────────────
 
@@ -14,10 +15,11 @@ mockNuxtImport('useToast', () => {
 
 // ─── Fixture ─────────────────────────────────────────────────────────────────
 
-const mockScryfallCard = {
+const mockScryfallCard: ScryfallCard = {
   id: 'test-scryfall-001',
   name: 'Lightning Bolt',
   mana_cost: '{R}',
+  image_status: 'highres_scan',
   image_uris: { border_crop: 'https://example.com/lightning-bolt.jpg' },
   scryfall_uri: 'https://scryfall.com/card/test-001',
 }
@@ -162,6 +164,36 @@ describe('useScryfall', () => {
       const entries = useHistoryStore().entries
       expect(entries).toHaveLength(1)
       expect(entries[0]!.cardName).toBe('Lightning Bolt')
+    })
+  })
+
+  // ─── No-image retry ─────────────────────────────────────────────────────────
+
+  describe('no-image retry', () => {
+    it('retries when the first response has no image and the retry succeeds', async () => {
+      const imageless: ScryfallCard = { ...mockScryfallCard, image_status: 'missing', image_uris: undefined }
+      mockFetch
+        .mockResolvedValueOnce(imageless)
+        .mockResolvedValueOnce(mockScryfallCard)
+
+      const { fetch } = useScryfall()
+      await fetch()
+
+      expect(mockFetch).toHaveBeenCalledTimes(2)
+      expect(useOnDeckStore().card?.name).toBe('Lightning Bolt')
+    })
+
+    it('surfaces an error when both the first response and the retry have no image', async () => {
+      const imageless: ScryfallCard = { ...mockScryfallCard, image_status: 'missing', image_uris: undefined }
+      mockFetch
+        .mockResolvedValueOnce(imageless)
+        .mockResolvedValueOnce(imageless)
+
+      const { fetch, error } = useScryfall()
+      await fetch()
+
+      expect(error.value).toBeTruthy()
+      expect(useOnDeckStore().card).toBeNull()
     })
   })
 })

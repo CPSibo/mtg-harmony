@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import type { ScryfallCard } from '~/types/card'
+import { hasUsableImage } from '~/utils/scryfallImage'
 
 const STORAGE_KEY = 'mtg-prefetch'
 const ENDPOINT = 'https://api.scryfall.com/cards/random?q=-t:land+game:paper'
@@ -33,7 +34,10 @@ export const usePrefetchStore = defineStore('prefetch', () => {
     for (let i = 0; i < needed; i++) {
       try {
         const card = await $fetch<ScryfallCard>(ENDPOINT)
-        queue.value.push(card)
+        // Only queue cards that have a usable image; silently discard imageless ones.
+        if (hasUsableImage(card)) {
+          queue.value.push(card)
+        }
       } catch {
         // Silently ignore individual prefetch failures.
       }
