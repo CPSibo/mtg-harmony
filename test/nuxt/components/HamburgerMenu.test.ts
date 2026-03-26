@@ -96,7 +96,7 @@ describe('HamburgerMenu', () => {
   describe('header', () => {
     it('renders the app title', async () => {
       wrapper = await mountSuspended(HamburgerMenu)
-      expect(wrapper.text()).toContain('MTG Discord Helper')
+      expect(wrapper.text()).toContain('MTG Harmony')
     })
   })
 
