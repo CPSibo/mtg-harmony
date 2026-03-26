@@ -1,4 +1,5 @@
 import type { ScryfallCard } from '~/types/card'
+import { hasUsableImage } from '~/utils/scryfallImage'
 
 const SCRYFALL_ENDPOINT = 'https://api.scryfall.com/cards/random?q=-t:land+game:paper'
 
@@ -18,7 +19,16 @@ export function useScryfall() {
 
     try {
       const queued = prefetchStore.dequeue()
-      const response = queued ?? await $fetch<ScryfallCard>(SCRYFALL_ENDPOINT)
+      let response = queued ?? await $fetch<ScryfallCard>(SCRYFALL_ENDPOINT)
+
+      // Retry once if the card has no usable image (e.g. image_status 'missing').
+      if (!hasUsableImage(response)) {
+        response = await $fetch<ScryfallCard>(SCRYFALL_ENDPOINT)
+        if (!hasUsableImage(response)) {
+          throw new Error('Fetched card has no image')
+        }
+      }
+
       card.value = response
 
       onDeckStore.setCard(response)

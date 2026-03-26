@@ -21,6 +21,7 @@ function makeScryfallCard(overrides: Partial<ScryfallCard> = {}): ScryfallCard {
     name: 'Lightning Bolt',
     mana_cost: '{R}',
     scryfall_uri: 'https://scryfall.com/card/lea/161/lightning-bolt',
+    image_status: 'highres_scan',
     image_uris: { border_crop: 'https://cards.scryfall.io/border_crop/front/lightning-bolt.jpg' },
     ...overrides,
   }
@@ -69,8 +70,33 @@ describe('useOnDeckStore', () => {
       expect(store.card!.id).toBe(scryfall.id)
       expect(store.card!.name).toBe(scryfall.name)
       expect(store.card!.mana_cost).toBe(scryfall.mana_cost)
-      expect(store.card!.image_uri).toBe(scryfall.image_uris.border_crop)
+      expect(store.card!.image_uri).toBe(scryfall.image_uris?.border_crop)
       expect(store.card!.scryfall_uri).toBe(scryfall.scryfall_uri)
+    })
+
+    describe('image URI selection', () => {
+      it('uses border_crop when present', () => {
+        store.setCard(makeScryfallCard({
+          image_uris: { border_crop: 'https://example.com/border.jpg', normal: 'https://example.com/normal.jpg' },
+        }))
+        expect(store.card!.image_uri).toBe('https://example.com/border.jpg')
+      })
+
+      it('falls back to normal when border_crop is absent', () => {
+        store.setCard(makeScryfallCard({
+          image_status: 'lowres',
+          image_uris: { normal: 'https://example.com/normal.jpg', small: 'https://example.com/small.jpg' },
+        }))
+        expect(store.card!.image_uri).toBe('https://example.com/normal.jpg')
+      })
+
+      it('falls back to small when border_crop and normal are absent', () => {
+        store.setCard(makeScryfallCard({
+          image_status: 'lowres',
+          image_uris: { small: 'https://example.com/small.jpg' },
+        }))
+        expect(store.card!.image_uri).toBe('https://example.com/small.jpg')
+      })
     })
 
     it('initialises instanceCount to 1 and modifiers to []', () => {

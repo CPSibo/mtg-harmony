@@ -9,7 +9,8 @@ export const mockCard = {
   id: 'e2e-test-card-001',
   name: 'Lightning Bolt',
   mana_cost: '{R}',
-  image_uris: { normal: 'https://example.com/lightning-bolt.jpg' },
+  image_status: 'highres_scan',
+  image_uris: { border_crop: 'https://example.com/lightning-bolt.jpg' },
   scryfall_uri: 'https://scryfall.com/card/test-001',
 }
 
