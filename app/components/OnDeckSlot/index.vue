@@ -104,6 +104,7 @@ onUnmounted(() => {
           :key="card.id"
           :src="card.image_uri"
           :alt="card.name"
+          loading="lazy"
           class="h-full max-h-full cursor-zoom-in rounded object-contain"
           @click.stop="handleZoom"
         >
@@ -169,6 +170,7 @@ onUnmounted(() => {
         :key="card.id"
         :src="card.image_uri"
         :alt="card.name"
+        loading="lazy"
         class="absolute inset-0 h-full w-full cursor-zoom-in object-cover"
         @click.stop="handleZoom"
       >
