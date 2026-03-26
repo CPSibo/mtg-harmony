@@ -4,7 +4,6 @@ export default defineNuxtConfig({
     '@nuxt/eslint',
     '@nuxt/ui',
     '@nuxt/a11y',
-    //'@nuxt/hints',
     '@nuxt/test-utils',
     '@nuxtjs/eslint-module',
     '@pinia/nuxt',
@@ -68,6 +67,5 @@ export default defineNuxtConfig({
         '@vue/devtools-kit',
       ]
     },
-
   },
 })
