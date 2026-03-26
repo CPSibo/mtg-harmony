@@ -34,9 +34,11 @@ export const useHistoryStore = defineStore('history', () => {
     return true
   }
 
-  watch(entries, () => {
+  // Debounced to batch rapid successive adds (e.g. fast fetching) into a single
+  // localStorage write rather than serialising the entire array on every push.
+  watchDebounced(entries, () => {
     save()
-  }, { deep: true })
+  }, { deep: true, debounce: 200 })
 
   return {
     entries,

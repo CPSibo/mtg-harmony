@@ -34,7 +34,9 @@ export default defineNuxtConfig({
   css: [
     '~/assets/css/main.css',
     'mana-font/css/mana.css',
-    'keyrune/css/keyrune.css',
+    // Override @font-face rules to add WOFF2 + font-display: swap. Must be
+    // listed after mana-font/css/mana.css so the later rules take precedence.
+    '~/assets/css/mana-overrides.css',
   ],
 
   routeRules: {
@@ -65,6 +67,7 @@ export default defineNuxtConfig({
         '@vue/devtools-core',
         '@vue/devtools-kit',
       ]
-    }
-  }
+    },
+
+  },
 })

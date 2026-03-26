@@ -31,3 +31,4 @@ playwright-report/
 test-results/
 
 .claude/settings.local.json
+lighthouse-report.json

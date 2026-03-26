@@ -21,15 +21,10 @@
   },
   "dependencies": {
     "@iconify-json/lucide": "^1.2.98",
-    "@iconify-json/simple-icons": "^1.2.74",
     "@nuxt/a11y": "1.0.0-alpha.1",
-    "@nuxt/hints": "1.0.0",
-    "@nuxt/test-utils": "4.0.0",
     "@nuxt/ui": "^4.5.1",
-    "@nuxtjs/eslint-module": "4.1.0",
     "@pinia/nuxt": "0.11.3",
     "@vueuse/nuxt": "14.2.1",
-    "keyrune": "^3.0.0",
     "mana-font": "^1.16.0",
     "nuxt": "^4.4.2",
     "tailwindcss": "^4.2.1"
@@ -39,6 +34,8 @@
   },
   "devDependencies": {
     "@nuxt/eslint": "^1.15.2",
+    "@nuxt/test-utils": "4.0.0",
+    "@nuxtjs/eslint-module": "4.1.0",
     "@playwright/test": "^1.58.2",
     "@vitest/coverage-v8": "^4.1.0",
     "@vue/test-utils": "^2.4.6",

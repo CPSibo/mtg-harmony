@@ -1,0 +1,33 @@
+/*
+ * Re-declares the mana-font and MPlantin @font-face rules to:
+ *   • add the WOFF2 file that ships in the package but is absent from the CSS,
+ *     so modern browsers use the smallest available format;
+ *   • add font-display: swap so the fonts do not block text rendering on first
+ *     load when the files are not yet cached.
+ *
+ * CSS cascade: these rules appear after the originals imported via mana.css,
+ * so they take precedence (last matching @font-face wins per CSS Fonts Level 4).
+ *
+ * The legacy SVG / EOT / TTF files are still included in the build because
+ * Vite processes all urls() referenced in the imported mana.css, but modern
+ * browsers never download them — they pick WOFF2 from this override.
+ */
+
+@font-face {
+  font-family: "Mana";
+  /* app/assets/css → src/ → node_modules/mana-font/fonts/ */
+  src:
+    url("../../../node_modules/mana-font/fonts/mana.woff2") format("woff2"),
+    url("../../../node_modules/mana-font/fonts/mana.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "MPlantin";
+  src: url("../../../node_modules/mana-font/fonts/mplantin.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}

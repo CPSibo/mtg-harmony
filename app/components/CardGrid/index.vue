@@ -19,7 +19,15 @@ const GAP = 8 // gap-2
 
 // Measure the card-area element only (excludes the controls row at the bottom).
 const cardsAreaEl = ref<HTMLElement | null>(null)
-const { width: areaWidth, height: areaHeight } = useElementSize(cardsAreaEl)
+
+// Seed the initial width from the window so the column count is correct on the
+// very first render, before ResizeObserver fires. Without this, areaWidth starts
+// at 0, columns fall back to 3, and the grid immediately reflows when the first
+// measurement arrives — causing a CLS of ~0.27 on mobile viewports.
+// The cards area is inset by the 8 px padding on each side of the CardGrid
+// container (p-2 = 0.5 rem = 8 px), so subtract 16 px from the window width.
+const initialAreaWidth = import.meta.client ? window.innerWidth - 16 : 400
+const { width: areaWidth, height: areaHeight } = useElementSize(cardsAreaEl, { width: initialAreaWidth, height: 0 })
 
 const slotMinWidth = computed(() => SLOT_WIDTHS[slotSize.value])
 
