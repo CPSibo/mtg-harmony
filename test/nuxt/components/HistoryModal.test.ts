@@ -30,6 +30,8 @@ function makeEntry(overrides: Partial<HistoryEntry> = {}): HistoryEntry {
   return {
     id: `entry-${i}`,
     cardName: `Card ${i}`,
+    mana_cost: '{R}',
+    image_uri: `https://example.com/card-${i}.jpg`,
     scryfall_uri: `https://scryfall.com/card/test-${i}`,
     fetchedAt: new Date().toISOString(),
     wasCast: false,
@@ -53,6 +55,7 @@ describe('HistoryModal', () => {
   afterEach(() => {
     // Clear store state to prevent leaking into subsequent tests.
     useHistoryStore().clearAll()
+    useGridStore().clearAll()
     wrapper?.unmount()
   })
 
@@ -77,15 +80,15 @@ describe('HistoryModal', () => {
     expect(document.body.querySelectorAll('li')).toHaveLength(2)
   })
 
-  it('shows a "Cast" badge only on entries where wasCast is true', async () => {
+  it('shows a "Was cast" checkmark only on entries where wasCast is true', async () => {
     wrapper = await mountSuspended(HistoryModal, { props: { open: true } })
     const history = useHistoryStore()
     history.addEntry(makeEntry({ cardName: 'Alpha', wasCast: false }))
     history.addEntry(makeEntry({ cardName: 'Beta', wasCast: true }))
     await nextTick()
     const rows = document.body.querySelectorAll('li')
-    expect(rows[0]!.textContent).not.toContain('Cast')
-    expect(rows[1]!.textContent).toContain('Cast')
+    expect(rows[0]!.querySelector('[aria-label="Was cast"]')).toBeNull()
+    expect(rows[1]!.querySelector('[aria-label="Was cast"]')).not.toBeNull()
   })
 
   it('renders card names as links to their scryfall_uri', async () => {
@@ -189,6 +192,65 @@ describe('HistoryModal', () => {
       shareBtn.click()
       await flushPromises()
       expect(toastAddMock).not.toHaveBeenCalled()
+    })
+  })
+
+  // ─── Cast to grid button ───────────────────────────────────────────────────
+
+  describe('cast to grid button', () => {
+    it('renders a cast button for each entry', async () => {
+      wrapper = await mountSuspended(HistoryModal, { props: { open: true } })
+      const history = useHistoryStore()
+      history.addEntry(makeEntry())
+      history.addEntry(makeEntry())
+      await nextTick()
+      const castBtns = document.body.querySelectorAll('[aria-label="Cast to grid"]')
+      expect(castBtns).toHaveLength(2)
+    })
+
+    it('clicking the button adds the card to the grid', async () => {
+      wrapper = await mountSuspended(HistoryModal, { props: { open: true } })
+      const history = useHistoryStore()
+      history.addEntry(makeEntry({ cardName: 'Lightning Bolt' }))
+      await nextTick()
+      const castBtn = document.body.querySelector<HTMLElement>('[aria-label="Cast to grid"]')!
+      castBtn.click()
+      await nextTick()
+      expect(useGridStore().cards).toHaveLength(1)
+      expect(useGridStore().cards[0]!.name).toBe('Lightning Bolt')
+    })
+
+    it('clicking the button marks the entry as cast', async () => {
+      wrapper = await mountSuspended(HistoryModal, { props: { open: true } })
+      const history = useHistoryStore()
+      history.addEntry(makeEntry({ wasCast: false }))
+      await nextTick()
+      const castBtn = document.body.querySelector<HTMLElement>('[aria-label="Cast to grid"]')!
+      castBtn.click()
+      await nextTick()
+      expect(history.entries[0]!.wasCast).toBe(true)
+    })
+
+    it('clicking the button does not add a new history entry', async () => {
+      wrapper = await mountSuspended(HistoryModal, { props: { open: true } })
+      const history = useHistoryStore()
+      history.addEntry(makeEntry())
+      await nextTick()
+      const castBtn = document.body.querySelector<HTMLElement>('[aria-label="Cast to grid"]')!
+      castBtn.click()
+      await nextTick()
+      expect(history.entries).toHaveLength(1)
+    })
+
+    it('clicking the button does not affect the on-deck slot', async () => {
+      wrapper = await mountSuspended(HistoryModal, { props: { open: true } })
+      const history = useHistoryStore()
+      history.addEntry(makeEntry())
+      await nextTick()
+      const castBtn = document.body.querySelector<HTMLElement>('[aria-label="Cast to grid"]')!
+      castBtn.click()
+      await nextTick()
+      expect(useOnDeckStore().card).toBeNull()
     })
   })
 

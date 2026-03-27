@@ -289,7 +289,7 @@ const SIZE_OPTIONS: Array<{ value: SlotSize; label: string }> = [
               </div>
 
               <!-- ── Actions section ──────────────────────────────────────── -->
-              <hr class="my-4 border-slate-200 dark:border-slate-700" />
+              <hr class="my-4 border-slate-200 dark:border-slate-700">
 
               <p
                 class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500"
