@@ -60,11 +60,11 @@ useEventListener(document, 'keydown', (e: KeyboardEvent) => {
             <p class="mb-6 text-sm text-slate-600 dark:text-slate-400">
               {{ message }}
             </p>
-            <div class="flex justify-end gap-2">
-              <UButton variant="ghost" @click="onCancel">
+            <div class="flex justify-between gap-2">
+              <UButton variant="ghost" color="neutral" icon="i-lucide-x" @click="onCancel">
                 {{ cancelLabel ?? 'Cancel' }}
               </UButton>
-              <UButton color="primary" @click="emit('confirm')">
+              <UButton color="primary" icon="i-lucide-check" @click="emit('confirm')">
                 {{ confirmLabel ?? 'Confirm' }}
               </UButton>
             </div>
