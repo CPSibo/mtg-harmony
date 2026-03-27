@@ -196,9 +196,9 @@ const SIZE_OPTIONS: Array<{ value: SlotSize; label: string }> = [
 
               <!-- Display mode -->
               <div class="mb-3 flex items-center justify-between gap-4">
-                <span class="text-sm text-slate-700 dark:text-slate-300"
-                  >Display</span
-                >
+                <span class="text-sm text-slate-700 dark:text-slate-300">
+                  Display
+                </span>
                 <div class="flex gap-0.5">
                   <button
                     v-for="opt in DISPLAY_OPTIONS"
@@ -219,9 +219,9 @@ const SIZE_OPTIONS: Array<{ value: SlotSize; label: string }> = [
 
               <!-- Card size -->
               <div class="mb-3 flex items-center justify-between gap-4">
-                <span class="text-sm text-slate-700 dark:text-slate-300"
-                  >Card size</span
-                >
+                <span class="text-sm text-slate-700 dark:text-slate-300">
+                  Card size
+                </span>
                 <div class="flex gap-0.5">
                   <button
                     v-for="opt in SIZE_OPTIONS"
@@ -243,9 +243,9 @@ const SIZE_OPTIONS: Array<{ value: SlotSize; label: string }> = [
 
               <!-- Prefetch cards -->
               <div class="mb-3 flex items-center justify-between gap-4">
-                <span class="text-sm text-slate-700 dark:text-slate-300"
-                  >Prefetch cards</span
-                >
+                <span class="text-sm text-slate-700 dark:text-slate-300">
+                  Prefetch cards
+                </span>
                 <div class="flex gap-0.5">
                   <button
                     v-for="opt in PREFETCH_OPTIONS"
@@ -266,9 +266,9 @@ const SIZE_OPTIONS: Array<{ value: SlotSize; label: string }> = [
 
               <!-- Keep screen awake -->
               <div class="flex items-center justify-between gap-4">
-                <span class="text-sm text-slate-700 dark:text-slate-300"
-                  >Keep screen awake</span
-                >
+                <span class="text-sm text-slate-700 dark:text-slate-300">
+                  Keep screen awake
+                </span>
                 <div class="flex gap-0.5">
                   <button
                     v-for="opt in WAKE_LOCK_OPTIONS"
