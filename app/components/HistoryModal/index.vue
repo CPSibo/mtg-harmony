@@ -126,7 +126,7 @@ const copyMenuItems = [
           <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">
             History
           </h2>
-          <div class="flex items-center gap-1">
+          <div class="flex items-center gap-3">
             <UButton
               v-if="entries.length && canShare"
               icon="i-lucide-share"
@@ -152,6 +152,7 @@ const copyMenuItems = [
             <UButton
               icon="i-lucide-x"
               variant="ghost"
+              color="neutral"
               size="md"
               aria-label="Close history"
               title="Close history"
@@ -191,13 +192,26 @@ const copyMenuItems = [
                 {{ entry.cardName }}
               </a>
 
-              <!-- Cast badge -->
+              <!-- Was cast indicator -->
               <span
                 v-if="entry.wasCast"
-                class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                aria-label="Was cast"
+                title="Was cast"
+                class="shrink-0 text-green-500"
               >
-                Cast
+                <UIcon name="i-lucide-check" aria-hidden="true" />
               </span>
+
+              <!-- Cast to grid button -->
+              <UButton
+                label="Cast"
+                variant="solid"
+                size="xs"
+                class="shrink-0"
+                aria-label="Cast to grid"
+                :title="`Cast ${entry.cardName} to grid`"
+                @click="historyStore.castFromHistory(entry.id)"
+              />
             </li>
           </ul>
         </div>

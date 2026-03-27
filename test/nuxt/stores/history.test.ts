@@ -21,6 +21,8 @@ function makeEntry(overrides: Partial<HistoryEntry> = {}): HistoryEntry {
   return {
     id: `entry-${i}`,
     cardName: `Card ${i}`,
+    mana_cost: '{R}',
+    image_uri: `https://example.com/card-${i}.jpg`,
     scryfall_uri: `https://scryfall.com/card/test-${i}`,
     fetchedAt: new Date().toISOString(),
     wasCast: false,
@@ -32,11 +34,13 @@ function makeEntry(overrides: Partial<HistoryEntry> = {}): HistoryEntry {
 
 describe('useHistoryStore', () => {
   let store: ReturnType<typeof useHistoryStore>
+  let gridStore: ReturnType<typeof useGridStore>
 
   beforeEach(() => {
     _entryIndex = 0
     setActivePinia(createPinia())
     store = useHistoryStore()
+    gridStore = useGridStore()
     mockLoad.mockReturnValue(null)
     mockSave.mockClear()
   })
@@ -105,6 +109,74 @@ describe('useHistoryStore', () => {
       store.markCast(entry.id)
       store.markCast(entry.id)
       expect(store.entries[0]!.wasCast).toBe(true)
+    })
+  })
+
+  // ─── castFromHistory ───────────────────────────────────────────────────
+
+  describe('castFromHistory()', () => {
+    it('adds the card to the grid', () => {
+      const entry = makeEntry({ cardName: 'Lightning Bolt', mana_cost: '{R}', image_uri: 'https://example.com/bolt.jpg' })
+      store.addEntry(entry)
+      store.castFromHistory(entry.id)
+      expect(gridStore.cards).toHaveLength(1)
+      expect(gridStore.cards[0]!.name).toBe('Lightning Bolt')
+    })
+
+    it('marks the entry as cast', () => {
+      const entry = makeEntry({ wasCast: false })
+      store.addEntry(entry)
+      store.castFromHistory(entry.id)
+      expect(store.entries[0]!.wasCast).toBe(true)
+    })
+
+    it('does not add a new history entry', () => {
+      const entry = makeEntry()
+      store.addEntry(entry)
+      store.castFromHistory(entry.id)
+      expect(store.entries).toHaveLength(1)
+    })
+
+    it('does not affect the on-deck slot', () => {
+      const entry = makeEntry()
+      store.addEntry(entry)
+      store.castFromHistory(entry.id)
+      expect(useOnDeckStore().card).toBeNull()
+    })
+
+    it('is idempotent — calling it twice adds the card to the grid twice', () => {
+      const entry = makeEntry()
+      store.addEntry(entry)
+      store.castFromHistory(entry.id)
+      store.castFromHistory(entry.id)
+      expect(gridStore.cards).toHaveLength(2)
+    })
+
+    it('leaves wasCast true when the entry is already cast', () => {
+      const entry = makeEntry({ wasCast: true })
+      store.addEntry(entry)
+      store.castFromHistory(entry.id)
+      expect(store.entries[0]!.wasCast).toBe(true)
+    })
+
+    it('is a no-op for an unknown ID', () => {
+      store.castFromHistory('non-existent')
+      expect(gridStore.cards).toHaveLength(0)
+    })
+
+    it('assigns a fresh grid card ID different from the history entry ID', () => {
+      const entry = makeEntry({ id: 'entry-id' })
+      store.addEntry(entry)
+      store.castFromHistory(entry.id)
+      expect(gridStore.cards[0]!.id).not.toBe('entry-id')
+    })
+
+    it('copies mana_cost and image_uri from the history entry', () => {
+      const entry = makeEntry({ mana_cost: '{U}{U}', image_uri: 'https://example.com/spell.jpg' })
+      store.addEntry(entry)
+      store.castFromHistory(entry.id)
+      expect(gridStore.cards[0]!.mana_cost).toBe('{U}{U}')
+      expect(gridStore.cards[0]!.image_uri).toBe('https://example.com/spell.jpg')
     })
   })
 

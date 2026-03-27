@@ -1,5 +1,5 @@
 import type { ScryfallCard } from '~/types/card'
-import { hasUsableImage } from '~/utils/scryfallImage'
+import { hasUsableImage, pickImageUri } from '~/utils/scryfallImage'
 
 const SCRYFALL_ENDPOINT = 'https://api.scryfall.com/cards/random?q=-t:land+game:paper'
 
@@ -36,6 +36,8 @@ export function useScryfall() {
       historyStore.addEntry({
         id: randomUUID(),
         cardName: response.name,
+        mana_cost: response.mana_cost,
+        image_uri: pickImageUri(response) ?? '',
         scryfall_uri: response.scryfall_uri,
         fetchedAt: new Date().toISOString(),
         wasCast: false,
