@@ -25,8 +25,10 @@ test.describe('prefetch queue', () => {
       await expect(page.getByText('Tap to fetch a random card').first()).toBeVisible()
       await page.getByText('Tap to fetch a random card').first().click()
       await expect(page.getByAltText(mockCard.name)).toBeVisible()
-      // Clear so we can fetch again.
+      // Clear so we can fetch again (Clear opens a confirm dialog; confirm it).
       await page.getByRole('button', { name: 'Clear' }).click()
+      const clearDialog = page.locator('.fixed.inset-0').last()
+      await clearDialog.getByRole('button', { name: 'Clear' }).click()
     }
   })
 

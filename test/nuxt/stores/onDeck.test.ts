@@ -31,6 +31,8 @@ function makeHistoryEntry(overrides: Partial<HistoryEntry> = {}): HistoryEntry {
   return {
     id: crypto.randomUUID(),
     cardName: 'Lightning Bolt',
+    mana_cost: '{R}',
+    image_uri: 'https://cards.scryfall.io/border_crop/front/lightning-bolt.jpg',
     scryfall_uri: 'https://scryfall.com/card/lea/161/lightning-bolt',
     fetchedAt: new Date().toISOString(),
     wasCast: false,

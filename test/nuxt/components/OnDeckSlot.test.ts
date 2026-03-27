@@ -96,6 +96,39 @@ describe('OnDeckSlot', () => {
     })
   })
 
+  // ─── Clear confirmation dialog ────────────────────────────────────────────────
+
+  describe('clear confirmation dialog', () => {
+    it('opens the confirm dialog when Clear is clicked', async () => {
+      wrapper = await mountSuspended(OnDeckSlot)
+      const onDeck = useOnDeckStore()
+      const settings = useSettingsStore()
+      settings.onDeckExpanded = true
+      onDeck.setCard(makeScryfallCard())
+      await nextTick()
+      const clearBtn = wrapper.findAll('button').find(b => b.text().includes('Clear'))
+      await clearBtn!.trigger('click')
+      expect(document.body.querySelector('[data-testid="confirm-dialog"]') ?? document.body.querySelector('.fixed.inset-0.z-50')).not.toBeNull()
+    })
+
+    it('does not clear the card if the dialog is cancelled', async () => {
+      wrapper = await mountSuspended(OnDeckSlot)
+      const onDeck = useOnDeckStore()
+      const settings = useSettingsStore()
+      settings.onDeckExpanded = true
+      const card = makeScryfallCard()
+      onDeck.setCard(card)
+      await nextTick()
+      const clearBtn = wrapper.findAll('button').find(b => b.text().includes('Clear'))
+      await clearBtn!.trigger('click')
+      // Click the Cancel button inside the teleported dialog
+      const cancelBtn = Array.from(document.body.querySelectorAll('button')).find(b => b.textContent?.includes('Cancel'))
+      cancelBtn?.click()
+      await nextTick()
+      expect(onDeck.card?.id).toBe(card.id)
+    })
+  })
+
   // ─── Zoom overlay — shrunk mode ──────────────────────────────────────────────
 
   describe('zoom overlay (shrunk mode)', () => {

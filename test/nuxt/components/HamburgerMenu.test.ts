@@ -257,6 +257,8 @@ describe('HamburgerMenu', () => {
       history.addEntry({
         id: 'e1',
         cardName: 'Lightning Bolt',
+        mana_cost: '{R}',
+        image_uri: 'https://example.com/lightning-bolt.jpg',
         scryfall_uri: 'https://scryfall.com/card/test',
         fetchedAt: new Date().toISOString(),
         wasCast: false,

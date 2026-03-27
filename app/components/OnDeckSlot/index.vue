@@ -26,8 +26,15 @@ function handleCast() {
   pendingAction.value = 'cast'
 }
 
+const isClearConfirmOpen = ref(false)
+
 function handleClear() {
   if (pendingAction.value || !card.value) return
+  isClearConfirmOpen.value = true
+}
+
+function handleClearConfirmed() {
+  isClearConfirmOpen.value = false
   pendingAction.value = 'clear'
 }
 
@@ -117,7 +124,7 @@ onUnmounted(() => {
       </Transition>
     </div>
     <UProgress v-if="loading" animation="carousel" />
-    <div class="flex shrink-0 items-center gap-2 border-t border-gold-600/40 px-2 py-1.5">
+    <div class="flex shrink-0 items-center justify-between border-t border-gold-600/40 px-3 py-2">
       <template v-if="card">
         <UButton size="sm" :loading="loading" color="secondary" icon="i-lucide-rotate-cw" :disabled="loading || !!pendingAction" @click.stop="fetch">
           Fetch
@@ -129,15 +136,6 @@ onUnmounted(() => {
           Clear
         </UButton>
       </template>
-      <div class="flex-1" />
-      <UButton
-        icon="i-lucide-minimize-2"
-        color="neutral"
-        size="sm"
-        aria-label="Shrink"
-        title="Shrink"
-        @click.stop="settingsStore.toggleOnDeckExpanded()"
-      />
     </div>
   </div>
 
@@ -148,7 +146,7 @@ onUnmounted(() => {
     v-else
     class="relative overflow-hidden rounded-md border-2 border-gold-600 bg-gold-950/10 dark:bg-gold-950/20"
     :class="[
-      gridDisplayMode === 'full' ? 'aspect-5/7' : 'min-h-16',
+      gridDisplayMode === 'full' ? 'h-full' : 'min-h-16',
       !card && !loading && !pendingAction ? 'cursor-pointer' : '',
     ]"
     @click="handleEmptyClick"
@@ -190,7 +188,7 @@ onUnmounted(() => {
     />
 
     <!-- Action buttons in a full-width column at the bottom -->
-    <div class="absolute bottom-0 left-0 right-0 flex flex-col gap-1 p-1">
+    <div class="absolute bottom-0 left-0 right-0 flex flex-col gap-4 p-2">
       <template v-if="card">
         <UButton
           class="w-full justify-center"
@@ -223,17 +221,20 @@ onUnmounted(() => {
           Clear
         </UButton>
       </template>
-      <UButton
-        class="w-full justify-center"
-        size="xs"
-        color="neutral"
-        icon="i-lucide-maximize-2"
-        @click.stop="settingsStore.toggleOnDeckExpanded()"
-      >
-        Expand
-      </UButton>
     </div>
   </div>
+
+  <!-- Clear confirmation dialog -->
+  <SharedConfirmDialog
+    :open="isClearConfirmOpen"
+    title="Clear card?"
+    :message="card ? `Remove '${card.name}' without casting?` : ''"
+    confirm-label="Clear"
+    cancel-label="Cancel"
+    @confirm="handleClearConfirmed"
+    @cancel="isClearConfirmOpen = false"
+    @update:open="isClearConfirmOpen = $event"
+  />
 
   <!-- Zoom overlay (teleported to body to escape overflow/stacking) -->
   <Teleport to="body">
