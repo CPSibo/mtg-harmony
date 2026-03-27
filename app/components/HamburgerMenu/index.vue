@@ -1,97 +1,104 @@
 <script setup lang="ts">
-import { storeToRefs } from 'pinia'
-import type { SlotSize } from '~/types/AppSettings' 
+import { storeToRefs } from "pinia";
+import type { SlotSize } from "~/types/AppSettings";
 
-const settingsStore = useSettingsStore()
-const { gridDisplayMode, slotSize, prefetchEnabled, wakeLockEnabled } = storeToRefs(settingsStore)
+const settingsStore = useSettingsStore();
+const { gridDisplayMode, slotSize, prefetchEnabled, wakeLockEnabled } =
+  storeToRefs(settingsStore);
 
-const gridStore = useGridStore()
-const onDeckStore = useOnDeckStore()
-const historyStore = useHistoryStore()
-const prefetchStore = usePrefetchStore()
+const gridStore = useGridStore();
+const onDeckStore = useOnDeckStore();
+const historyStore = useHistoryStore();
+const prefetchStore = usePrefetchStore();
 
-const toast = useToast()
+const toast = useToast();
 
 // ─── Modal / dialog visibility ────────────────────────────────────────────────
 
-const isSettingsOpen = ref(false)
-const isHistoryOpen = ref(false)
-const isClearConfirmOpen = ref(false)
-const isResetConfirmOpen = ref(false)
+const isSettingsOpen = ref(false);
+const isHistoryOpen = ref(false);
+const isClearConfirmOpen = ref(false);
+const isResetConfirmOpen = ref(false);
 
 // ─── Wake lock ────────────────────────────────────────────────────────────────
 
-const { request: requestWakeLock, release: releaseWakeLock } = useWakeLock()
+const { request: requestWakeLock, release: releaseWakeLock } = useWakeLock();
 
-watch(wakeLockEnabled, async (enabled) => {
-  try {
-    if (enabled) {
-      await requestWakeLock('screen')
-    } else {
-      await releaseWakeLock()
+watch(
+  wakeLockEnabled,
+  async (enabled) => {
+    try {
+      if (enabled) {
+        await requestWakeLock("screen");
+      } else {
+        await releaseWakeLock();
+      }
+    } catch {
+      // Wake Lock requests can be denied when the document is not visible,
+      // when the browser is headless, or when permission is not granted.
+      // Silently ignore — the setting remains persisted for the next opportunity.
     }
-  } catch {
-    // Wake Lock requests can be denied when the document is not visible,
-    // when the browser is headless, or when permission is not granted.
-    // Silently ignore — the setting remains persisted for the next opportunity.
-  }
-}, { immediate: true })
+  },
+  { immediate: true },
+);
 
 // Close settings on ESC; history has its own ESC handler inside HistoryModal
 
-useEventListener(document, 'keydown', (e: KeyboardEvent) => {
-  if (e.key === 'Escape') isSettingsOpen.value = false
-})
+useEventListener(document, "keydown", (e: KeyboardEvent) => {
+  if (e.key === "Escape") isSettingsOpen.value = false;
+});
 
 // ─── Actions ──────────────────────────────────────────────────────────────────
 
 function handleClearGrid() {
-  gridStore.clearAll()
-  isClearConfirmOpen.value = false
-  isSettingsOpen.value = false
-  toast.add({ title: 'Grid cleared', color: 'neutral' })
+  gridStore.clearAll();
+  isClearConfirmOpen.value = false;
+  isSettingsOpen.value = false;
+  toast.add({ title: "Grid cleared", color: "neutral" });
 }
 
 function handleResetApp() {
-  gridStore.clearAll()
-  onDeckStore.clearCard()
-  historyStore.clearAll()
-  prefetchStore.clearQueue()
-  isResetConfirmOpen.value = false
-  isSettingsOpen.value = false
-  toast.add({ title: 'App reset', color: 'neutral' })
+  gridStore.clearAll();
+  onDeckStore.clearCard();
+  historyStore.clearAll();
+  prefetchStore.clearQueue();
+  isResetConfirmOpen.value = false;
+  isSettingsOpen.value = false;
+  toast.add({ title: "App reset", color: "neutral" });
 }
 
 // ─── Option lists ─────────────────────────────────────────────────────────────
 
-const DISPLAY_OPTIONS: Array<{ value: 'full' | 'compact', label: string }> = [
-  { value: 'full',    label: 'Full' },
-  { value: 'compact', label: 'Compact' },
-]
+const DISPLAY_OPTIONS: Array<{ value: "full" | "compact"; label: string }> = [
+  { value: "full", label: "Full" },
+  { value: "compact", label: "Compact" },
+];
 
-const PREFETCH_OPTIONS: Array<{ value: boolean, label: string }> = [
-  { value: true,  label: 'On' },
-  { value: false, label: 'Off' },
-]
+const PREFETCH_OPTIONS: Array<{ value: boolean; label: string }> = [
+  { value: true, label: "On" },
+  { value: false, label: "Off" },
+];
 
-const WAKE_LOCK_OPTIONS: Array<{ value: boolean, label: string }> = [
-  { value: true,  label: 'On' },
-  { value: false, label: 'Off' },
-]
+const WAKE_LOCK_OPTIONS: Array<{ value: boolean; label: string }> = [
+  { value: true, label: "On" },
+  { value: false, label: "Off" },
+];
 
-const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
-  { value: 'small',  label: 'S' },
-  { value: 'medium', label: 'M' },
-  { value: 'large',  label: 'L' },
-]
+const SIZE_OPTIONS: Array<{ value: SlotSize; label: string }> = [
+  { value: "small", label: "S" },
+  { value: "medium", label: "M" },
+  { value: "large", label: "L" },
+];
 </script>
 
 <template>
   <!-- ── Header bar ─────────────────────────────────────────────────────────── -->
   <div class="flex shrink-0 items-center justify-between gap-1 px-2 py-1.5">
-    <div class="flex items-center gap-1 text-xl me-6">
+    <div
+      class="flex items-center gap-1 text-sm md:text-lg lg:text-xl me-3 lg:me-6 overflow-hidden text-nowrap text-ellipsis"
+    >
       <UIcon name="i-lucide-flame" :size="20" />
-        MTG Harmony
+      MTG Harmony
     </div>
 
     <div class="flex gap-1">
@@ -141,7 +148,10 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
         class="fixed inset-0 z-50 flex items-center justify-center p-4"
       >
         <!-- Backdrop -->
-        <div class="absolute inset-0 cursor-pointer bg-black/50" @click="isSettingsOpen = false" />
+        <div
+          class="absolute inset-0 cursor-pointer bg-black/50"
+          @click="isSettingsOpen = false"
+        />
 
         <!-- Panel -->
         <Transition
@@ -158,8 +168,12 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
             class="relative w-full max-w-sm rounded-lg bg-white shadow-xl dark:bg-slate-800"
           >
             <!-- Modal header -->
-            <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-700">
-              <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">
+            <div
+              class="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-700"
+            >
+              <h2
+                class="text-base font-semibold text-slate-900 dark:text-slate-100"
+              >
                 Settings
               </h2>
               <UButton
@@ -174,21 +188,27 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
 
             <div class="px-5 py-4">
               <!-- ── Grid section ──────────────────────────────────────────── -->
-              <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              <p
+                class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500"
+              >
                 Grid
               </p>
 
               <!-- Display mode -->
               <div class="mb-3 flex items-center justify-between gap-4">
-                <span class="text-sm text-slate-700 dark:text-slate-300">Display</span>
+                <span class="text-sm text-slate-700 dark:text-slate-300"
+                  >Display</span
+                >
                 <div class="flex gap-0.5">
                   <button
                     v-for="opt in DISPLAY_OPTIONS"
                     :key="opt.value"
                     class="cursor-pointer rounded px-3 py-1 text-sm font-medium transition-colors"
-                    :class="gridDisplayMode === opt.value
-                      ? 'bg-gold-600 text-white'
-                      : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-700 dark:hover:text-slate-200'"
+                    :class="
+                      gridDisplayMode === opt.value
+                        ? 'bg-gold-600 text-white'
+                        : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-700 dark:hover:text-slate-200'
+                    "
                     :aria-pressed="gridDisplayMode === opt.value"
                     @click="settingsStore.setDisplayMode(opt.value)"
                   >
@@ -199,15 +219,19 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
 
               <!-- Card size -->
               <div class="mb-3 flex items-center justify-between gap-4">
-                <span class="text-sm text-slate-700 dark:text-slate-300">Card size</span>
+                <span class="text-sm text-slate-700 dark:text-slate-300"
+                  >Card size</span
+                >
                 <div class="flex gap-0.5">
                   <button
                     v-for="opt in SIZE_OPTIONS"
                     :key="opt.value"
                     class="flex size-8 cursor-pointer items-center justify-center rounded text-sm font-semibold transition-colors"
-                    :class="slotSize === opt.value
-                      ? 'bg-gold-600 text-white'
-                      : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-700 dark:hover:text-slate-200'"
+                    :class="
+                      slotSize === opt.value
+                        ? 'bg-gold-600 text-white'
+                        : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-700 dark:hover:text-slate-200'
+                    "
                     :aria-pressed="slotSize === opt.value"
                     :aria-label="`${opt.value} card size`"
                     @click="settingsStore.setSlotSize(opt.value)"
@@ -219,15 +243,19 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
 
               <!-- Prefetch cards -->
               <div class="mb-3 flex items-center justify-between gap-4">
-                <span class="text-sm text-slate-700 dark:text-slate-300">Prefetch cards</span>
+                <span class="text-sm text-slate-700 dark:text-slate-300"
+                  >Prefetch cards</span
+                >
                 <div class="flex gap-0.5">
                   <button
                     v-for="opt in PREFETCH_OPTIONS"
                     :key="String(opt.value)"
                     class="cursor-pointer rounded px-3 py-1 text-sm font-medium transition-colors"
-                    :class="prefetchEnabled === opt.value
-                      ? 'bg-gold-600 text-white'
-                      : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-700 dark:hover:text-slate-200'"
+                    :class="
+                      prefetchEnabled === opt.value
+                        ? 'bg-gold-600 text-white'
+                        : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-700 dark:hover:text-slate-200'
+                    "
                     :aria-pressed="prefetchEnabled === opt.value"
                     @click="settingsStore.setPrefetchEnabled(opt.value)"
                   >
@@ -238,15 +266,19 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
 
               <!-- Keep screen awake -->
               <div class="flex items-center justify-between gap-4">
-                <span class="text-sm text-slate-700 dark:text-slate-300">Keep screen awake</span>
+                <span class="text-sm text-slate-700 dark:text-slate-300"
+                  >Keep screen awake</span
+                >
                 <div class="flex gap-0.5">
                   <button
                     v-for="opt in WAKE_LOCK_OPTIONS"
                     :key="String(opt.value)"
                     class="cursor-pointer rounded px-3 py-1 text-sm font-medium transition-colors"
-                    :class="wakeLockEnabled === opt.value
-                      ? 'bg-gold-600 text-white'
-                      : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-700 dark:hover:text-slate-200'"
+                    :class="
+                      wakeLockEnabled === opt.value
+                        ? 'bg-gold-600 text-white'
+                        : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-700 dark:hover:text-slate-200'
+                    "
                     :aria-label="`wake lock ${opt.label.toLowerCase()}`"
                     :aria-pressed="wakeLockEnabled === opt.value"
                     @click="settingsStore.setWakeLockEnabled(opt.value)"
@@ -257,9 +289,11 @@ const SIZE_OPTIONS: Array<{ value: SlotSize, label: string }> = [
               </div>
 
               <!-- ── Actions section ──────────────────────────────────────── -->
-              <hr class="my-4 border-slate-200 dark:border-slate-700">
+              <hr class="my-4 border-slate-200 dark:border-slate-700" />
 
-              <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              <p
+                class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500"
+              >
                 Actions
               </p>
 

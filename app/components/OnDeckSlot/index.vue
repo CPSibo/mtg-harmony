@@ -146,7 +146,7 @@ onUnmounted(() => {
     v-else
     class="relative overflow-hidden rounded-md border-2 border-gold-600 bg-gold-950/10 dark:bg-gold-950/20"
     :class="[
-      gridDisplayMode === 'full' ? 'aspect-5/7' : 'min-h-16',
+      gridDisplayMode === 'full' ? 'h-full' : 'min-h-16',
       !card && !loading && !pendingAction ? 'cursor-pointer' : '',
     ]"
     @click="handleEmptyClick"

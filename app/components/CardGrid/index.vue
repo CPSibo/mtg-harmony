@@ -47,14 +47,18 @@ const columnWidth = computed(() =>
     : slotMinWidth.value
 )
 
-const slotHeight = computed(() =>
-  gridDisplayMode.value === 'compact'
-    ? COMPACT_SLOT_HEIGHT
-    : Math.round(columnWidth.value * 7 / 5)
-)
+const slotHeight = computed(() => {
+  if (gridDisplayMode.value === 'compact') return COMPACT_SLOT_HEIGHT
+  const natural = Math.round(columnWidth.value * 7 / 5)
+  // Cap to the measured area height so a single slot never overflows the viewport.
+  // Fall back to the natural height before the area has been measured (areaHeight === 0).
+  return areaHeight.value > 0 ? Math.min(natural, areaHeight.value) : natural
+})
 
 const rows = computed(() =>
-  areaHeight.value > slotHeight.value
+  // Use fallback 3 only before the area has been measured; once areaHeight is
+  // known, slotHeight is already capped to areaHeight so the result is always ≥ 1.
+  areaHeight.value > 0
     ? Math.max(1, Math.floor((areaHeight.value + GAP) / (slotHeight.value + GAP)))
     : 3
 )
@@ -71,7 +75,7 @@ const onDeckColSpan = computed(() =>
   hasOnDeck.value ? (onDeckExpanded.value ? Math.min(2, columns.value) : 1) : 0
 )
 const onDeckRowSpan = computed(() =>
-  hasOnDeck.value ? (onDeckExpanded.value ? 2 : 1) : 0
+  hasOnDeck.value ? (onDeckExpanded.value ? Math.min(2, rows.value) : 1) : 0
 )
 
 // The pixel width of the OnDeck label, matched to the OnDeck slot's column span.

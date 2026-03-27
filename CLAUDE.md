@@ -139,13 +139,12 @@ All commands must be run from the `src/` directory.
 Run the following before concluding any increment of work:
 
 ```bash
-# From src/
 npm run typecheck   # no type errors
 npm run lint        # no lint errors or warnings
 npm run test        # all tests pass
 npm run test:e2e    # all tests pass
 ```
 
-All three must exit cleanly (exit code 0) before a task is considered complete. If a lint rule or type error is introduced by new code, fix it in the same increment — do not suppress errors with `// eslint-disable` or `// @ts-ignore` unless there is a documented external constraint.
+All four must exit cleanly (exit code 0) before a task is considered complete. If a lint rule or type error is introduced by new code, fix it in the same increment — do not suppress errors with `// eslint-disable` or `// @ts-ignore` unless there is a documented external constraint.
 
 If a non-obvious workaround is required to keep the checks passing (a dependency override, a type assertion, a structural change made for TypeScript's benefit rather than the app's), add a row to the **Technical decisions** table explaining what was done and why.
