@@ -151,7 +151,7 @@ const groupedModifiers = computed(() => {
     v-if="!card"
     :class="[
       'grid-slot-empty rounded-md border-2 border-dashed border-slate-400 bg-slate-100 dark:border-slate-800 dark:bg-slate-900',
-      displayMode === 'full' ? 'aspect-5/7' : 'min-h-16',
+      displayMode === 'compact' ? 'min-h-16' : '',
     ]"
   />
 
@@ -160,7 +160,7 @@ const groupedModifiers = computed(() => {
     v-else-if="isCountEditing"
     :class="[
       'relative overflow-hidden rounded-md border border-slate-200 dark:border-slate-700',
-      displayMode === 'full' ? 'aspect-5/7' : 'min-h-24',
+      displayMode === 'compact' ? 'min-h-24' : '',
     ]"
   >
     <div
@@ -203,7 +203,7 @@ const groupedModifiers = computed(() => {
     ref="slotEl"
     :class="[
       'relative cursor-pointer rounded-md border border-slate-200 transition-transform duration-75 active:scale-95 dark:border-slate-700',
-      displayMode === 'full' ? 'aspect-5/7 overflow-hidden' : '',
+      displayMode === 'full' ? 'overflow-hidden' : '',
       displayMode === 'compact' && card.tapped ? 'opacity-60' : '',
     ]"
     @contextmenu.prevent="openContextMenu"
