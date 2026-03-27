@@ -245,12 +245,21 @@ function handleSplitModifier() {
   >
     <!-- Section labels + paginator in a single stable-height header row -->
     <div v-if="hasOnDeck" class="flex shrink-0 items-center gap-2">
-      <span
-        class="shrink-0 text-xs font-semibold uppercase tracking-wider text-gold-500"
+      <div
+        class="flex shrink-0 items-center justify-between text-xs font-semibold uppercase tracking-wider text-gold-500"
         :style="{ width: `${onDeckLabelWidth}px` }"
       >
         On Deck
-      </span>
+        <UButton
+          :icon="onDeckExpanded ? 'i-lucide-minimize-2' : 'i-lucide-maximize-2'"
+          color="neutral"
+          variant="ghost"
+          size="xs"
+          :aria-label="onDeckExpanded ? 'Shrink' : 'Expand'"
+          :title="onDeckExpanded ? 'Shrink' : 'Expand'"
+          @click.stop="settingsStore.toggleOnDeckExpanded()"
+        />
+      </div>
       <span
         v-if="showBoardLabel"
         class="text-xs font-medium uppercase tracking-wider text-slate-600 dark:text-slate-300"
