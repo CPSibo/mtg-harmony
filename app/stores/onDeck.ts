@@ -43,6 +43,10 @@ export const useOnDeckStore = defineStore('onDeck', () => {
     card.value = null;
   }
 
+  function reset() {
+    clearCard();
+  }
+
   function save() {
     const { save: persist } = useLocalStorage();
     persist(STORAGE_KEY, card.value);
@@ -65,11 +69,13 @@ export const useOnDeckStore = defineStore('onDeck', () => {
   );
 
   return {
+    save,
+    load,
+    reset,
+
     card,
     setCard,
     // castCard,
     clearCard,
-    save,
-    load,
   };
 });

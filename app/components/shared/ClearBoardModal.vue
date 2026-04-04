@@ -48,19 +48,13 @@
 </template>
 
 <script setup lang="ts">
-const toast = useToast();
-const battlefield = useBattlefield();
+const reset = useReset();
 
 const open = defineModel<boolean>('open');
 
 const clearBoard = () => {
-  battlefield.clear();
+  reset.clearBoard();
 
   open.value = false;
-
-  toast.add({
-    title: 'Board cleared',
-    color: 'info',
-  });
 };
 </script>

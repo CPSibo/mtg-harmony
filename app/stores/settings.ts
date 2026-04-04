@@ -52,10 +52,12 @@ export const useSettingsStore = defineStore('settings', () => {
     snapScale.value = value;
   }
 
-  function clear() {
-    const { save: persist } = useLocalStorage();
-    persist(STORAGE_KEY, defaults);
-    load();
+  function reset() {
+    onDeckExpanded.value = defaults.onDeckExpanded
+    prefetchEnabled.value = defaults.prefetchEnabled
+    wakeLockEnabled.value = defaults.wakeLockEnabled
+    imagesEnabled.value = defaults.imagesEnabled
+    snapScale.value = defaults.snapScale
   }
 
   function save() {
@@ -101,7 +103,7 @@ export const useSettingsStore = defineStore('settings', () => {
   return {
     save,
     load,
-    clear,
+    reset,
 
     onDeckExpanded,
     toggleOnDeckExpanded,

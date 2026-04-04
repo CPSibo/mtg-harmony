@@ -49,22 +49,13 @@
 </template>
 
 <script setup lang="ts">
-const toast = useToast();
-const battlefield = useBattlefield();
-const onDeckStore = useOnDeckStore();
+const reset = useReset();
 
 const open = defineModel<boolean>('open');
 
 const clearSession = () => {
-  battlefield.clear();
-  // TODO: Clear history
-  onDeckStore.clearCard();
+  reset.clearSession();
 
   open.value = false;
-
-  toast.add({
-    title: 'Session cleared',
-    color: 'info',
-  });
 };
 </script>

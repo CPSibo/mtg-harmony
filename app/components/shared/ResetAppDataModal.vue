@@ -50,24 +50,13 @@
 </template>
 
 <script setup lang="ts">
-const toast = useToast();
-const battlefield = useBattlefield();
-const settingsStore = useSettingsStore();
-const onDeckStore = useOnDeckStore();
+const reset = useReset();
 
 const open = defineModel<boolean>('open');
 
 const resetAppData = () => {
-  battlefield.clear();
-  // TODO: Clear history
-  onDeckStore.clearCard();
-  settingsStore.clear();
+  reset.resetAppData();
 
   open.value = false;
-
-  toast.add({
-    title: 'App data reset',
-    color: 'info',
-  });
 };
 </script>
