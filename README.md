@@ -60,7 +60,7 @@ npm run test:e2e      # Playwright (end-to-end)
 ### Production
 
 ```bash
-npm run generate      # .../.output/
+npm run generate      # .../.output/public
 ```
 
 The output is a fully static site with no server requirements. Deploy to any static host (Vercel, Netlify, GitHub Pages, etc.).
