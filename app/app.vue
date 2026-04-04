@@ -69,7 +69,7 @@ onMounted(() => {
 const settingsModal = overlay.create(LazySettingsModal);
 
 async function openSettings() {
-  const instance = settingsModal.open();
+  settingsModal.open();
 }
 
 const showConfirmClearBoard = ref(false);

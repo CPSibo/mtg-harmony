@@ -42,13 +42,13 @@ const items = ref<DropdownMenuItem[][]>([
       label: 'Settings',
       icon: 'i-lucide-settings',
       color: 'primary',
-      onSelect: (e) => emit('openSettingsRequested'),
+      onSelect: () => emit('openSettingsRequested'),
     },
     {
       label: 'Fullscreen',
       icon: fullscreenIcon,
       color: 'neutral',
-      onSelect: (e) => fullscreen.toggle(),
+      onSelect: () => fullscreen.toggle(),
     },
   ],
   [
@@ -56,19 +56,19 @@ const items = ref<DropdownMenuItem[][]>([
       label: 'Clear board',
       icon: 'i-lucide-brush-cleaning',
       color: 'warning',
-      onSelect: (e) => emit('clearBoardRequested'),
+      onSelect: () => emit('clearBoardRequested'),
     },
     {
       label: 'Clear session',
       icon: 'i-lucide-rotate-ccw',
       color: 'warning',
-      onSelect: (e) => emit('clearSessionRequested'),
+      onSelect: () => emit('clearSessionRequested'),
     },
     {
       label: 'Reset all data',
       icon: 'i-lucide-trash',
       color: 'error',
-      onSelect: (e) => emit('resetAllRequested'),
+      onSelect: () => emit('resetAllRequested'),
     },
   ],
   [

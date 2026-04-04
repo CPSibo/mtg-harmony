@@ -123,14 +123,14 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
   function clampPosition(requestedX: number, requestedY: number) {
     // TODO: Need to account for zoom scale.
 
-    const minAllowableX = -size.value.width + windowWidth.value;
-    const maxAllowableX = 0;
+    // const minAllowableX = -size.value.width + windowWidth.value;
+    // const maxAllowableX = 0;
 
-    const minAllowableY = -size.value.height + windowHeight.value;
-    const maxAllowableY = 0;
+    // const minAllowableY = -size.value.height + windowHeight.value;
+    // const maxAllowableY = 0;
 
-    const finalX = Math.min(Math.max(requestedX, minAllowableX), maxAllowableX);
-    const finalY = Math.min(Math.max(requestedY, minAllowableY), maxAllowableY);
+    // const finalX = Math.min(Math.max(requestedX, minAllowableX), maxAllowableX);
+    // const finalY = Math.min(Math.max(requestedY, minAllowableY), maxAllowableY);
 
     // return {
     //   x: finalX,
@@ -220,11 +220,11 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
         scale.value;
 
       const midpoint = getTouchMidpoint(touchList[0]!, touchList[1]!);
-      const originX = position.value.x - halfWidth.value;
-      const originY = position.value.y - halfHeight.value;
-      const midX = midpoint.x - originX;
-      const midY = midpoint.y - originY;
 
+      const midX = midpoint.x - position.value.x;
+      const midY = midpoint.y - position.value.y;
+
+      // Shift canvas so the pinch midpoint stays fixed on screen.
       const requestedX = position.value.x - midX * (factor - 1);
       const requestedY = position.value.y - midY * (factor - 1);
 

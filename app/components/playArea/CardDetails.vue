@@ -156,7 +156,7 @@
 <script setup lang="ts">
 import type { BoardCard } from '~/types/PlayArea';
 
-const open = defineModel('open', { default: false });
+const open = defineModel<boolean>('open', { default: false });
 
 const props = defineProps<{
   card: BoardCard | undefined;
