@@ -128,8 +128,14 @@ export const useBattlefield = defineStore('battlefield', () => {
     addStackByCard(card);
   }
 
-  function clear() {
+  function clearStacks() {
     stacks.value = [];
+  }
+
+  function reset() {
+    clearStacks();
+    cancelAttaching();
+    setCenter(defaults.center);
   }
 
   function save() {
@@ -168,13 +174,14 @@ export const useBattlefield = defineStore('battlefield', () => {
   return {
     save,
     load,
-    clear,
+    reset,
 
     untapAll,
 
     stacks,
     setStacks,
     addStackByCard,
+    clearStacks,
 
     center,
     setCenter,
