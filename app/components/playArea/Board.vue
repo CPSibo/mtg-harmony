@@ -1,5 +1,6 @@
 <template>
   <div
+    ref="wrapper"
     class="board-wrapper"
     :style="{ cursor: isDragging ? 'grabbing' : 'grab' }"
     @wheel.prevent="onWheel"
@@ -7,19 +8,15 @@
     @mousemove="onMouseMove"
     @mouseup="onMouseUp"
     @mouseleave="onMouseLeave"
-    @touchstart.stop.prevent="guardedTouchStart"
-    @touchmove.stop.prevent="guardedTouchMove"
-    @touchend.stop.prevent="guardedTouchEnd"
   >
     <div
       ref="board"
       class="board"
       :style="style"
     >
-      <SharedGrid>
+      <SharedGrid v-if="!!boardEl">
         <LazyPlayAreaBoardCardStack
           v-for="stack in stacks"
-          v-if="!!boardEl"
           :key="stack.id"
           v-model:is-dragging="anyCardIsDragging"
           :stack="stack"
@@ -47,13 +44,14 @@
 </template>
 
 <script setup lang="ts">
-import type { BoardCard, BoardCardStack } from '~/types/PlayArea';
+import type { BoardCard } from '~/types/PlayArea';
 
 import { onKeyPressed } from '@vueuse/core';
 
 const battlefield = useBattlefield();
 const { stacks, center: centerState } = storeToRefs(battlefield);
 
+const wrapperEl = useTemplateRef('wrapper');
 const boardEl = useTemplateRef('board');
 
 const {
@@ -82,18 +80,56 @@ const {
 
 const anyCardIsDragging = ref(false);
 
+// ─── Imperative touch listeners ───────────────────────────────────────────────
+//
+// We CANNOT use Vue's @touchstart.stop.prevent / @touchmove.stop.prevent here.
+// Those compile to bubble-phase listeners and call stopPropagation(), which
+// races with VueUse's capture-phase listeners on child card stacks and
+// intermittently breaks either board pan OR card button taps.
+//
+// Instead we register { passive: false } so we can call preventDefault()
+// (blocking browser scroll / native pan) without calling stopPropagation()
+// (so child elements still receive the events for their own tap/drag handling).
+
 function guardedTouchStart(e: TouchEvent) {
   if (anyCardIsDragging.value) return;
+  e.preventDefault();
   onTouchStart(e);
 }
+
 function guardedTouchMove(e: TouchEvent) {
+  // Always preventDefault on move to block browser scroll / overscroll bounce.
+  e.preventDefault();
   if (anyCardIsDragging.value) return;
   onTouchMove(e);
 }
+
 function guardedTouchEnd(e: TouchEvent) {
   if (anyCardIsDragging.value) return;
   onTouchEnd(e);
+  // No preventDefault here — we want the browser to synthesise
+  // click/tap events so UButton and other child controls work.
 }
+
+onMounted(() => {
+  const el = wrapperEl.value;
+  if (!el) return;
+
+  el.addEventListener('touchstart', guardedTouchStart, { passive: false });
+  el.addEventListener('touchmove', guardedTouchMove, { passive: false });
+  el.addEventListener('touchend', guardedTouchEnd, { passive: true });
+});
+
+onUnmounted(() => {
+  const el = wrapperEl.value;
+  if (!el) return;
+
+  el.removeEventListener('touchstart', guardedTouchStart);
+  el.removeEventListener('touchmove', guardedTouchMove);
+  el.removeEventListener('touchend', guardedTouchEnd);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 const selectedCard = ref<BoardCard | undefined>();
 
@@ -114,38 +150,6 @@ const showCardModifiers = (card: BoardCard) => {
 };
 
 const addCardsIsOpen = ref(false);
-
-// const stackClicked = (card: BoardCard, stack: BoardCardStack) => {
-//   if (!attachSourceCard.value || !attachSourceStack.value) return;
-
-//   if (attachSourceCard.value !== attachSourceStack.value.primary) {
-//     if (attachSourceStack.value.attachments.length > 0) {
-//       const nextPrimary = attachSourceStack.value.attachments[0]!;
-//       attachSourceStack.value.primary = nextPrimary;
-//       attachSourceStack.value.attachments =
-//         attachSourceStack.value.attachments.filter((f) => f !== nextPrimary);
-//     }
-//   } else {
-//     stacks.value = stacks.value.filter((f) => f !== attachSourceStack.value);
-//   }
-
-//   stack.attachments.push(attachSourceCard.value);
-
-//   attachSourceStack.value = undefined;
-//   attachSourceCard.value = undefined;
-// };
-
-const detachRequested = (card: BoardCard, stack: BoardCardStack) => {
-  if (!card || !stack) return;
-
-  if (!stack.attachments?.includes(card)) return;
-
-  stack.attachments = stack.attachments.filter((f) => f !== card);
-
-  battlefield.addStackByCard(card);
-
-  cardDetailsIsOpen.value = false;
-};
 
 onKeyPressed('\\', (e) => {
   e.preventDefault();

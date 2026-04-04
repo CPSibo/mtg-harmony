@@ -130,7 +130,7 @@
 import type { Position } from '@vueuse/core';
 import type { BoardCard, BoardCardStack } from '~/types/PlayArea';
 
-const isDragging = defineModel('isDragging');
+const isDragging = defineModel<boolean>('isDragging');
 
 const props = defineProps<{
   board: HTMLDivElement;
@@ -160,7 +160,7 @@ const { style, isDragging: myIsDragging } = useBoardDraggable(stackEl, {
     y: props.stack.position.y,
   },
   preventDefault: true,
-  stopPropagation: true,
+  stopPropagation: false,
   capture: true,
   disabled: () => battlefield.isAttaching,
   onEnd: (position: Position) => {

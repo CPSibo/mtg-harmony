@@ -8,7 +8,7 @@
       class="cursor-pointer"
       :class="{ tapped: card.tapped }"
       title="Double tap to open"
-      @dblclick.stop="emits('showCardDetails', card)"
+      @dblclick="emits('showCardDetails', card)"
       @click="tryAttach"
     >
       <img

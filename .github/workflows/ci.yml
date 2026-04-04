@@ -24,6 +24,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Formatting
+        run: npm run format:check
+
   test:
     runs-on: ubuntu-latest
     steps:
