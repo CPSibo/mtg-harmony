@@ -1,5 +1,6 @@
 <template>
   <div
+    ref="wrapper"
     class="board-wrapper"
     :style="{ cursor: isDragging ? 'grabbing' : 'grab' }"
     @wheel.prevent="onWheel"
@@ -7,9 +8,6 @@
     @mousemove="onMouseMove"
     @mouseup="onMouseUp"
     @mouseleave="onMouseLeave"
-    @touchstart.stop.prevent="guardedTouchStart"
-    @touchmove.stop.prevent="guardedTouchMove"
-    @touchend.stop.prevent="guardedTouchEnd"
   >
     <div
       ref="board"
@@ -53,6 +51,7 @@ import { onKeyPressed } from '@vueuse/core';
 const battlefield = useBattlefield();
 const { stacks, center: centerState } = storeToRefs(battlefield);
 
+const wrapperEl = useTemplateRef('wrapper');
 const boardEl = useTemplateRef('board');
 
 const {
@@ -81,18 +80,56 @@ const {
 
 const anyCardIsDragging = ref(false);
 
+// ─── Imperative touch listeners ───────────────────────────────────────────────
+//
+// We CANNOT use Vue's @touchstart.stop.prevent / @touchmove.stop.prevent here.
+// Those compile to bubble-phase listeners and call stopPropagation(), which
+// races with VueUse's capture-phase listeners on child card stacks and
+// intermittently breaks either board pan OR card button taps.
+//
+// Instead we register { passive: false } so we can call preventDefault()
+// (blocking browser scroll / native pan) without calling stopPropagation()
+// (so child elements still receive the events for their own tap/drag handling).
+
 function guardedTouchStart(e: TouchEvent) {
   if (anyCardIsDragging.value) return;
+  e.preventDefault();
   onTouchStart(e);
 }
+
 function guardedTouchMove(e: TouchEvent) {
+  // Always preventDefault on move to block browser scroll / overscroll bounce.
+  e.preventDefault();
   if (anyCardIsDragging.value) return;
   onTouchMove(e);
 }
+
 function guardedTouchEnd(e: TouchEvent) {
   if (anyCardIsDragging.value) return;
   onTouchEnd(e);
+  // No preventDefault here — we want the browser to synthesise
+  // click/tap events so UButton and other child controls work.
 }
+
+onMounted(() => {
+  const el = wrapperEl.value;
+  if (!el) return;
+
+  el.addEventListener('touchstart', guardedTouchStart, { passive: false });
+  el.addEventListener('touchmove', guardedTouchMove, { passive: false });
+  el.addEventListener('touchend', guardedTouchEnd, { passive: true });
+});
+
+onUnmounted(() => {
+  const el = wrapperEl.value;
+  if (!el) return;
+
+  el.removeEventListener('touchstart', guardedTouchStart);
+  el.removeEventListener('touchmove', guardedTouchMove);
+  el.removeEventListener('touchend', guardedTouchEnd);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 const selectedCard = ref<BoardCard | undefined>();
 

@@ -220,11 +220,11 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
         scale.value;
 
       const midpoint = getTouchMidpoint(touchList[0]!, touchList[1]!);
-      const originX = position.value.x - halfWidth.value;
-      const originY = position.value.y - halfHeight.value;
-      const midX = midpoint.x - originX;
-      const midY = midpoint.y - originY;
 
+      const midX = midpoint.x - position.value.x;
+      const midY = midpoint.y - position.value.y;
+
+      // Shift canvas so the pinch midpoint stays fixed on screen.
       const requestedX = position.value.x - midX * (factor - 1);
       const requestedY = position.value.y - midY * (factor - 1);
 
