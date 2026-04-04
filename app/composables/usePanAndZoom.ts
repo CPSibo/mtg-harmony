@@ -123,14 +123,14 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
   function clampPosition(requestedX: number, requestedY: number) {
     // TODO: Need to account for zoom scale.
 
-    const minAllowableX = -size.value.width + windowWidth.value;
-    const maxAllowableX = 0;
+    // const minAllowableX = -size.value.width + windowWidth.value;
+    // const maxAllowableX = 0;
 
-    const minAllowableY = -size.value.height + windowHeight.value;
-    const maxAllowableY = 0;
+    // const minAllowableY = -size.value.height + windowHeight.value;
+    // const maxAllowableY = 0;
 
-    const finalX = Math.min(Math.max(requestedX, minAllowableX), maxAllowableX);
-    const finalY = Math.min(Math.max(requestedY, minAllowableY), maxAllowableY);
+    // const finalX = Math.min(Math.max(requestedX, minAllowableX), maxAllowableX);
+    // const finalY = Math.min(Math.max(requestedY, minAllowableY), maxAllowableY);
 
     // return {
     //   x: finalX,

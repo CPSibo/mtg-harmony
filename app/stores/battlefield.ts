@@ -82,7 +82,6 @@ export const useBattlefield = defineStore('battlefield', () => {
         'Source card already belongs to target stack as an under.',
       );
 
-    const sourceCardHasAStack = !!sourceCard.stack;
     const sourceCardIsSourceStacksPrimary =
       sourceCard === sourceCard.stack?.primary;
     const sourceStackHasAttachments = !!sourceCard.stack?.attachments?.length;

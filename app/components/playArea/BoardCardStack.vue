@@ -130,7 +130,7 @@
 import type { Position } from '@vueuse/core';
 import type { BoardCard, BoardCardStack } from '~/types/PlayArea';
 
-const isDragging = defineModel('isDragging');
+const isDragging = defineModel<boolean>('isDragging');
 
 const props = defineProps<{
   board: HTMLDivElement;

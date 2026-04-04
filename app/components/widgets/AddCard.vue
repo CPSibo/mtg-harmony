@@ -26,6 +26,8 @@
 </template>
 
 <script setup lang="ts">
+import type { CommandPaletteItem } from '@nuxt/ui';
+
 const open = defineModel<boolean>('open');
 
 const searchTerm = ref('');
@@ -71,7 +73,7 @@ const groups = computed(() => [
 
 const battlefield = useBattlefield();
 
-function onSelect(item: any) {
+function onSelect(item: CommandPaletteItem) {
   const card = cards.value?.find((f) => f.id === item.id);
 
   if (!card) return;

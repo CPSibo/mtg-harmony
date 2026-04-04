@@ -16,10 +16,9 @@
       class="board"
       :style="style"
     >
-      <SharedGrid>
+      <SharedGrid v-if="!!boardEl">
         <LazyPlayAreaBoardCardStack
           v-for="stack in stacks"
-          v-if="!!boardEl"
           :key="stack.id"
           v-model:is-dragging="anyCardIsDragging"
           :stack="stack"
@@ -47,7 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import type { BoardCard, BoardCardStack } from '~/types/PlayArea';
+import type { BoardCard } from '~/types/PlayArea';
 
 import { onKeyPressed } from '@vueuse/core';
 
@@ -114,38 +113,6 @@ const showCardModifiers = (card: BoardCard) => {
 };
 
 const addCardsIsOpen = ref(false);
-
-// const stackClicked = (card: BoardCard, stack: BoardCardStack) => {
-//   if (!attachSourceCard.value || !attachSourceStack.value) return;
-
-//   if (attachSourceCard.value !== attachSourceStack.value.primary) {
-//     if (attachSourceStack.value.attachments.length > 0) {
-//       const nextPrimary = attachSourceStack.value.attachments[0]!;
-//       attachSourceStack.value.primary = nextPrimary;
-//       attachSourceStack.value.attachments =
-//         attachSourceStack.value.attachments.filter((f) => f !== nextPrimary);
-//     }
-//   } else {
-//     stacks.value = stacks.value.filter((f) => f !== attachSourceStack.value);
-//   }
-
-//   stack.attachments.push(attachSourceCard.value);
-
-//   attachSourceStack.value = undefined;
-//   attachSourceCard.value = undefined;
-// };
-
-const detachRequested = (card: BoardCard, stack: BoardCardStack) => {
-  if (!card || !stack) return;
-
-  if (!stack.attachments?.includes(card)) return;
-
-  stack.attachments = stack.attachments.filter((f) => f !== card);
-
-  battlefield.addStackByCard(card);
-
-  cardDetailsIsOpen.value = false;
-};
 
 onKeyPressed('\\', (e) => {
   e.preventDefault();
