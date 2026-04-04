@@ -9,7 +9,7 @@
   >
     <UButton
       variant="solid"
-      color="secondary"
+      color="primary"
       size="xl"
       title="Show on-deck card"
       icon="i-lucide-scan-search"
