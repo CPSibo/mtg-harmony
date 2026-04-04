@@ -1,0 +1,44 @@
+/*
+ * Fix mana font to not inject when not needed.
+ */
+
+.ms-1:not(.ms):before,
+.ms-2:not(.ms):before,
+.ms-3:not(.ms):before,
+.ms-4:not(.ms):before,
+.ms-5:not(.ms):before {
+  content: inherit;
+}
+
+.ms-1:not(.ms) {
+  margin-inline-start: calc(var(--spacing) * 1);
+}
+
+.ms-2:not(.ms) {
+  margin-inline-start: calc(var(--spacing) * 2);
+}
+
+.ms-3:not(.ms) {
+  margin-inline-start: calc(var(--spacing) * 3);
+}
+
+.ms-4:not(.ms) {
+  margin-inline-start: calc(var(--spacing) * 4);
+}
+
+/*
+ * Fix mana font to match nuxt ui icon sizes.
+ */
+
+.ms.ms-2x {
+  line-height: 24px;
+  font-size: 24px;
+}
+
+button:has(.ms:only-child) {
+  padding: 8px;
+}
+
+button.text-xs:has(.ms:only-child) {
+  padding: 6px;
+}

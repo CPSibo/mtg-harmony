@@ -1,0 +1,45 @@
+@import 'tailwindcss';
+@import '@nuxt/ui';
+
+@theme static {
+  --font-sans: 'Public Sans', sans-serif;
+
+  --color-green-50: #effdf5;
+  --color-green-100: #d9fbe8;
+  --color-green-200: #b3f5d1;
+  --color-green-300: #75edae;
+  --color-green-400: #00dc82;
+  --color-green-500: #00c16a;
+  --color-green-600: #00a155;
+  --color-green-700: #007f45;
+  --color-green-800: #016538;
+  --color-green-900: #0a5331;
+  --color-green-950: #052e16;
+
+  --color-gold-50: #fdfaeb;
+  --color-gold-100: #faf3c7;
+  --color-gold-200: #f5e48a;
+  --color-gold-300: #eed046;
+  --color-gold-400: #e5b921;
+  --color-gold-500: #d4a017;
+  --color-gold-600: #b8860b;
+  --color-gold-700: #926708;
+  --color-gold-800: #755207;
+  --color-gold-900: #5b3f05;
+  --color-gold-950: #3b2803;
+}
+
+button:not(:disabled) {
+  cursor: pointer;
+}
+
+:root {
+  --card-ratio: 12/17;
+}
+
+.mtg-card-display {
+  height: 100%;
+  width: auto;
+  aspect-ratio: var(--card-ratio);
+  border-radius: 3%;
+}
