@@ -26,8 +26,6 @@
 </template>
 
 <script setup lang="ts">
-import type { CommandPaletteItem } from '@nuxt/ui';
-
 const open = defineModel<boolean>('open');
 
 const searchTerm = ref('');

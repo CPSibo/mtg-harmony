@@ -10,6 +10,7 @@
       title="Double tap to open"
       @dblclick="emits('showCardDetails', card)"
       @click="tryAttach"
+      @touchend="tryAttach"
     >
       <img
         :src="card.image_uri"
@@ -72,7 +73,7 @@ const isValidAttachmentTarget = computed(() => {
   return battlefield.isValidAttadchmentTarget(props.card);
 });
 
-const tryAttach = (ev: MouseEvent) => {
+const tryAttach = (ev: Event) => {
   if (!battlefield.isAttaching) return;
 
   if (!isValidAttachmentTarget.value) return;

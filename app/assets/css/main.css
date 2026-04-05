@@ -43,3 +43,7 @@ button:not(:disabled) {
   aspect-ratio: var(--card-ratio);
   border-radius: 3%;
 }
+
+iframe {
+  pointer-events: none;
+}

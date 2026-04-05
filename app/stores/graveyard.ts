@@ -1,16 +1,30 @@
-import type { BoardCard } from '~/types/PlayArea';
+import type { BoardCard, BoardCardStack } from '~/types/PlayArea';
 
 const STORAGE_KEY = 'mtg-harmony_graveyard';
 
 export interface Graveyard {
+  removeCounters: boolean;
   cards: BoardCard[];
 }
 
+const defaults: Graveyard = {
+  removeCounters: true,
+  cards: [],
+};
+
 export const useGraveyard = defineStore('graveyard', () => {
-  const cards = ref<BoardCard[]>([]);
+  const removeCounters = ref(defaults.removeCounters);
+
+  const cards = ref<BoardCard[]>(defaults.cards);
 
   function addCard(card: BoardCard) {
     if (cards.value.includes(card)) return false;
+
+    if(removeCounters)
+      card.modifiers = [];
+
+    card.tapped = false;
+    card.stack = undefined;
 
     cards.value.push(card);
 
@@ -30,6 +44,7 @@ export const useGraveyard = defineStore('graveyard', () => {
   }
 
   function reset() {
+    removeCounters.value = defaults.removeCounters;
     removeAllCards();
   }
 
@@ -37,6 +52,7 @@ export const useGraveyard = defineStore('graveyard', () => {
     const { save: persist } = useLocalStorage();
     persist(STORAGE_KEY, {
       cards: cards.value,
+      removeCounters: removeCounters.value,
     });
   }
 
@@ -48,13 +64,16 @@ export const useGraveyard = defineStore('graveyard', () => {
       return false;
     }
 
+    if (typeof data.removeCounters === 'boolean')
+      removeCounters.value = data.removeCounters;
+
     if (Array.isArray(data?.cards)) cards.value = data.cards;
 
     return true;
   }
 
   watch(
-    [cards],
+    [cards, removeCounters],
     () => {
       save();
     },
@@ -68,6 +87,9 @@ export const useGraveyard = defineStore('graveyard', () => {
     load,
     reset,
 
+    removeCounters,
+
+    cards,
     addCard,
     removeCard,
     removeAllCards,

@@ -48,7 +48,17 @@
         <LazyUSeparator />
 
         <UButton
-          v-if="!isAttached"
+          v-if="hasAttachments"
+          icon="i-lucide-unlink"
+          color="neutral"
+          variant="ghost"
+          size="xl"
+          @click="explodeStack"
+        >
+          Unattach all
+        </UButton>
+        <UButton
+          v-else-if="!isAttached"
           icon="i-lucide-link"
           color="neutral"
           variant="ghost"
@@ -107,16 +117,26 @@
               label: 'Destroy',
               icon: 'i-lucide-swords',
               color: 'primary',
+              onSelect() {
+                graveyard.addCard(props.card!);
+                battlefield.removeCardFromStack(props.card!);
+              },
             },
             {
               label: 'Exile',
               icon: 'i-lucide-ban',
               color: 'warning',
+              onSelect() {
+                // TODO
+              },
             },
             {
               label: 'Delete',
               icon: 'i-lucide-trash',
               color: 'error',
+              onSelect() {
+                battlefield.removeCardFromStack(props.card!);
+              },
             },
           ]"
           :content="{
@@ -168,6 +188,8 @@ const emit = defineEmits<{
 
 const battlefield = useBattlefield();
 
+const graveyard = useGraveyard();
+
 const toggleTap = () => {
   if (!props.card) return;
 
@@ -175,6 +197,16 @@ const toggleTap = () => {
 
   open.value = false;
 };
+
+const hasAttachments = computed(() => {
+  if (!props.card || !props.card.stack?.primary) return false;
+
+  if (props.card.stack.primary !== props.card) return false;
+
+  if (!props.card.stack.attachments?.length) return false;
+
+  return true;
+});
 
 const isAttached = computed(() => {
   if (!props.card || !props.card.stack?.attachments) return false;
@@ -189,6 +221,11 @@ const startAttaching = () => {
 
 const tryDetach = () => {
   battlefield.detach(props.card!);
+  open.value = false;
+};
+
+const explodeStack = () => {
+  battlefield.explodeStack(props.card!.stack!);
   open.value = false;
 };
 </script>
