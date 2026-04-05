@@ -21,7 +21,7 @@ export const useBattlefield = defineStore('battlefield', () => {
   }
 
   function addStackByCard(card: BoardCard) {
-    const newStack = {
+    const newStack: BoardCardStack = {
       id: uuidv4(),
       primary: card,
       attachments: [],
@@ -35,6 +35,85 @@ export const useBattlefield = defineStore('battlefield', () => {
     stacks.value.push(newStack);
 
     return newStack;
+  }
+
+  function removeStack(stack: BoardCardStack) {
+    if (!stacks.value.includes(stack)) return false;
+
+    stacks.value = stacks.value.filter((f) => f !== stack);
+
+    return true;
+  }
+
+  function removeCardFromStack(card: BoardCard) {
+    const stack = card.stack;
+
+    if (!stack) return false;
+
+    if (!stacks.value.includes(stack)) return false;
+
+    if (stack.attachments.includes(card)) {
+      stack.attachments = stack.attachments.filter((f) => f !== card);
+
+      return true;
+    }
+
+    if (stack.unders.includes(card)) {
+      stack.unders = stack.unders.filter((f) => f !== card);
+
+      return true;
+    }
+
+    if (stack.primary === card) {
+      const newStacks = explodeStack(stack);
+      removeStack(newStacks.primaryStack);
+      return [...newStacks.attachmentStacks, ...newStacks.underStacks];
+    }
+
+    throw new Error('Unknown removal operation.');
+  }
+
+  function explodeStack(stack: BoardCardStack) {
+    const newStacks: {
+      primaryStack: BoardCardStack;
+      attachmentStacks: BoardCardStack[];
+      underStacks: BoardCardStack[];
+    } = {
+      primaryStack: stack,
+      attachmentStacks: [],
+      underStacks: [],
+    };
+
+    const xSpacing = 200;
+    const ySpacing = 240;
+
+    const attachments = stack.attachments;
+    for (let index = 0; index < attachments.length; index++) {
+      const attachment = attachments[index]!;
+
+      removeCardFromStack(attachment);
+      const newStack = addStackByCard(attachment);
+      newStack.position = {
+        x: stack.position.x + index * xSpacing - (attachments.length - 1) * (xSpacing / 2),
+        y: stack.position.y + ySpacing,
+      };
+      newStacks.attachmentStacks.push(newStack);
+    }
+
+    const unders = stack.unders;
+    for (let index = 0; index < unders.length; index++) {
+      const under = unders[index]!;
+
+      removeCardFromStack(under);
+      const newStack = addStackByCard(under);
+      newStack.position = {
+        x: stack.position.x + index * xSpacing - (attachments.length - 1) * (xSpacing / 2),
+        y: stack.position.y + ySpacing * 2,
+      };
+      newStacks.underStacks.push(newStack);
+    }
+
+    return newStacks;
   }
 
   function untapAll() {
@@ -65,7 +144,7 @@ export const useBattlefield = defineStore('battlefield', () => {
   }
 
   function finishAttaching(stack: BoardCardStack) {
-    const sourceCard = cardToAttach.value;
+    const sourceCard = toValue(cardToAttach);
 
     if (!sourceCard) throw new Error('Source card not set.');
 
@@ -82,20 +161,11 @@ export const useBattlefield = defineStore('battlefield', () => {
         'Source card already belongs to target stack as an under.',
       );
 
-    const sourceCardIsSourceStacksPrimary =
-      sourceCard === sourceCard.stack?.primary;
-    const sourceStackHasAttachments = !!sourceCard.stack?.attachments?.length;
-
-    if (sourceCardIsSourceStacksPrimary) {
-      if (sourceStackHasAttachments) {
-        // TODO: Split attachments into their own stacks.
-      }
-
-      stacks.value = stacks.value.filter((f) => f !== sourceCard.stack);
-    }
+    removeCardFromStack(sourceCard);
 
     stack.attachments.push(sourceCard);
     sourceCard.stack = stack;
+
     cardToAttach.value = null;
   }
 
@@ -182,6 +252,9 @@ export const useBattlefield = defineStore('battlefield', () => {
     setStacks,
     addStackByCard,
     clearStacks,
+    removeStack,
+    removeCardFromStack,
+    explodeStack,
 
     center,
     setCenter,

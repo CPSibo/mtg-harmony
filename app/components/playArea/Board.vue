@@ -1,7 +1,7 @@
 <template>
   <div
     ref="wrapper"
-    class="board-wrapper"
+    class="board-wrapper touch-none"
     :style="{ cursor: isDragging ? 'grabbing' : 'grab' }"
     @wheel.prevent="onWheel"
     @mousedown="onMouseDown"

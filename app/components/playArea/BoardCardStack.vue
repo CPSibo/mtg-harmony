@@ -71,16 +71,26 @@
               label: 'Destroy',
               icon: 'i-lucide-swords',
               color: 'primary',
+              onSelect() {
+                graveyard.addCard(props.stack.primary);
+                battlefield.removeCardFromStack(props.stack.primary);
+              },
             },
             {
               label: 'Exile',
               icon: 'i-lucide-ban',
               color: 'warning',
+              onSelect() {
+                //TODO
+              },
             },
             {
               label: 'Delete',
               icon: 'i-lucide-trash',
               color: 'error',
+              onSelect() {
+                battlefield.removeCardFromStack(props.stack.primary);
+              },
             },
           ]"
           :content="{
@@ -148,6 +158,8 @@ const settingsStore = useSettingsStore();
 const { snapScale } = storeToRefs(settingsStore);
 
 const battlefield = useBattlefield();
+
+const graveyard = useGraveyard();
 
 const stackEl = useTemplateRef('stack');
 
