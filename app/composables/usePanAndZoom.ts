@@ -30,8 +30,8 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
   });
   const center = computed(() => {
     return {
-      x: -position.value.x / scale.value + halfWindowWidth.value,
-      y: -position.value.y / scale.value + halfWindowHeight.value,
+      x: -position.value.x / scale.value + halfWindowWidth.value / 2,
+      y: -position.value.y / scale.value + halfWindowHeight.value / 2,
     };
   });
 
@@ -85,13 +85,20 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     const cursorX = e.clientX - originX;
     const cursorY = e.clientY - originY;
 
-    // Shift position so the point under the cursor stays fixed
-    const requestedX = position.value.x - cursorX * (factor - 1);
-    const requestedY = position.value.y - cursorY * (factor - 1);
+    const requestedScale = scale.value * factor;
 
-    position.value = clampPosition(requestedX, requestedY);
+    const previousScale = scale.value;
+    scale.value = clampScale(requestedScale);
 
-    scale.value *= factor;
+    const appliedFactor = scale.value / previousScale;
+
+    if (scale.value !== previousScale) {
+      // Shift position so the point under the cursor stays fixed
+      const requestedX = position.value.x - cursorX * (appliedFactor - 1);
+      const requestedY = position.value.y - cursorY * (appliedFactor - 1);
+
+      position.value = clampPosition(requestedX, requestedY);
+    }
 
     if (settings.onEnd) settings.onEnd(position.value);
   }
@@ -121,26 +128,32 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
   }
 
   function clampPosition(requestedX: number, requestedY: number) {
-    // TODO: Need to account for zoom scale.
+    const minAllowableX = -size.value.width * scale.value + windowWidth.value;
+    const maxAllowableX = 0;
 
-    // const minAllowableX = -size.value.width + windowWidth.value;
-    // const maxAllowableX = 0;
+    const minAllowableY = -size.value.height * scale.value + windowHeight.value;
+    const maxAllowableY = 0;
 
-    // const minAllowableY = -size.value.height + windowHeight.value;
-    // const maxAllowableY = 0;
-
-    // const finalX = Math.min(Math.max(requestedX, minAllowableX), maxAllowableX);
-    // const finalY = Math.min(Math.max(requestedY, minAllowableY), maxAllowableY);
-
-    // return {
-    //   x: finalX,
-    //   y: finalY,
-    // };
+    const finalX = Math.min(Math.max(requestedX, minAllowableX), maxAllowableX);
+    const finalY = Math.min(Math.max(requestedY, minAllowableY), maxAllowableY);
 
     return {
-      x: requestedX,
-      y: requestedY,
+      x: finalX,
+      y: finalY,
     };
+  }
+
+  function clampScale(requestedScale: number) {
+    const minAllowableScale = Math.max(
+      windowWidth.value / size.value.width,
+      windowHeight.value / size.value.height,
+    );
+    const maxAllowableScale = 3;
+
+    return Math.min(
+      Math.max(requestedScale, minAllowableScale),
+      maxAllowableScale,
+    );
   }
 
   function onMouseUp(_e: MouseEvent) {
@@ -224,13 +237,20 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
       const midX = midpoint.x - position.value.x;
       const midY = midpoint.y - position.value.y;
 
-      // Shift canvas so the pinch midpoint stays fixed on screen.
-      const requestedX = position.value.x - midX * (factor - 1);
-      const requestedY = position.value.y - midY * (factor - 1);
+      const requestedScale = scale.value * factor;
 
-      position.value = clampPosition(requestedX, requestedY);
+      const previousScale = scale.value;
+      scale.value = clampScale(requestedScale);
 
-      scale.value *= factor;
+      const appliedFactor = scale.value / previousScale;
+
+      if (scale.value !== previousScale) {
+        // Shift canvas so the pinch midpoint stays fixed on screen.
+        const requestedX = position.value.x - midX * (appliedFactor - 1);
+        const requestedY = position.value.y - midY * (appliedFactor - 1);
+
+        position.value = clampPosition(requestedX, requestedY);
+      }
     }
   }
 

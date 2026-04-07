@@ -39,14 +39,10 @@
     v-model:open="cardModifiersIsOpen"
     :card="selectedCard"
   />
-
-  <WidgetsAddCard v-model:open="addCardsIsOpen" />
 </template>
 
 <script setup lang="ts">
 import type { BoardCard } from '~/types/PlayArea';
-
-import { onKeyPressed } from '@vueuse/core';
 
 const battlefield = useBattlefield();
 const { stacks, center: centerState } = storeToRefs(battlefield);
@@ -79,6 +75,14 @@ const {
 });
 
 const anyCardIsDragging = ref(false);
+
+watch(
+  center,
+  (value) => {
+    battlefield.setCenter(value);
+  },
+  { immediate: true, deep: true },
+);
 
 // ─── Imperative touch listeners ───────────────────────────────────────────────
 //
@@ -148,15 +152,6 @@ const showCardModifiers = (card: BoardCard) => {
   cardDetailsIsOpen.value = false;
   cardModifiersIsOpen.value = true;
 };
-
-const addCardsIsOpen = ref(false);
-
-onKeyPressed('\\', (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-
-  addCardsIsOpen.value = true;
-});
 </script>
 
 <style lang="css" scoped>

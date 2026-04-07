@@ -18,10 +18,9 @@
         :alt="card.name"
       />
 
-      <!-- TODO: -->
-      <!-- <div class="counter" v-if="!!stack.counter">
-        {{ stack.counter }}
-      </div> -->
+      <div class="face-number" v-if="!!card.faceNumber">
+        {{ card.faceNumber }}
+      </div>
 
       <div
         v-if="battlefield.isAttaching && isHovered && isValidAttachmentTarget"
@@ -146,7 +145,7 @@ const isHovered = useElementHover(cardImageSection);
   padding-top: 2px;
 }
 
-.counter {
+.face-number {
   position: absolute;
   top: 32%;
   left: 50%;

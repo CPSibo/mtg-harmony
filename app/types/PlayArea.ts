@@ -14,7 +14,6 @@ export interface BoardCardStack {
   position: Position;
   attachments: BoardCard[];
   unders: BoardCard[];
-  counter: number;
 }
 
 export interface BoardCard {
@@ -27,6 +26,7 @@ export interface BoardCard {
   modifiers: BoardCardModifier[];
   tapped: boolean;
   stack?: BoardCardStack;
+  faceNumber: number;
 }
 
 export interface Modifier {

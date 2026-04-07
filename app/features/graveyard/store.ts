@@ -1,12 +1,6 @@
-import type { Widget, WidgetCommand } from '~/types/Widgets';
-import type { BoardCard, BoardCardStack } from '~/types/PlayArea';
+import type { BoardCard } from '~/types/PlayArea';
 
 const STORAGE_KEY = 'mtg-harmony_graveyard';
-
-export interface Graveyard {
-  removeCounters: boolean;
-  cards: BoardCard[];
-}
 
 const defaults: Graveyard = {
   removeCounters: true,
@@ -95,4 +89,4 @@ export const useGraveyard = defineStore('graveyard', () => {
     removeCard,
     removeAllCards,
   };
-}<Widget>);
+});

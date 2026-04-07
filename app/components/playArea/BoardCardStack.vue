@@ -112,7 +112,6 @@
         class="primary-card"
         :card="stack.primary"
         :stack="stack"
-        :counter="stack.counter"
         @show-card-details="emits('showCardDetails', stack.primary)"
         @show-card-modifiers="emits('showCardModifiers', stack.primary)"
       />

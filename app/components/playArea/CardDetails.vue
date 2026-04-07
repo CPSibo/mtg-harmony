@@ -39,10 +39,9 @@
         </UButton>
 
         <UInputNumber
-          v-model="card.stack!.counter"
+          v-model="card.faceNumber"
           :min="0"
           title="Number"
-          :disabled="!card.stack"
         />
 
         <LazyUSeparator />

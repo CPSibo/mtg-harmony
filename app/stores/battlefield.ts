@@ -27,7 +27,6 @@ export const useBattlefield = defineStore('battlefield', () => {
       attachments: [],
       unders: [],
       position: { ...center.value },
-      counter: 0,
     };
 
     card.stack = newStack;
@@ -45,8 +44,24 @@ export const useBattlefield = defineStore('battlefield', () => {
     return true;
   }
 
+  function cardIsInStack(card: BoardCard, stack: BoardCardStack)
+  {
+    if(stack.primary === card) return true;
+
+    if(stack.attachments.includes(card)) return true;
+
+    if(stack.unders.includes(card)) return true;
+
+    return false
+  }
+
+  function getStackByCard(card: BoardCard)
+  {
+    return card.stack || stacks.value.find(stack => cardIsInStack(card, stack));
+  }
+
   function removeCardFromStack(card: BoardCard) {
-    const stack = card.stack;
+    const stack = getStackByCard(card);
 
     if (!stack) return false;
 
@@ -255,6 +270,8 @@ export const useBattlefield = defineStore('battlefield', () => {
     removeStack,
     removeCardFromStack,
     explodeStack,
+    cardIsInStack,
+    getStackByCard,
 
     center,
     setCenter,

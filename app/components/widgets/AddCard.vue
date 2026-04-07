@@ -3,7 +3,13 @@
     v-model:open="open"
     :ui="{ body: 'flex flex-row gap-3' }"
     title="Add card"
-    class="min-w-[50svw]"
+    :modal="false"
+    class="min-w-[50svw] top-2 translate-none -translate-x-1/2!"
+    @update:open="
+      () => {
+        searchTerm = '';
+      }
+    "
   >
     <template #content>
       <UCommandPalette
@@ -27,6 +33,12 @@
 
 <script setup lang="ts">
 import type { CommandPaletteItem } from '@nuxt/ui';
+
+defineShortcuts({
+  'b-a': () => {
+    open.value = true;
+  },
+});
 
 const open = defineModel<boolean>('open');
 
@@ -87,6 +99,7 @@ function onSelect(item: CommandPaletteItem) {
     scryfall_uri: card.scryfall_uri,
     modifiers: [],
     tapped: false,
+    faceNumber: 0,
   });
 
   cards.value = [];
