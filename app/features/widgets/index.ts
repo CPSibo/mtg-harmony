@@ -1,0 +1,1 @@
+export {useWidgetRegistry} from './store'

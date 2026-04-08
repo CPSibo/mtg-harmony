@@ -71,7 +71,23 @@ defineShortcuts({
   },
 });
 
-const graveyard = useGraveyard();
+
+
+
+const graveyard = useGraveyard()
+const registry = useWidgetRegistry()
+
+const widget = createGraveyardWidget(graveyard, {
+  toggleOpen: () => { open.value = !open.value }
+})
+
+onMounted(() => registry.register(widget))
+onUnmounted(() => registry.unregister(widget.id))
+
+
+
+
+
 const cards = computed(() => graveyard.cards);
 
 const dragHandle = useTemplateRef('dragHandle');
@@ -98,6 +114,8 @@ watch(style, async () => {
 const overlay = useOverlay();
 
 import { LazyPlayAreaCardDetails } from '#components';
+import { createGraveyardWidget, useGraveyard } from '..';
+import { useWidgetRegistry } from '~/features/widgets';
 
 const cardDetails = overlay.create(LazyPlayAreaCardDetails);
 

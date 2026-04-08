@@ -6,9 +6,24 @@ export default defineNuxtConfig({
     '@nuxt/a11y',
     '@nuxt/hints',
     '@nuxt/test-utils',
-    '@pinia/nuxt',
+    [
+      '@pinia/nuxt',
+      { autoImports: ['defineStore'] },
+    ],
     '@vueuse/nuxt',
   ],
+
+  components: [
+    { path: '~/components' },
+    { path: '~/features', pathPrefix: true },
+  ],
+
+  imports: {
+    dirs: [
+      'composables',
+      'features/**',
+    ]
+  },
 
   ssr: false,
 

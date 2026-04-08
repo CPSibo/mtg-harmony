@@ -1,15 +1,15 @@
 import type { WidgetDefinition, WidgetSetting } from "~/types/Widgets";
+import type { useGraveyard } from "./store";
 
 export function createGraveyardWidget(
   store: ReturnType<typeof useGraveyard>,
-  ui: { toggleOpen: () => void }, // UI concerns injected in
+  ui: { toggleOpen: () => void },
 ): WidgetDefinition {
-  const commands
-
   return {
     id: 'graveyard',
     label: 'Graveyard',
     icon: 'i-lucide-skull',
+
     commands: [
       {
         id: 'graveyard.toggle',
@@ -18,6 +18,7 @@ export function createGraveyardWidget(
         kbds: ['g-g'],
         execute: ui.toggleOpen,
       },
+
       {
         id: 'graveyard.clear',
         label: 'Clear graveyard',
@@ -26,11 +27,12 @@ export function createGraveyardWidget(
         execute: () => store.removeAllCards(),
       },
     ],
+
     settings: [
       {
         id: 'graveyard.removeCounters',
-        label: 'Remove counters on death',
-        description: 'Strip modifiers when cards enter the graveyard',
+        label: 'Remove counters',
+        description: 'Remove counters when cards enter the graveyard',
         type: 'boolean',
         value: () => store.removeCounters,
         set: (v) => {
