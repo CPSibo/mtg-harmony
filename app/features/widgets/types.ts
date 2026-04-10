@@ -1,11 +1,9 @@
-import type { KbdProps } from '@nuxt/ui';
-
 export interface WidgetCommand {
   id: string;
   label: string;
   description?: string;
   icon: string;
-  kbds?: (string | undefined)[] | KbdProps[] | undefined;
+  kbds?: string;
   execute: () => void;
 }
 
@@ -24,5 +22,5 @@ export interface WidgetDefinition {
   label: string;
   icon: string;
   commands: WidgetCommand[];
-  settings?: WidgetSetting[];
+  settings?: WidgetSetting<any>[];
 }

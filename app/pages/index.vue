@@ -1,9 +1,8 @@
-<template>  
+<template>
   <div class="h-full w-full">
     <PlayAreaBoard />
   </div>
 
-  
   <LayoutGlobalButtons
     @open-settings-requested="openSettings"
     @clear-board-requested="showConfirmClearBoard = true"
@@ -15,20 +14,25 @@
   <LazySharedClearSessionModal v-model:open="showConfirmClearSession" />
   <LazySharedResetAppDataModal v-model:open="showConfirmResetAppData" />
 
+  <AddCardWidgetComponent />
+  <AddCardWindow />
 
-  <WidgetsAddCard v-model:open="addCardsIsOpen" />
+  <GraveyardWidgetComponent />
+  <GraveyardWindow />
+  <GraveyardButton v-model:open="showGraveyard" />
 
-  <Graveyard v-model:open="showGraveyard" />
-
-  <LazyWidgetsPallete
-    @open_add-cards_to-battlefield="addCardsIsOpen = true"
-    @graveyard_toggle-window="showGraveyard = true"
-  />
+  <LazyWidgetsPallete @graveyard_toggle-window="showGraveyard = true" />
 </template>
 
 <script setup lang="ts">
-import Graveyard from '~/components/widgets/Graveyard.vue';
+import {
+  useGraveyard,
+  GraveyardButton,
+  GraveyardWidgetComponent,
+  GraveyardWindow,
+} from '~/features/graveyard';
 import { LazySettingsModal } from '#components';
+import { AddCardWidgetComponent, AddCardWindow } from '~/features/addCard';
 
 const toast = useToast();
 const overlay = useOverlay();
@@ -64,6 +68,5 @@ const showConfirmClearBoard = ref(false);
 const showConfirmClearSession = ref(false);
 const showConfirmResetAppData = ref(false);
 
-const addCardsIsOpen = ref(false);
 const showGraveyard = ref(false);
 </script>

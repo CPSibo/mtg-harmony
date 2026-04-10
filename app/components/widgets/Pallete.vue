@@ -39,10 +39,10 @@
 <script setup lang="ts">
 import { useWidgetRegistry } from '~/features/widgets';
 
-const emit = defineEmits<{
-  open_addCards_toBattlefield: [],
-  graveyard_toggleWindow: [],
-}>()
+defineEmits<{
+  open_addCards_toBattlefield: [];
+  graveyard_toggleWindow: [];
+}>();
 
 const open = defineModel<boolean>('open');
 
@@ -52,8 +52,8 @@ defineShortcuts({
   },
 });
 
-const registry = useWidgetRegistry()
-const groups = computed(() => registry.paletteGroups)
+const registry = useWidgetRegistry();
+const groups = computed(() => registry.paletteGroups);
 
 // const groups = ref<CommandPaletteGroup[]>([
 //   {

@@ -137,6 +137,7 @@
 
 <script setup lang="ts">
 import type { Position } from '@vueuse/core';
+import { useGraveyard } from '~/features/graveyard';
 import type { BoardCard, BoardCardStack } from '~/types/PlayArea';
 
 const isDragging = defineModel<boolean>('isDragging');

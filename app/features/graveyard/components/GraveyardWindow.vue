@@ -1,6 +1,7 @@
 <template>
   <LazyUModal
-    v-model:open="open"
+    ref="graveyardModal"
+    v-model:open="graveyardStore.graveyardWindowIsOpen"
     :ui="{
       header:
         'flex flex-row items-stretch justify-stretch px-3 sm:px-6 select-none cursor-grab active:cursor-grabbing bg-taupe-700 text-gray-100 md:text-xl lg:text-2xl',
@@ -8,17 +9,7 @@
     }"
     :modal="false"
     :dismissible="false"
-    ref="graveyardModal"
   >
-    <UButton
-      class="fixed bottom-3 right-3 min-w-0 p-2 bg-taupe-700 text-gray-100 active:bg-taupe-500 hover:bg-taupe-500"
-    >
-      <UIcon
-        name="i-lucide-skull"
-        :size="40"
-      />
-    </UButton>
-
     <template #header>
       <div
         ref="dragHandle"
@@ -27,17 +18,20 @@
         <UIcon name="i-lucide-skull" />
         Graveyard
       </div>
+
       <UButton
         icon="i-lucide-x"
+        title="Close graveyard"
         color="neutral"
         variant="ghost"
-        @click="open = false"
+        @click="graveyardStore.closeGraveyardWindow"
       />
     </template>
 
     <template #body>
       <div
         v-for="card in cards"
+        :key="card.id"
         v-if="cards?.length"
         @click="showCardDetais(card)"
       >
@@ -61,34 +55,13 @@
 </template>
 
 <script setup lang="ts">
+import { LazyPlayAreaCardDetails } from '#components';
+import { useGraveyard } from '..';
 import type { BoardCard } from '~/types/PlayArea';
 
-const open = defineModel<boolean>('open');
+const graveyardStore = useGraveyard();
 
-defineShortcuts({
-  'g-g': () => {
-    open.value = !open.value;
-  },
-});
-
-
-
-
-const graveyard = useGraveyard()
-const registry = useWidgetRegistry()
-
-const widget = createGraveyardWidget(graveyard, {
-  toggleOpen: () => { open.value = !open.value }
-})
-
-onMounted(() => registry.register(widget))
-onUnmounted(() => registry.unregister(widget.id))
-
-
-
-
-
-const cards = computed(() => graveyard.cards);
+const cards = computed(() => graveyardStore.cards);
 
 const dragHandle = useTemplateRef('dragHandle');
 const modalPanel = computed(
@@ -112,10 +85,6 @@ watch(style, async () => {
 });
 
 const overlay = useOverlay();
-
-import { LazyPlayAreaCardDetails } from '#components';
-import { createGraveyardWidget, useGraveyard } from '..';
-import { useWidgetRegistry } from '~/features/widgets';
 
 const cardDetails = overlay.create(LazyPlayAreaCardDetails);
 

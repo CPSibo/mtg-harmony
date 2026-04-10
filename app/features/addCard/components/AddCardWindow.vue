@@ -1,6 +1,6 @@
 <template>
   <LazyUModal
-    v-model:open="open"
+    v-model:open="addCardStore.addCardWindowIsOpen"
     :ui="{ body: 'flex flex-row gap-3' }"
     title="Add card"
     :modal="false"
@@ -33,14 +33,9 @@
 
 <script setup lang="ts">
 import type { CommandPaletteItem } from '@nuxt/ui';
+import { useAddCard } from '..';
 
-defineShortcuts({
-  'b-a': () => {
-    open.value = true;
-  },
-});
-
-const open = defineModel<boolean>('open');
+const addCardStore = useAddCard();
 
 const searchTerm = ref('');
 const searchTermDebounds = refDebounced(searchTerm, 500);
@@ -104,7 +99,8 @@ function onSelect(item: CommandPaletteItem) {
 
   cards.value = [];
   searchTerm.value = '';
-  open.value = false;
+
+  addCardStore.closeAddCardWindow();
 }
 </script>
 

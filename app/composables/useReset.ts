@@ -1,3 +1,5 @@
+import { useGraveyard } from '~/features/graveyard';
+
 export function useReset() {
   const toast = useToast();
 

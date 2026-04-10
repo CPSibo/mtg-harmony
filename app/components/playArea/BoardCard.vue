@@ -18,7 +18,10 @@
         :alt="card.name"
       />
 
-      <div class="face-number" v-if="!!card.faceNumber">
+      <div
+        class="face-number"
+        v-if="!!card.faceNumber"
+      >
         {{ card.faceNumber }}
       </div>
 

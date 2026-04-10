@@ -173,6 +173,7 @@
 </template>
 
 <script setup lang="ts">
+import { useGraveyard } from '~/features/graveyard';
 import type { BoardCard } from '~/types/PlayArea';
 
 const open = defineModel<boolean>('open', { default: false });

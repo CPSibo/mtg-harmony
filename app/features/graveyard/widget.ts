@@ -1,9 +1,8 @@
-import type { WidgetDefinition, WidgetSetting } from "~/types/Widgets";
-import type { useGraveyard } from "./store";
+import type { WidgetDefinition, WidgetSetting } from '~/features/widgets';
+import type { useGraveyard } from '.';
 
 export function createGraveyardWidget(
   store: ReturnType<typeof useGraveyard>,
-  ui: { toggleOpen: () => void },
 ): WidgetDefinition {
   return {
     id: 'graveyard',
@@ -15,16 +14,24 @@ export function createGraveyardWidget(
         id: 'graveyard.toggle',
         label: 'Toggle graveyard window',
         icon: 'i-lucide-skull',
-        kbds: ['g-g'],
-        execute: ui.toggleOpen,
+        kbds: 'g-g',
+        execute: store.openGraveyardWindow,
       },
 
       {
-        id: 'graveyard.clear',
+        id: 'graveyard.addCard',
+        label: 'Add card to graveyard',
+        icon: 'i-lucide-circle-plus',
+        kbds: 'g-a',
+        execute: store.openAddCardToGraveyardWindow,
+      },
+
+      {
+        id: 'graveyard.removeAllCards',
         label: 'Clear graveyard',
         icon: 'i-lucide-circle-x',
-        kbds: ['g-c'],
-        execute: () => store.removeAllCards(),
+        kbds: 'g-c',
+        execute: store.removeAllCards,
       },
     ],
 

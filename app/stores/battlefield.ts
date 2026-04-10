@@ -44,20 +44,20 @@ export const useBattlefield = defineStore('battlefield', () => {
     return true;
   }
 
-  function cardIsInStack(card: BoardCard, stack: BoardCardStack)
-  {
-    if(stack.primary === card) return true;
+  function cardIsInStack(card: BoardCard, stack: BoardCardStack) {
+    if (stack.primary === card) return true;
 
-    if(stack.attachments.includes(card)) return true;
+    if (stack.attachments.includes(card)) return true;
 
-    if(stack.unders.includes(card)) return true;
+    if (stack.unders.includes(card)) return true;
 
-    return false
+    return false;
   }
 
-  function getStackByCard(card: BoardCard)
-  {
-    return card.stack || stacks.value.find(stack => cardIsInStack(card, stack));
+  function getStackByCard(card: BoardCard) {
+    return (
+      card.stack || stacks.value.find((stack) => cardIsInStack(card, stack))
+    );
   }
 
   function removeCardFromStack(card: BoardCard) {
@@ -109,7 +109,10 @@ export const useBattlefield = defineStore('battlefield', () => {
       removeCardFromStack(attachment);
       const newStack = addStackByCard(attachment);
       newStack.position = {
-        x: stack.position.x + index * xSpacing - (attachments.length - 1) * (xSpacing / 2),
+        x:
+          stack.position.x +
+          index * xSpacing -
+          (attachments.length - 1) * (xSpacing / 2),
         y: stack.position.y + ySpacing,
       };
       newStacks.attachmentStacks.push(newStack);
@@ -122,7 +125,10 @@ export const useBattlefield = defineStore('battlefield', () => {
       removeCardFromStack(under);
       const newStack = addStackByCard(under);
       newStack.position = {
-        x: stack.position.x + index * xSpacing - (attachments.length - 1) * (xSpacing / 2),
+        x:
+          stack.position.x +
+          index * xSpacing -
+          (attachments.length - 1) * (xSpacing / 2),
         y: stack.position.y + ySpacing * 2,
       };
       newStacks.underStacks.push(newStack);

@@ -53,11 +53,11 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   function reset() {
-    onDeckExpanded.value = defaults.onDeckExpanded
-    prefetchEnabled.value = defaults.prefetchEnabled
-    wakeLockEnabled.value = defaults.wakeLockEnabled
-    imagesEnabled.value = defaults.imagesEnabled
-    snapScale.value = defaults.snapScale
+    onDeckExpanded.value = defaults.onDeckExpanded;
+    prefetchEnabled.value = defaults.prefetchEnabled;
+    wakeLockEnabled.value = defaults.wakeLockEnabled;
+    imagesEnabled.value = defaults.imagesEnabled;
+    snapScale.value = defaults.snapScale;
   }
 
   function save() {
