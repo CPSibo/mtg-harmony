@@ -68,7 +68,10 @@
       @click="showConfirmRemove = true"
     />
 
-    <PlayAreaRemoveCardModal v-model.sync="showConfirmRemove" :card="props.stack.primary" />
+    <PlayAreaRemoveCardModal
+      v-model.sync="showConfirmRemove"
+      :card="props.stack.primary"
+    />
   </div>
 </template>
 
@@ -85,7 +88,7 @@ const emits = defineEmits<{
 }>();
 
 const inputModeStore = useInputModeStore();
-const { isTouch } = storeToRefs(inputModeStore)
+const { isTouch } = storeToRefs(inputModeStore);
 
 const battlefield = useBattlefieldStore();
 

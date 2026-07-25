@@ -107,7 +107,7 @@ watch(myIsDragging, (value) => {
 
   // margin-left: var(--actions-margin);
 
-  background:green;
+  background: green;
 
   .primary-card-wrapper {
     position: relative;
@@ -131,8 +131,8 @@ watch(myIsDragging, (value) => {
   top: var(--vertical-offset);
   margin-left: var(--actions-total-width);
 
-   /* Need to cap the height, or else the `top` makes a big, invisible chin. */
-   /* TODO: This doesn't account for tapped attachments. */
+  /* Need to cap the height, or else the `top` makes a big, invisible chin. */
+  /* TODO: This doesn't account for tapped attachments. */
   height: calc((var(--total) * var(--h)) + var(--vertical-offset));
 
   &.primary-tapped {

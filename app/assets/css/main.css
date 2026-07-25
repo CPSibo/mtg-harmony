@@ -40,7 +40,7 @@ button:not(:disabled) {
   --card-long-side: 680px;
 }
 
-.mtg-card-display{
+.mtg-card-display {
   border-radius: 3%;
 }
 

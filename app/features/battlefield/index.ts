@@ -1,1 +1,1 @@
-export { useBattlefieldStore } from './store'
+export { useBattlefieldStore } from './store';

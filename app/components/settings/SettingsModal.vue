@@ -86,7 +86,11 @@
             label="Card outline"
             description="Show an outline around cards to help visibility. Selected cards always have an outline"
           >
-            <USelect v-model="cardOutline" :items="cardOutlines" class="w-1/2 max-w-full" />
+            <USelect
+              v-model="cardOutline"
+              :items="cardOutlines"
+              class="w-1/2 max-w-full"
+            />
           </UFormField>
         </template>
       </UTabs>
@@ -115,17 +119,17 @@ const cardOutline = ref('never');
 const cardOutlines = ref<SelectItem[]>([
   {
     label: 'Never',
-    value: 'never'
+    value: 'never',
   },
   {
     label: 'Hover',
-    value: 'hover'
+    value: 'hover',
   },
   {
     label: 'Always',
-    value: 'always'
+    value: 'always',
   },
-])
+]);
 
 const items = [
   {

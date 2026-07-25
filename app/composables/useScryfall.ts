@@ -30,7 +30,7 @@ async function throttle(): Promise<void> {
 
 function isRateLimitError(err: unknown): boolean {
   if (typeof err !== 'object' || err === null) return false;
-  const status = (err as { status?: unknown; statusCode?: unknown });
+  const status = err as { status?: unknown; statusCode?: unknown };
   return status.status === 429 || status.statusCode === 429;
 }
 

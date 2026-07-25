@@ -24,7 +24,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     const idx = zOrder.value.indexOf(stack.id);
 
     if (idx === zOrder.value.length - 1) return; // Already front.
-    
+
     if (idx !== -1) zOrder.value.splice(idx, 1);
 
     zOrder.value.push(stack.id);

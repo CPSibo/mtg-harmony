@@ -136,7 +136,12 @@
     </template>
   </LazyUModal>
 
-  <PlayAreaRemoveCardModal v-model="showConfirmRemove" :card="props.card" @canceled="confirmRemovedCanceled" @removed="cardRemoved" />
+  <PlayAreaRemoveCardModal
+    v-model="showConfirmRemove"
+    :card="props.card"
+    @canceled="confirmRemovedCanceled"
+    @removed="cardRemoved"
+  />
 </template>
 
 <script setup lang="ts">
@@ -158,14 +163,14 @@ const battlefield = useBattlefieldStore();
 const showConfirmRemove = ref(false);
 
 const confirmRemovedCanceled = () => {
-  showConfirmRemove.value = false
-  open.value = true
-}
+  showConfirmRemove.value = false;
+  open.value = true;
+};
 
 const cardRemoved = () => {
-  showConfirmRemove.value = false
-  open.value = false
-}
+  showConfirmRemove.value = false;
+  open.value = false;
+};
 
 const toggleTap = () => {
   if (!props.card) return;
@@ -207,7 +212,7 @@ const explodeStack = () => {
 };
 
 const confirmRemoval = () => {
-  showConfirmRemove.value = true
-  open.value = false
-}
+  showConfirmRemove.value = true;
+  open.value = false;
+};
 </script>

@@ -49,5 +49,5 @@ const showConfirmResetAppData = ref(false);
 const showGraveyard = ref(false);
 
 // Load the store globally, so the values get set.
-const inputModeStore = useInputModeStore()
+const inputModeStore = useInputModeStore();
 </script>

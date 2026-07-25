@@ -12,11 +12,13 @@
     <template #body>
       <p>
         Do you want to remove
-        <code class="bg-accented">{{ props.card.name }}</code> from the
-        battlefield?
+        <code class="bg-accented">{{ props.card?.name || 'Unknown' }}</code>
+        from the battlefield?
       </p>
 
-      <p v-if="cardIsStackPrimary && stackHasAttachmentsOrUnders">All cards in this stack will be detached.</p>
+      <p v-if="cardIsStackPrimary && stackHasAttachmentsOrUnders">
+        All cards in this stack will be detached.
+      </p>
     </template>
 
     <template #title>
@@ -60,22 +62,26 @@ const battlefield = useBattlefieldStore();
 const showConfirmRemove = defineModel({ type: Boolean, default: false });
 
 const props = defineProps<{
-  card: BoardCard;
+  card: BoardCard | undefined;
 }>();
 
 const emit = defineEmits(['canceled', 'removed']);
 
-const cardStack = computed(() => props.card.stack);
+const cardStack = computed(() => props.card?.stack);
 
 const cardIsStackPrimary = computed(
   () => cardStack.value?.primary === props.card,
 );
 
-const stackHasAttachmentsOrUnders = computed(() => props.card.stack?.attachments.size || props.card.stack?.unders.size)
+const stackHasAttachmentsOrUnders = computed(
+  () => props.card?.stack?.attachments.size || props.card?.stack?.unders.size,
+);
 
 const removeCard = () => {
+  if (!props.card) return;
+
   battlefield.removeCardFromStack(props.card);
-  
-  emit('removed')
+
+  emit('removed');
 };
 </script>

@@ -6,7 +6,7 @@ export interface Battlefield {
 
   center: Position;
   stacks: BoardCardStack[];
-  zOrder: [],
+  zOrder: [];
 
   /** Pixel grid size for snapping board cards.
    *  Falsey to disable snapping. */
