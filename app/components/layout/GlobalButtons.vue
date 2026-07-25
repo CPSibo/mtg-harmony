@@ -1,5 +1,5 @@
 <template>
-  <div class="fixed left-3 right-3 top-3 z-10 flex gap-6 justify-end">
+  <div class="fixed left-3 right-3 top-3 flex gap-6 justify-end">
     <DiscordFetch />
 
     <div class="grow" />
@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-import DiscordFetch from './DiscordFetch.vue';
+import DiscordFetch from '../../features/discordFetcher/components/SidePanel.vue';
 
 const emit = defineEmits<{
   openSettingsRequested: [];

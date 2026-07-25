@@ -34,14 +34,26 @@ button:not(:disabled) {
 }
 
 :root {
-  --card-ratio: 12/17;
+  --card-ratio-vertical: 12/17;
+  --card-ratio-horizontal: 17/12;
+  --card-short-side: 480px;
+  --card-long-side: 680px;
 }
 
 .mtg-card-display {
+  border-radius: 3%;
+}
+
+.mtg-card-display.vertical {
   height: 100%;
   width: auto;
-  aspect-ratio: var(--card-ratio);
-  border-radius: 3%;
+  aspect-ratio: var(--card-ratio-vertical);
+}
+
+.mtg-card-display.horizontal {
+  height: auto;
+  width: 100%;
+  aspect-ratio: var(--card-ratio-horizontal);
 }
 
 iframe {

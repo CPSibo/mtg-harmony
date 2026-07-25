@@ -1,9 +1,13 @@
+import { useBattlefieldStore } from '~/features/battlefield';
+import { useDiscordFetcherStore } from '~/features/discordFetcher';
+import { useGraveyard } from '~/features/graveyard';
+
 export function useReset() {
   const toast = useToast();
 
-  const battlefield = useBattlefield();
+  const battlefield = useBattlefieldStore();
   const settingsStore = useSettingsStore();
-  const onDeckStore = useOnDeckStore();
+  const discordFetchStore = useDiscordFetcherStore();
   const graveyard = useGraveyard();
 
   function clearBoard() {
@@ -18,7 +22,7 @@ export function useReset() {
   function clearSession() {
     clearBoard();
 
-    onDeckStore.reset();
+    discordFetchStore.reset();
     graveyard.reset();
     // TODO: Clear history
     // TODO: Clear exile

@@ -3,40 +3,33 @@
     v-if="!!card"
     v-model:open="open"
     :ui="{
+      //content: 'min-h-svh',
       body: 'modifiers-menu grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2',
       header: 'flex justify-between',
+      footer: 'flex justify-between',
     }"
-    fullscreen
+    class="min-w-[60svw]"
+    scrollable
   >
-    <template #header="{ close }">
+    <template #title>
       <div
         class="flex items-center gap-3 text-sm md:text-lg lg:text-xl xl:text-2xl"
       >
         <UIcon name="i-lucide-wrench" />
         Modifiers
       </div>
+    </template>
 
-      <div
-        class="text-sm md:text-lg lg:text-xl xl:text-2xl flex gap-3 md:gap-6 lg:gap-12"
+    <template #close>
+      <UButton
+        icon="i-lucide-check"
+        color="primary"
+        variant="solid"
+        size="lg"
+        tabindex="0"
       >
-        <UButton
-          icon="i-lucide-trash"
-          color="error"
-          tabindex="-1"
-          @click="removeAllCounters"
-        >
-          Remove all
-        </UButton>
-
-        <UButton
-          icon="i-lucide-check"
-          color="primary"
-          tabindex="0"
-          @click="close"
-        >
-          Save
-        </UButton>
-      </div>
+        Save & close
+      </UButton>
     </template>
 
     <template #body>
@@ -45,10 +38,9 @@
         :key="modifier.name"
         :class="[
           'modifier-card flex flex-col items-center gap-1 rounded-md border p-4 text-center transition-colors',
-          (card.modifiers.find((f) => f.modifier.name === modifier.name)
-            ?.count ?? 0) > 0
+          getModCount(modifier.name) > 0
             ? 'border-primary-500 bg-primary-50 dark:border-primary-400 dark:bg-primary-900/20'
-            : 'border-neutral-200 dark:border-neutral-600',
+            : 'border-neutral-200 dark:border-neutral-700',
         ]"
       >
         <span
@@ -61,10 +53,8 @@
         </span>
 
         <LazyUInputNumber
-          :value="
-            card.modifiers.find((f) => f.modifier.name === modifier.name)
-              ?.count ?? 0
-          "
+          color="secondary"
+          :value="getModCount(modifier.name)"
           :min="0"
           @update:model-value="
             (value: number) => {
@@ -72,9 +62,7 @@
 
               const newValue = toValue(value) ?? 0;
 
-              let mod = card.modifiers.find(
-                (f) => f.modifier.name === modifier.name,
-              );
+              let mod = findMod(modifier.name);
 
               if (!mod) {
                 mod = {
@@ -82,11 +70,11 @@
                   count: 0,
                 };
 
-                card.modifiers.push(mod);
+                card.modifiers.add(mod);
               }
 
               if (newValue === 0) {
-                card.modifiers = card.modifiers.filter((f) => f !== mod);
+                card.modifiers.delete(mod);
               } else {
                 mod.count = newValue;
               }
@@ -95,12 +83,36 @@
         />
       </div>
     </template>
+
+    <template #footer="{ close }">
+      <UButton
+        icon="i-lucide-trash"
+        color="error"
+        variant="ghost"
+        size="lg"
+        tabindex="-1"
+        @click="removeAllCounters"
+      >
+        Remove all
+      </UButton>
+
+      <UButton
+        icon="i-lucide-check"
+        color="primary"
+        variant="solid"
+        size="lg"
+        tabindex="0"
+        @click="close"
+      >
+        Save & close
+      </UButton>
+    </template>
   </LazyUModal>
 </template>
 
 <script setup lang="ts">
 import { MODIFIERS } from '~/types/MtgConcepts';
-import type { BoardCard } from '~/types/PlayArea';
+import type { BoardCardModifier, BoardCard } from '~/types/PlayArea';
 
 const open = defineModel<boolean>('open', { default: false });
 
@@ -108,16 +120,30 @@ const props = defineProps<{
   card: BoardCard | undefined;
 }>();
 
+function findMod(name: string) {
+  if (!props.card) return undefined;
+
+  for (const mod of props.card.modifiers) {
+    if (mod.modifier.name === name) return mod;
+  }
+
+  return undefined;
+}
+
+function getModCount(name: string) {
+  return findMod(name)?.count ?? 0;
+}
+
 const removeAllCounters = () => {
   if (!props.card) return;
 
-  props.card.modifiers = [];
+  props.card.modifiers = new Set<BoardCardModifier>();
 };
 </script>
 
 <style lang="css">
 .modifier-card {
-  min-width: 150px;
+  /* min-width: 150px; */
 }
 
 .modifiers-menu {

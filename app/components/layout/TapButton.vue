@@ -11,5 +11,7 @@
 </template>
 
 <script setup lang="ts">
-const battlefield = useBattlefield();
+import { useBattlefieldStore } from '~/features/battlefield';
+
+const battlefield = useBattlefieldStore();
 </script>

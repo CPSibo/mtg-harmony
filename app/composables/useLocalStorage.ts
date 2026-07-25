@@ -1,4 +1,4 @@
-import { parse, stringify } from 'flatted';
+import { stringify, parse } from 'devalue';
 
 // Per-session flag: only show one save error toast per browser session
 let _saveErrorShownThisSession = false;
@@ -9,9 +9,7 @@ export function useLocalStorage() {
     try {
       localStorage.setItem(key, stringify(value));
     } catch (ex) {
-      if (!_saveErrorShownThisSession) {
-        _saveErrorShownThisSession = true;
-      }
+      if (!_saveErrorShownThisSession) _saveErrorShownThisSession = true;
       console.error(
         'Could not save application state. Changes may not persist.',
         ex,
@@ -32,6 +30,5 @@ export function useLocalStorage() {
   }
 
   const saveDebounced = useDebounceFn(save, 200);
-
   return { save: saveDebounced, load };
 }

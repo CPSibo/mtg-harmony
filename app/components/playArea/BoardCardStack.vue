@@ -2,117 +2,21 @@
   <div
     ref="stack"
     :style="style"
-    class="board-card-stack origin-top-left absolute"
+    :class="[
+      'board-card-stack origin-top-left absolute',
+      { 'primary-tapped': stack.primary.tapped },
+    ]"
   >
-    <div class="flex flex-row">
-      <div
-        class="stack-actions flex flex-col gap-2"
-        :class="{ tapped: stack.primary.tapped }"
-      >
-        <UButton
-          color="primary"
-          size="xs"
-          variant="soft"
-          :disabled="battlefield.isAttaching"
-          @click="stack.primary.tapped = !stack.primary.tapped"
-        >
-          <span
-            class="ms"
-            :class="{
-              'ms-untap': stack.primary.tapped,
-              'ms-tap': !stack.primary.tapped,
-            }"
-          />
-        </UButton>
+    <div class="primary-card-wrapper flex flex-row">
+      <PlayAreaBoardCardStackActions
+        :stack="stack"
+        @show-card-details="emits('showCardDetails', $event)"
+      />
 
-        <UButton
-          icon="i-lucide-ellipsis"
-          color="neutral"
-          size="xs"
-          variant="soft"
-          :disabled="battlefield.isAttaching"
-          @click="emits('showCardDetails', stack.primary)"
-        />
-
-        <UDropdownMenu
-          :items="[
-            {
-              label: 'Copy card',
-              icon: 'i-lucide-copy',
-              color: 'primary',
-            },
-            {
-              label: 'Copy card + counters',
-              icon: 'i-lucide-copy-plus',
-            },
-            {
-              label: 'Copy everything',
-              icon: 'i-lucide-square-stack',
-            },
-          ]"
-          :content="{
-            align: 'start',
-            side: 'bottom',
-          }"
-          size="xl"
-        >
-          <UButton
-            icon="i-lucide-copy"
-            color="neutral"
-            size="xs"
-            variant="soft"
-            :disabled="battlefield.isAttaching"
-          />
-        </UDropdownMenu>
-
-        <UDropdownMenu
-          :items="[
-            {
-              label: 'Destroy',
-              icon: 'i-lucide-swords',
-              color: 'primary',
-              onSelect() {
-                graveyard.addCard(props.stack.primary);
-                battlefield.removeCardFromStack(props.stack.primary);
-              },
-            },
-            {
-              label: 'Exile',
-              icon: 'i-lucide-ban',
-              color: 'warning',
-              onSelect() {
-                //TODO
-              },
-            },
-            {
-              label: 'Delete',
-              icon: 'i-lucide-trash',
-              color: 'error',
-              onSelect() {
-                battlefield.removeCardFromStack(props.stack.primary);
-              },
-            },
-          ]"
-          :content="{
-            align: 'start',
-            side: 'bottom',
-          }"
-          size="xl"
-        >
-          <UButton
-            icon="i-lucide-trash"
-            color="error"
-            size="xs"
-            variant="soft"
-            :disabled="battlefield.isAttaching"
-          />
-        </UDropdownMenu>
-      </div>
       <PlayAreaBoardCard
         class="primary-card"
         :card="stack.primary"
         :stack="stack"
-        :counter="stack.counter"
         @show-card-details="emits('showCardDetails', stack.primary)"
         @show-card-modifiers="emits('showCardModifiers', stack.primary)"
       />
@@ -121,6 +25,7 @@
     <div
       class="attachments"
       :class="{ 'primary-tapped': stack.primary.tapped }"
+      :style="`--total: ${stack.attachments.size}`"
     >
       <PlayAreaBoardCard
         v-for="(card, index) in stack.attachments"
@@ -138,6 +43,7 @@
 
 <script setup lang="ts">
 import type { Position } from '@vueuse/core';
+import { useBattlefieldStore } from '~/features/battlefield';
 import type { BoardCard, BoardCardStack } from '~/types/PlayArea';
 
 const isDragging = defineModel<boolean>('isDragging');
@@ -154,12 +60,8 @@ const emits = defineEmits<{
   clicked: [BoardCard, BoardCardStack];
 }>();
 
-const settingsStore = useSettingsStore();
-const { snapScale } = storeToRefs(settingsStore);
-
-const battlefield = useBattlefield();
-
-const graveyard = useGraveyard();
+const battlefield = useBattlefieldStore();
+const { snapScale } = storeToRefs(battlefield);
 
 const stackEl = useTemplateRef('stack');
 
@@ -182,13 +84,35 @@ const { style, isDragging: myIsDragging } = useBoardDraggable(stackEl, {
 
 watch(myIsDragging, (value) => {
   isDragging.value = value;
+
+  battlefield.bringToFront(props.stack);
 });
 </script>
 
 <style lang="scss" scoped>
 .board-card-stack {
-  width: auto;
-  height: 100px;
+  --scale: 0.35;
+  --border-width: 2px;
+  --scaled-short: calc(var(--card-short-side) * var(--scale));
+  --scaled-long: calc(var(--card-long-side) * var(--scale));
+  --w: calc(var(--scaled-short) + var(--border-width) * 2);
+  --h: calc(var(--scaled-long) + var(--border-width) * 2);
+
+  --actions-margin: 1.5em;
+  --actions-width: 1.5em;
+  --actions-padding-right: 0.3em;
+  --actions-total-width: calc(
+    var(--actions-width) + var(--actions-padding-right)
+  );
+
+  // margin-left: var(--actions-margin);
+
+  background: green;
+
+  .primary-card-wrapper {
+    position: relative;
+    z-index: 1;
+  }
 }
 
 .primary-card {
@@ -197,29 +121,42 @@ watch(myIsDragging, (value) => {
 }
 
 .attachments {
+  --vertical-offset: calc(var(--h) * -0.56);
+
   position: relative;
   z-index: 0;
   display: flex;
   flex-direction: column;
-  margin-left: 24px;
+  place-items: center;
+  top: var(--vertical-offset);
+  margin-left: var(--actions-total-width);
+
+  /* Need to cap the height, or else the `top` makes a big, invisible chin. */
+  /* TODO: This doesn't account for tapped attachments. */
+  height: calc((var(--total) * var(--h)) + var(--vertical-offset));
 
   &.primary-tapped {
-    margin-left: 60px;
+    // margin-left: 60px + var(--actions-margin);
   }
 
   > .board-card {
-    top: calc(-128px * (var(--index) + 1));
+    top: calc(var(--vertical-offset) * var(--index));
     z-index: calc(var(--index) * -1);
     position: relative;
   }
 }
 
-.stack-actions {
-  z-index: 1;
+.board-card-stack:hover {
+  // margin-left: 0;
 
-  &.tapped {
-    margin-right: 35px;
-    margin-top: 33px;
+  &.primary-tapped {
+    .primary-card {
+      // margin-left: 60px + var(--actions-margin);
+    }
+  }
+
+  .attachments {
+    // margin-left: var(--actions-margin);
   }
 }
 </style>
