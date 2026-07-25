@@ -34,17 +34,19 @@
 <script setup lang="ts">
 import type { CommandPaletteItem } from '@nuxt/ui';
 import { useAddCard } from '..';
+import { useBattlefieldStore } from '~/features/battlefield';
+import type { BoardCardModifier } from '~/types/PlayArea';
 
 const addCardStore = useAddCard();
 
 const searchTerm = ref('');
-const searchTermDebounds = refDebounced(searchTerm, 500);
+const searchTermDebounced = refDebounced(searchTerm, 500);
 
 const { data: cards, status } = useLazyFetch(
   'https://api.scryfall.com/cards/search',
   {
     key: 'add-card-widget',
-    query: { q: searchTermDebounds },
+    query: { q: searchTermDebounced },
     transform: (data: ScryfallCardSearchResponse) => {
       return data.data || [];
     },
@@ -78,7 +80,7 @@ const groups = computed(() => [
   },
 ]);
 
-const battlefield = useBattlefield();
+const battlefield = useBattlefieldStore();
 
 function onSelect(item: CommandPaletteItem) {
   const card = cards.value?.find((f) => f.id === item.id);
@@ -92,7 +94,7 @@ function onSelect(item: CommandPaletteItem) {
     mana_cost: card.mana_cost,
     image_uri: pickImageUri(card) ?? '',
     scryfall_uri: card.scryfall_uri,
-    modifiers: [],
+    modifiers: new Set<BoardCardModifier>(),
     tapped: false,
     faceNumber: 0,
   });

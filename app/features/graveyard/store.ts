@@ -1,4 +1,4 @@
-import type { BoardCard } from '~/types/PlayArea';
+import type { BoardCard, BoardCardModifier } from '~/types/PlayArea';
 import type { GraveyardState } from '.';
 
 const STORAGE_KEY = 'mtg-harmony_graveyard';
@@ -63,7 +63,7 @@ export const useGraveyard = defineStore('graveyard', () => {
   function addCard(card: BoardCard) {
     if (cards.value.includes(card)) return false;
 
-    if (removeCounters) card.modifiers = [];
+    if (removeCounters) card.modifiers = new Set<BoardCardModifier>();
 
     card.tapped = false;
     card.stack = undefined;
@@ -129,6 +129,8 @@ export const useGraveyard = defineStore('graveyard', () => {
 
     return true;
   }
+
+  if (import.meta.client) load();
 
   watch(
     [

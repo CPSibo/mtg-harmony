@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-import DiscordFetch from './DiscordFetch.vue';
+import DiscordFetch from '../../features/discordFetcher/components/SidePanel.vue';
 
 const emit = defineEmits<{
   openSettingsRequested: [];

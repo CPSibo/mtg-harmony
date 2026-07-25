@@ -6,6 +6,10 @@
     description="Fetch random non-land, paper cards"
     :modal="false"
     :dismissible="false"
+    :ui="{
+      overlay: 'bg-elevated',
+      content: 'border-primary-900! border-r-3',
+    }"
   >
     <UButton
       variant="solid"
@@ -21,18 +25,18 @@
       <div class="on-deck-display">
         <LazyUSkeleton
           v-if="loading"
-          class="mtg-card-display"
+          class="mtg-card-display vertical"
         />
         <img
           v-else-if="!!card?.image_uri"
           :src="card?.image_uri"
           :alt="card?.name ?? 'Missing card'"
-          class="mtg-card-display"
+          class="mtg-card-display vertical"
         />
         <LazySharedPlaceholder
           v-else
-          class="cursor-pointer mtg-card-display"
-          @click="fetch"
+          class="cursor-pointer mtg-card-display vertical"
+          @click="goNext"
         >
           <div class="flex flex-col gap-3 items-center">
             <UIcon
@@ -44,16 +48,27 @@
         </LazySharedPlaceholder>
       </div>
 
-      <div class="mt-5 flex gap-4 flex-col">
+      <div class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <UButton
+          color="secondary"
+          variant="subtle"
+          icon="i-lucide-arrow-left"
+          :disabled="!canGoPrevious"
+          size="xl"
+          @click="discordFetchStore.prev"
+        >
+          Prev card
+        </UButton>
+
         <UButton
           color="primary"
           variant="subtle"
-          icon="i-lucide-arrow-down-to-line"
+          icon="i-lucide-arrow-right"
           :loading="loading"
           size="xl"
-          @click="fetch"
+          @click="goNext"
         >
-          Fetch next
+          Next card
         </UButton>
 
         <UButton
@@ -63,6 +78,7 @@
           :loading="loading"
           :disabled="!card?.id"
           size="xl"
+          class="md:col-span-2"
           @click="cast"
         >
           Cast to board
@@ -75,6 +91,7 @@
           :loading="loading"
           :disabled="!card?.id"
           size="xl"
+          class="md:col-span-2"
           @click="cast"
         >
           Cast to graveyard
@@ -87,7 +104,8 @@
           :loading="loading"
           :disabled="!card?.id"
           size="xl"
-          @click="onDeck.clearCard"
+          class="md:col-span-2"
+          @click="discordFetchStore.clearCard"
         >
           Clear
         </UButton>
@@ -97,54 +115,33 @@
 </template>
 
 <script setup lang="ts">
+import { useBattlefieldStore } from '~/features/battlefield';
+import { useDiscordFetcherStore } from '..';
+
 const toast = useToast();
 
 const drawerIsOpen = ref(false);
 
-const scryfall = useScryfall();
+const discordFetchStore = useDiscordFetcherStore();
+const { card, canGoPrevious } = storeToRefs(discordFetchStore);
 
-const onDeck = useOnDeckStore();
-const { card } = storeToRefs(onDeck);
+const board = useBattlefieldStore();
 
-const board = useBattlefield();
+const loading = ref(false);
 
-const loading = ref<boolean>();
-
-const fetch = async () => {
+const goNext = async () => {
   try {
     loading.value = true;
 
-    onDeck.clearCard();
+    const result = await discordFetchStore.next();
 
-    const response = await scryfall.fetch();
-
-    if (!response) {
+    if (!result.success) {
       toast.add({
         title: 'Fetch Error',
-        description: `Could not fetch card`,
+        description: result.error ?? 'Could not fetch card',
         color: 'error',
       });
-
-      return;
     }
-
-    if (typeof response === 'string') {
-      toast.add({
-        title: 'Fetch Error',
-        description: `Could not fetch card: ${response}`,
-        color: 'error',
-      });
-
-      return;
-    }
-
-    onDeck.setCard(response.data);
-  } catch {
-    toast.add({
-      title: 'Fetch Error',
-      description: `Could not fetch card`,
-      color: 'error',
-    });
   } finally {
     loading.value = false;
   }
@@ -155,7 +152,7 @@ const cast = () => {
 
   board.addStackByCard(card.value);
 
-  onDeck.clearCard();
+  discordFetchStore.clearCard();
 
   drawerIsOpen.value = false;
 };

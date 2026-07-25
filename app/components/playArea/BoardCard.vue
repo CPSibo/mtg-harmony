@@ -2,42 +2,42 @@
   <div
     ref="boardCard"
     class="board-card origin-top-left flex gap-1"
+    :class="{ tapped: card.tapped }"
   >
     <div
-      ref="cardImageSection"
-      class="cursor-pointer"
-      :class="{ tapped: card.tapped }"
-      title="Double tap to open"
-      @dblclick="emits('showCardDetails', card)"
-      @click="tryAttach"
-      @touchend="tryAttach"
+      class="card-image-wrapper cursor-pointer border-slate-600 rounded-lg hover:border-primary-800"
     >
-      <img
-        :src="card.image_uri"
-        class="mtg-card-display"
-        :alt="card.name"
-      />
-
       <div
-        class="face-number"
-        v-if="!!card.faceNumber"
+        ref="cardImageSection"
+        class="card-image"
+        :style="{ backgroundImage: `url('${card.image_uri}')` }"
+        title="Double tap to open"
+        @dblclick="emits('showCardDetails', card)"
+        @click="tryAttach"
+        @touchend="tryAttach"
       >
-        {{ card.faceNumber }}
-      </div>
+        <div
+          class="face-number"
+          v-if="!!card.faceNumber"
+        >
+          {{ card.faceNumber }}
+        </div>
 
-      <div
-        v-if="battlefield.isAttaching && isHovered && isValidAttachmentTarget"
-        class="attach-overlay text-5xl"
-      >
-        <UIcon
-          name="i-lucide-link"
-          class="text-primary"
-        />
+        <div
+          v-if="battlefield.isAttaching && isHovered && isValidAttachmentTarget"
+          class="attach-overlay text-5xl"
+        >
+          <UIcon
+            name="i-lucide-link"
+            class="text-primary"
+          />
+        </div>
       </div>
     </div>
+
     <div class="modifiers grid grid-flow-col gap-1 place-items-start">
       <div
-        v-for="modifier in card.modifiers.filter((f) => f.count > 0)"
+        v-for="modifier in card.modifiers"
         :key="modifier.modifier.name"
         class="modifier-icon gap-1 flex items-center bg-gray-950/90 px-1 py-0.5 rounded-sm cursor-pointer"
         :title="modifier.modifier.name"
@@ -56,6 +56,7 @@
 </template>
 
 <script setup lang="ts">
+import { useBattlefieldStore } from '~/features/battlefield';
 import type { BoardCard } from '~/types/PlayArea';
 
 const props = defineProps<{
@@ -69,7 +70,7 @@ const emits = defineEmits<{
 
 const stack = computed(() => props.card.stack);
 
-const battlefield = useBattlefield();
+const battlefield = useBattlefieldStore();
 
 const isValidAttachmentTarget = computed(() => {
   return battlefield.isValidAttadchmentTarget(props.card);
@@ -94,11 +95,45 @@ const isHovered = useElementHover(cardImageSection);
 
 <style lang="css" scoped>
 .board-card {
-  width: auto;
-  height: 226px;
+  .card-image-wrapper {
+    width: var(--w);
+    height: var(--h);
+    position: relative;
 
-  .tapped {
-    transform: rotate(90deg);
+    box-sizing: border-box;
+    overflow: hidden;
+
+    border-width: 2px;
+    border-style: solid;
+
+    .card-image {
+      width: var(--scaled-short);
+      height: var(--scaled-long);
+
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(0deg);
+
+      background-origin: center;
+      background-color: black;
+      background-attachment: local;
+      background-repeat: no-repeat;
+      background-clip: border-box;
+      background-position: center center;
+      background-size: var(--scaled-short) var(--scaled-long);
+    }
+  }
+
+  &.tapped {
+    .card-image-wrapper {
+      width: var(--h);
+      height: var(--w);
+
+      .card-image {
+        transform: translate(-50%, -50%) rotate(90deg);
+      }
+    }
   }
 
   &:hover .modifier-icon {
@@ -111,14 +146,14 @@ const isHovered = useElementHover(cardImageSection);
 }
 
 .modifiers {
-  position: relative;
+  position: absolute;
   grid-template-rows: repeat(5, minmax(0, 1fr));
   height: fit-content;
+  left: calc(100% + 0.3em);
 }
 
 .attachment .modifiers {
-  padding-top: 45%;
-  padding-bottom: 10px;
+  margin-top: calc(var(--h) * 0.58);
   grid-template-rows: repeat(3, minmax(0, 1fr));
 }
 

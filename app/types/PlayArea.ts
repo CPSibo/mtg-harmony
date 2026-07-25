@@ -6,14 +6,19 @@ export interface Battlefield {
 
   center: Position;
   stacks: BoardCardStack[];
+  zOrder: [],
+
+  /** Pixel grid size for snapping board cards.
+   *  Falsey to disable snapping. */
+  snapScale: number;
 }
 
 export interface BoardCardStack {
   id: string;
   primary: BoardCard;
   position: Position;
-  attachments: BoardCard[];
-  unders: BoardCard[];
+  attachments: Set<BoardCard>;
+  unders: Set<BoardCard>;
 }
 
 export interface BoardCard {
@@ -23,7 +28,7 @@ export interface BoardCard {
   name: string;
   mana_cost: string;
   image_uri: string;
-  modifiers: BoardCardModifier[];
+  modifiers: Set<BoardCardModifier>;
   tapped: boolean;
   stack?: BoardCardStack;
   faceNumber: number;

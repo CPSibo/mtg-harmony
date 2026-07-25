@@ -6,32 +6,78 @@ const STORAGE_KEY = 'mtg-harmony_battlefield';
 
 const defaults: Battlefield = {
   stacks: [],
+  zOrder: [],
   center: { x: 0, y: 0 },
+  snapScale: 10,
 };
 
-export const useBattlefield = defineStore('battlefield', () => {
+export const useBattlefieldStore = defineStore('battlefield', () => {
   const stacks = ref<BoardCardStack[]>(defaults.stacks);
   function setStacks(value: BoardCardStack[]) {
     stacks.value = value;
   }
+
+  // MRU order of the stacks for display purposes.
+  const zOrder = ref<string[]>(defaults.zOrder);
+
+  function bringToFront(stack: BoardCardStack) {
+    const idx = zOrder.value.indexOf(stack.id);
+
+    if (idx === zOrder.value.length - 1) return; // Already front.
+    
+    if (idx !== -1) zOrder.value.splice(idx, 1);
+
+    zOrder.value.push(stack.id);
+  }
+
+  function reconcileZOrder() {
+    const validIds = new Set(stacks.value.map((s) => s.id));
+
+    // Drop ids for stacks that no longer exist.
+    if (zOrder.value.some((id) => !validIds.has(id))) {
+      zOrder.value = zOrder.value.filter((id) => validIds.has(id));
+    }
+
+    // Append any stacks missing from the order.
+    for (const stack of stacks.value) {
+      if (!zOrder.value.includes(stack.id)) {
+        zOrder.value.push(stack.id);
+      }
+    }
+  }
+
+  const orderedStacks = computed(() => {
+    const orderIndex = new Map(zOrder.value.map((id, i) => [id, i]));
+
+    // .sort() on a copy. Never touches stacks.value itself.
+    return [...stacks.value].sort(
+      (a, b) => (orderIndex.get(a.id) ?? -1) - (orderIndex.get(b.id) ?? -1),
+    );
+  });
 
   const center = ref<Position>(defaults.center);
   function setCenter(value: Position) {
     center.value = value;
   }
 
+  const snapScale = ref<number>(defaults.snapScale);
+  function setsnapScale(value: number) {
+    snapScale.value = value;
+  }
+
   function addStackByCard(card: BoardCard) {
     const newStack: BoardCardStack = {
       id: uuidv4(),
       primary: card,
-      attachments: [],
-      unders: [],
+      attachments: new Set<BoardCard>(),
+      unders: new Set<BoardCard>(),
       position: { ...center.value },
     };
 
     card.stack = newStack;
 
     stacks.value.push(newStack);
+    zOrder.value.push(newStack.id);
 
     return newStack;
   }
@@ -41,15 +87,18 @@ export const useBattlefield = defineStore('battlefield', () => {
 
     stacks.value = stacks.value.filter((f) => f !== stack);
 
+    const idx = zOrder.value.indexOf(stack.id);
+    if (idx !== -1) zOrder.value.splice(idx, 1);
+
     return true;
   }
 
   function cardIsInStack(card: BoardCard, stack: BoardCardStack) {
     if (stack.primary === card) return true;
 
-    if (stack.attachments.includes(card)) return true;
+    if (stack.attachments.has(card)) return true;
 
-    if (stack.unders.includes(card)) return true;
+    if (stack.unders.has(card)) return true;
 
     return false;
   }
@@ -67,14 +116,14 @@ export const useBattlefield = defineStore('battlefield', () => {
 
     if (!stacks.value.includes(stack)) return false;
 
-    if (stack.attachments.includes(card)) {
-      stack.attachments = stack.attachments.filter((f) => f !== card);
+    if (stack.attachments.has(card)) {
+      stack.attachments.delete(card);
 
       return true;
     }
 
-    if (stack.unders.includes(card)) {
-      stack.unders = stack.unders.filter((f) => f !== card);
+    if (stack.unders.has(card)) {
+      stack.unders.delete(card);
 
       return true;
     }
@@ -102,7 +151,7 @@ export const useBattlefield = defineStore('battlefield', () => {
     const xSpacing = 200;
     const ySpacing = 240;
 
-    const attachments = stack.attachments;
+    const attachments = Array.from(stack.attachments);
     for (let index = 0; index < attachments.length; index++) {
       const attachment = attachments[index]!;
 
@@ -118,7 +167,7 @@ export const useBattlefield = defineStore('battlefield', () => {
       newStacks.attachmentStacks.push(newStack);
     }
 
-    const unders = stack.unders;
+    const unders = Array.from(stack.unders);
     for (let index = 0; index < unders.length; index++) {
       const under = unders[index]!;
 
@@ -145,11 +194,7 @@ export const useBattlefield = defineStore('battlefield', () => {
 
       stack.primary.tapped = false;
 
-      for (let i = 0; i < stack.attachments.length; i++) {
-        const attachment = stack.attachments[i];
-
-        if (!attachment) continue;
-
+      for (const attachment of stack.attachments) {
         attachment.tapped = false;
       }
     }
@@ -172,19 +217,19 @@ export const useBattlefield = defineStore('battlefield', () => {
     if (sourceCard == stack.primary)
       throw new Error('Cannot attach a card to itself.');
 
-    if (stack.attachments.includes(sourceCard))
+    if (stack.attachments.has(sourceCard))
       throw new Error(
         'Source card already belongs to target stack as attachment.',
       );
 
-    if (stack.unders.includes(sourceCard))
+    if (stack.unders.has(sourceCard))
       throw new Error(
         'Source card already belongs to target stack as an under.',
       );
 
     removeCardFromStack(sourceCard);
 
-    stack.attachments.push(sourceCard);
+    stack.attachments.add(sourceCard);
     sourceCard.stack = stack;
 
     cardToAttach.value = null;
@@ -199,12 +244,11 @@ export const useBattlefield = defineStore('battlefield', () => {
 
     if (targetCard.stack?.primary === cardToAttach.value) return false;
 
-    if (targetCard.stack?.attachments?.includes(cardToAttach.value!))
-      return false;
+    if (targetCard.stack?.attachments?.has(cardToAttach.value!)) return false;
 
     if (targetCard.stack?.primary !== targetCard) return false;
 
-    if (targetCard.stack?.unders?.includes(cardToAttach.value!)) return false;
+    if (targetCard.stack?.unders?.has(cardToAttach.value!)) return false;
 
     return true;
   }
@@ -212,20 +256,23 @@ export const useBattlefield = defineStore('battlefield', () => {
   function detach(card: BoardCard) {
     if (card.stack?.primary === card) return;
 
-    if (!card.stack?.attachments.includes(card)) return;
+    if (!card.stack?.attachments.has(card)) return;
 
-    card.stack.attachments = card.stack.attachments.filter((f) => f !== card);
+    card.stack.attachments.delete(card);
     card.stack = undefined;
     addStackByCard(card);
   }
 
   function clearStacks() {
     stacks.value = [];
+    zOrder.value = [];
   }
 
   function reset() {
     clearStacks();
     cancelAttaching();
+
+    snapScale.value = defaults.snapScale;
     setCenter(defaults.center);
   }
 
@@ -233,7 +280,9 @@ export const useBattlefield = defineStore('battlefield', () => {
     const { save: persist } = useLocalStorage();
     persist(STORAGE_KEY, {
       stacks: stacks.value,
+      zOrder: zOrder.value,
       center: center.value,
+      snapScale: snapScale.value,
     });
   }
 
@@ -247,13 +296,21 @@ export const useBattlefield = defineStore('battlefield', () => {
 
     if (Array.isArray(data?.stacks)) stacks.value = data.stacks;
 
-    if (typeof data?.center === 'number') center.value = data.center;
+    if (Array.isArray(data?.zOrder)) zOrder.value = data.zOrder;
+
+    reconcileZOrder();
+
+    if (typeof data?.center === 'object') center.value = data.center;
+
+    if (typeof data.snapScale === 'number') snapScale.value = data.snapScale;
 
     return true;
   }
 
+  if (import.meta.client) load();
+
   watch(
-    [stacks, center],
+    [stacks, center, snapScale, zOrder],
     () => {
       save();
     },
@@ -267,9 +324,14 @@ export const useBattlefield = defineStore('battlefield', () => {
     load,
     reset,
 
+    snapScale,
+    setsnapScale,
+
     untapAll,
 
     stacks,
+    bringToFront,
+    orderedStacks,
     setStacks,
     addStackByCard,
     clearStacks,

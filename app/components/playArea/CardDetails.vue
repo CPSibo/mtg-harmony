@@ -54,7 +54,7 @@
           size="xl"
           @click="explodeStack"
         >
-          Unattach all
+          Detach all
         </UButton>
         <UButton
           v-else-if="!isAttached"
@@ -110,50 +110,15 @@
           </UButton>
         </UDropdownMenu>
 
-        <UDropdownMenu
-          :items="[
-            {
-              label: 'Destroy',
-              icon: 'i-lucide-swords',
-              color: 'primary',
-              onSelect() {
-                graveyard.addCard(props.card!);
-                battlefield.removeCardFromStack(props.card!);
-              },
-            },
-            {
-              label: 'Exile',
-              icon: 'i-lucide-ban',
-              color: 'warning',
-              onSelect() {
-                // TODO
-              },
-            },
-            {
-              label: 'Delete',
-              icon: 'i-lucide-trash',
-              color: 'error',
-              onSelect() {
-                battlefield.removeCardFromStack(props.card!);
-              },
-            },
-          ]"
-          :content="{
-            align: 'start',
-            side: 'bottom',
-          }"
+        <UButton
+          icon="i-lucide-trash"
+          color="neutral"
+          variant="ghost"
           size="xl"
+          @click="confirmRemoval"
         >
-          <UButton
-            icon="i-lucide-trash"
-            trailing-icon="i-lucide-chevron-down"
-            color="neutral"
-            variant="ghost"
-            size="xl"
-          >
-            Remove
-          </UButton>
-        </UDropdownMenu>
+          Remove
+        </UButton>
 
         <LazyUSeparator />
 
@@ -170,10 +135,12 @@
       </div>
     </template>
   </LazyUModal>
+
+  <PlayAreaRemoveCardModal v-model="showConfirmRemove" :card="props.card" @canceled="confirmRemovedCanceled" @removed="cardRemoved" />
 </template>
 
 <script setup lang="ts">
-import { useGraveyard } from '~/features/graveyard';
+import { useBattlefieldStore } from '~/features/battlefield';
 import type { BoardCard } from '~/types/PlayArea';
 
 const open = defineModel<boolean>('open', { default: false });
@@ -186,9 +153,19 @@ const emit = defineEmits<{
   showCardModifiers: [BoardCard];
 }>();
 
-const battlefield = useBattlefield();
+const battlefield = useBattlefieldStore();
 
-const graveyard = useGraveyard();
+const showConfirmRemove = ref(false);
+
+const confirmRemovedCanceled = () => {
+  showConfirmRemove.value = false
+  open.value = true
+}
+
+const cardRemoved = () => {
+  showConfirmRemove.value = false
+  open.value = false
+}
 
 const toggleTap = () => {
   if (!props.card) return;
@@ -203,15 +180,15 @@ const hasAttachments = computed(() => {
 
   if (props.card.stack.primary !== props.card) return false;
 
-  if (!props.card.stack.attachments?.length) return false;
+  if (!props.card.stack.attachments?.size) return false;
 
   return true;
 });
 
 const isAttached = computed(() => {
-  if (!props.card || !props.card.stack?.attachments) return false;
+  if (!props.card?.stack?.attachments) return false;
 
-  return props.card.stack.attachments.includes(props.card);
+  return props.card.stack.attachments.has(props.card);
 });
 
 const startAttaching = () => {
@@ -228,4 +205,9 @@ const explodeStack = () => {
   battlefield.explodeStack(props.card!.stack!);
   open.value = false;
 };
+
+const confirmRemoval = () => {
+  showConfirmRemove.value = true
+  open.value = false
+}
 </script>

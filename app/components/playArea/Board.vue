@@ -16,7 +16,7 @@
     >
       <SharedGrid v-if="!!boardEl">
         <LazyPlayAreaBoardCardStack
-          v-for="stack in stacks"
+          v-for="stack in orderedStacks"
           :key="stack.id"
           v-model:is-dragging="anyCardIsDragging"
           :stack="stack"
@@ -42,10 +42,11 @@
 </template>
 
 <script setup lang="ts">
-import type { BoardCard } from '~/types/PlayArea';
+import { useBattlefieldStore } from '~/features/battlefield';
+import type { BoardCard, BoardCardStack } from '~/types/PlayArea';
 
-const battlefield = useBattlefield();
-const { stacks, center: centerState } = storeToRefs(battlefield);
+const battlefield = useBattlefieldStore();
+const { orderedStacks, center: centerState } = storeToRefs(battlefield);
 
 const wrapperEl = useTemplateRef('wrapper');
 const boardEl = useTemplateRef('board');

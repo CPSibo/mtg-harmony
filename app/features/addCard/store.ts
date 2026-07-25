@@ -35,6 +35,8 @@ export const useAddCard = defineStore('addCard', () => {
     return true;
   }
 
+  if (import.meta.client) load();
+
   return {
     save,
     load,
