@@ -119,6 +119,17 @@ test('the stack remove button confirms before removing', async ({ page }) => {
   await expect(boardCard).toBeHidden();
 });
 
+// #58: iOS Safari's own gestures. Chromium can't reproduce them, but it does
+// report the CSS that blocks them.
+test('the page opts out of browser zoom, bounce and selection', async ({
+  page,
+}) => {
+  const html = page.locator('html');
+  await expect(html).toHaveCSS('overscroll-behavior-y', 'none');
+  await expect(html).toHaveCSS('touch-action', 'manipulation');
+  await expect(page.locator('.board')).toHaveCSS('user-select', 'none');
+});
+
 test('a card found through Add Card goes on the board', async ({ page }) => {
   await page.keyboard.press('/');
   await page.getByRole('option', { name: /Add card/i }).click();

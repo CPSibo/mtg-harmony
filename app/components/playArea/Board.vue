@@ -46,6 +46,7 @@ import PlayAreaBoardCardStack from '~/components/playArea/BoardCardStack.vue';
 import PlayAreaCardDetails from '~/components/playArea/CardDetails.vue';
 import PlayAreaModifiersMenu from '~/components/playArea/ModifiersMenu.vue';
 import SharedGrid from '~/components/shared/Grid.vue';
+import { useBlockBrowserZoom } from '~/composables/useBlockBrowserZoom';
 import { usePanAndZoom } from '~/composables/usePanAndZoom';
 import { storeToRefs } from 'pinia';
 import { onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
@@ -141,6 +142,10 @@ onUnmounted(() => {
   el.removeEventListener('touchend', guardedTouchEnd);
 });
 
+// The touch handlers above pan and zoom the board; this stops Safari zooming
+// the page as well.
+useBlockBrowserZoom(wrapperEl);
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 const selectedCard = ref<BoardCard | undefined>();
@@ -174,6 +179,9 @@ const showCardModifiers = (card: BoardCard) => {
 .board {
   position: absolute;
   transform-origin: 0 0;
+  /* A long press is the app's, not the browser's text selection or menu. */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
   user-select: none;
 }
 </style>
