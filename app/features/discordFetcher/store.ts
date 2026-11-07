@@ -1,3 +1,7 @@
+import { useLocalStorage } from '~/composables/useLocalStorage';
+import { pickImageUri, useScryfall } from '~/composables/useScryfall';
+import { defineStore } from 'pinia';
+import { computed, ref, watch } from 'vue';
 import type { BoardCard, BoardCardModifier } from '~/types/PlayArea';
 import type { ScryfallCard } from '~/types/Scryfall';
 
@@ -273,7 +277,7 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
     return true;
   }
 
-  if (import.meta.client) load();
+  load();
 
   watch(
     [cards, activeIndex, cardCleared],

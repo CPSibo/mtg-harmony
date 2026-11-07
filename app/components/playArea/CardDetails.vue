@@ -1,5 +1,5 @@
 <template>
-  <LazyUModal
+  <UModal
     v-if="!!card"
     v-model:open="open"
     :ui="{ content: 'flex flex-row gap-3 p-6' }"
@@ -47,7 +47,7 @@
           "
         />
 
-        <LazyUSeparator />
+        <USeparator />
 
         <UButton
           v-if="hasAttachments"
@@ -123,7 +123,7 @@
           Remove
         </UButton>
 
-        <LazyUSeparator />
+        <USeparator />
 
         <UButton
           icon="i-lucide-external-link"
@@ -137,7 +137,7 @@
         </UButton>
       </div>
     </template>
-  </LazyUModal>
+  </UModal>
 
   <PlayAreaRemoveCardModal
     v-model="showConfirmRemove"
@@ -148,6 +148,13 @@
 </template>
 
 <script setup lang="ts">
+import UButton from '@nuxt/ui/components/Button.vue';
+import UDropdownMenu from '@nuxt/ui/components/DropdownMenu.vue';
+import UInputNumber from '@nuxt/ui/components/InputNumber.vue';
+import UModal from '@nuxt/ui/components/Modal.vue';
+import USeparator from '@nuxt/ui/components/Separator.vue';
+import PlayAreaRemoveCardModal from '~/components/playArea/RemoveCardModal.vue';
+import { computed, ref } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import type { BoardCard } from '~/types/PlayArea';
 

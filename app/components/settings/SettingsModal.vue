@@ -99,6 +99,17 @@
 </template>
 
 <script setup lang="ts">
+import UFormField from '@nuxt/ui/components/FormField.vue';
+// Nuxt UI's plain-Vue Icon; components/Icon.vue is the Nuxt-only variant.
+import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
+import UInputNumber from '@nuxt/ui/components/InputNumber.vue';
+import UModal from '@nuxt/ui/components/Modal.vue';
+import USelect from '@nuxt/ui/components/Select.vue';
+import USwitch from '@nuxt/ui/components/Switch.vue';
+import UTabs from '@nuxt/ui/components/Tabs.vue';
+import { useSettingsStore } from '~/stores/settings';
+import { storeToRefs } from 'pinia';
+import { ref } from 'vue';
 import type { SelectItem } from '@nuxt/ui';
 import { useBattlefieldStore } from '~/features/battlefield';
 import { useDiscordFetcherStore } from '~/features/discordFetcher';

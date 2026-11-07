@@ -1,3 +1,5 @@
+import { useToast } from '@nuxt/ui/composables';
+import { useSettingsStore } from '~/stores/settings';
 import { useBattlefieldStore } from '~/features/battlefield';
 import { useDiscordFetcherStore } from '~/features/discordFetcher';
 

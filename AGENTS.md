@@ -2,7 +2,7 @@
 
 A static web app for playing [Discord, Lord of Disharmony](https://scryfall.com/card/sld/798/discord-lord-of-disharmony)
 at the table: fetch random cards from Scryfall, cast them as tokens onto a pan-and-zoom board, and track them there.
-Client-only (Nuxt 4 with `ssr: false` today), state saved to `localStorage`.
+Client-only (Vite + Vue 3 + Nuxt UI + Pinia + VueUse), state saved to `localStorage`.
 
 These instructions add to the shared `AGENTS.md` one folder up and win where they disagree.
 
@@ -35,7 +35,7 @@ npm run format        # then commit any changes it makes
 npm run lint
 npm run typecheck
 npm test
-npm run generate      # production build into dist/
+npm run build         # production build into dist/
 ```
 
 There are no unit tests yet, so `npm test` runs Vitest with `--passWithNoTests` until #18 adds them. End-to-end
@@ -53,6 +53,16 @@ tests (`npm run test:e2e`) and their CI job are paused until #19.
   `@tailwindcss/oxide-wasm32-wasi`). `npm ci` is unaffected. When changing dependencies, run
   `npm install --allow-remote=all`.
 
+## Imports
+
+There are no auto-imports. Import every component, composable and Vue API explicitly; `~` points to `app/`.
+
+- Nuxt UI components come from `@nuxt/ui/components/<Name>.vue` and composables from `@nuxt/ui/composables`.
+- `UIcon` is the exception: import it from `@nuxt/ui/runtime/vue/components/Icon.vue`. The `components/` copy is
+  the Nuxt variant and breaks the build. The same applies to `ULink` (`runtime/vue/overrides/none/Link.vue`).
+- Nuxt UI's types declare a global `$fetch` that doesn't exist at runtime, so typecheck accepts it. ESLint rejects
+  it; use `fetch()`.
+
 ## Branches and deploys
 
 - `dev` is the trunk. PRs target `dev` and are squash-merged by the owner. Never push to `dev` or `main`.
@@ -66,6 +76,6 @@ tests (`npm run test:e2e`) and their CI job are paused until #19.
 ## Owner decisions (don't relitigate)
 
 - Every card on the board is a token. There is no library, hand, graveyard or exile, so don't add zones.
-- The app is leaving Nuxt for plain Vite + Vue 3 + Nuxt UI + Pinia + VueUse (milestone M2). Don't add new
-  dependencies on Nuxt-only features (Nuxt modules, `#app`/`#imports` APIs, server routes) beyond what a fix needs.
+- The app is plain Vite + Vue 3, not Nuxt. Don't bring back Nuxt-only features (Nuxt modules, auto-imports,
+  `#app`/`#imports` APIs, file-based routing).
 - Renovate stays off until the project is stable.

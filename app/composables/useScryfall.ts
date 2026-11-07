@@ -34,15 +34,29 @@ function isRateLimitError(err: unknown): boolean {
   return status.status === 429 || status.statusCode === 429;
 }
 
+/** An HTTP error response, carrying its status so callers can spot a 429. */
+class HttpError extends Error {
+  constructor(readonly status: number) {
+    super(`Scryfall responded with HTTP ${status}`);
+  }
+}
+
+/** Fetches one random card, throwing an `HttpError` for any non-2xx response. */
+async function getRandomCard(): Promise<ScryfallCard> {
+  const response = await fetch(SCRYFALL_ENDPOINT);
+  if (!response.ok) throw new HttpError(response.status);
+  return (await response.json()) as ScryfallCard;
+}
+
 export function useScryfall() {
   async function fetchOne(): Promise<ScryfallCardResponse> {
     await throttle();
-    let response = await $fetch<ScryfallCard>(SCRYFALL_ENDPOINT);
+    let response = await getRandomCard();
 
     // Retry once if the card has no usable image (e.g. image_status 'missing').
     if (!hasUsableImage(response)) {
       await throttle();
-      response = await $fetch<ScryfallCard>(SCRYFALL_ENDPOINT);
+      response = await getRandomCard();
 
       if (!hasUsableImage(response)) {
         throw new Error('Fetched card has no image');

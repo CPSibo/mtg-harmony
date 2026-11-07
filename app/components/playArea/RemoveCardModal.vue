@@ -1,5 +1,5 @@
 <template>
-  <LazyUModal
+  <UModal
     v-model:open="showConfirmRemove"
     :ui="{
       title: 'flex items-center gap-2',
@@ -50,10 +50,15 @@
         Remove
       </UButton>
     </template>
-  </LazyUModal>
+  </UModal>
 </template>
 
 <script setup lang="ts">
+import UButton from '@nuxt/ui/components/Button.vue';
+// Nuxt UI's plain-Vue Icon; components/Icon.vue is the Nuxt-only variant.
+import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
+import UModal from '@nuxt/ui/components/Modal.vue';
+import { computed } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import type { BoardCard } from '~/types/PlayArea';
 

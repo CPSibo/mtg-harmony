@@ -7,12 +7,8 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: 'http://localhost:4173',
     trace: 'on-first-retry',
-  },
-  expect: {
-    // Give the Nuxt dev server and hydration extra time on first run.
-    timeout: 10000,
   },
   projects: [
     {
@@ -21,8 +17,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
+    // Test the production build, not the dev server.
+    command: 'npm run build && npm run preview -- --port 4173 --strictPort',
+    url: 'http://localhost:4173',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

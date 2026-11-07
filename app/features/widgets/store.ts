@@ -1,3 +1,6 @@
+import { defineShortcuts } from '@nuxt/ui/composables';
+import { defineStore } from 'pinia';
+import { computed, ref } from 'vue';
 import type { Fn } from '@vueuse/core';
 import type { WidgetDefinition } from '~/features/widgets/types';
 
@@ -48,7 +51,8 @@ export const useWidgetRegistry = defineStore('widgetRegistry', () => {
       items: w.commands.map((cmd) => ({
         label: cmd.label,
         icon: cmd.icon,
-        kbds: cmd.kbds,
+        // Shortcuts are chords like 'b-a'; the palette shows one key per entry.
+        kbds: cmd.kbds?.split('-'),
         onSelect: cmd.execute,
       })),
     })),

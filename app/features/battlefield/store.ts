@@ -1,3 +1,6 @@
+import { useLocalStorage } from '~/composables/useLocalStorage';
+import { defineStore } from 'pinia';
+import { computed, ref, toValue, watch } from 'vue';
 import type {
   Battlefield,
   BoardCard,
@@ -332,7 +335,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     return true;
   }
 
-  if (import.meta.client) load();
+  load();
 
   watch(
     [stacks, center, snapScale, zOrder],

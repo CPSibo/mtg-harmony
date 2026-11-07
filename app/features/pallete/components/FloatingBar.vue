@@ -28,7 +28,7 @@
     </UButton>
 
     <template #content>
-      <LazyUCommandPalette
+      <UCommandPalette
         v-model:search-term="searchTerm"
         :groups="groups"
       />
@@ -37,6 +37,12 @@
 </template>
 
 <script setup lang="ts">
+import UButton from '@nuxt/ui/components/Button.vue';
+import UCommandPalette from '@nuxt/ui/components/CommandPalette.vue';
+import UKbd from '@nuxt/ui/components/Kbd.vue';
+import UModal from '@nuxt/ui/components/Modal.vue';
+import { defineShortcuts } from '@nuxt/ui/composables';
+import { computed, ref } from 'vue';
 import { useWidgetRegistry } from '~/features/widgets';
 
 const open = defineModel<boolean>('open');

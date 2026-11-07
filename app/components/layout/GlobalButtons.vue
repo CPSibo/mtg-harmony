@@ -16,6 +16,8 @@
 </template>
 
 <script setup lang="ts">
+import LayoutMenu from '~/components/layout/Menu.vue';
+import LayoutTapButton from '~/components/layout/TapButton.vue';
 import DiscordFetch from '../../features/discordFetcher/components/SidePanel.vue';
 
 const emit = defineEmits<{

@@ -1,3 +1,6 @@
+import { useWindowSize } from '@vueuse/core';
+import { computed, ref, toValue, watch } from 'vue';
+import type { MaybeRefOrGetter } from 'vue';
 import type { ElementSize, Position } from '@vueuse/core';
 
 export interface PanAndZoomSettings {

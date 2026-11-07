@@ -1,5 +1,5 @@
 <template>
-  <LazyUModal
+  <UModal
     v-model:open="open"
     :ui="{
       title: 'flex items-center gap-2 text-inverted',
@@ -45,10 +45,15 @@
         Confirm
       </UButton>
     </template>
-  </LazyUModal>
+  </UModal>
 </template>
 
 <script setup lang="ts">
+import UButton from '@nuxt/ui/components/Button.vue';
+// Nuxt UI's plain-Vue Icon; components/Icon.vue is the Nuxt-only variant.
+import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
+import UModal from '@nuxt/ui/components/Modal.vue';
+import { useReset } from '~/composables/useReset';
 const reset = useReset();
 
 const open = defineModel<boolean>('open');
