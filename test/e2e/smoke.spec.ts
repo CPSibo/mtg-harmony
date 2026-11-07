@@ -83,6 +83,19 @@ test('the same card cast twice gives two separate cards', async ({ page }) => {
   await expect(boardCards).toHaveCount(2);
 });
 
+// #25: saves are debounced, so leaving the page must write the last change.
+test('a card cast just before a reload is still there', async ({ page }) => {
+  await page.getByRole('button', { name: 'On-deck' }).click();
+  await page.getByRole('button', { name: 'Next card' }).click();
+  await page.getByRole('button', { name: 'Cast to board' }).click();
+  await page.reload();
+
+  const boardCard = page.locator('.board-card').getByRole('img', {
+    name: card.name,
+  });
+  await expect(boardCard).toBeVisible();
+});
+
 test('a card found through Add Card goes on the board', async ({ page }) => {
   await page.keyboard.press('/');
   await page.getByRole('option', { name: /Add card/i }).click();

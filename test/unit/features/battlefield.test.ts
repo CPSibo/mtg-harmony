@@ -432,9 +432,9 @@ describe('battlefield store', () => {
       expect(board.stacks).toEqual([]);
     });
 
-    // #25: each save() builds a new debounced function, so nothing is
-    // debounced and every change writes the whole board.
-    it.fails('writes once for a burst of changes (#25)', async () => {
+    // #25: each save() built a new debounced function, so nothing was
+    // debounced and every change wrote the whole board.
+    it('writes once for a burst of changes', async () => {
       vi.useFakeTimers();
       const setItem = stubStorage();
       const board = useBattlefieldStore();

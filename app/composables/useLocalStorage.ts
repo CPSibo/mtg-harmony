@@ -1,20 +1,57 @@
-import { useDebounceFn } from '@vueuse/core';
 import { stringify, parse } from 'devalue';
 
-// Per-session flag: only show one save error toast per browser session
-let _saveErrorShownThisSession = false;
+const SAVE_DELAY_MS = 200;
+
+/** Saves waiting for their debounce, by storage key. Shared by every caller. */
+const pending = new Map<
+  string,
+  { value: unknown; timer: ReturnType<typeof setTimeout> }
+>();
+
+let saveErrorHandler: (() => void) | undefined;
+let saveErrorReported = false;
+
+/**
+ * Sets what happens the first time a save fails (storage full or blocked).
+ * Later failures in the same session are only logged.
+ */
+export function onSaveError(handler: () => void): void {
+  saveErrorHandler = handler;
+}
+
+function write(key: string, value: unknown): void {
+  try {
+    localStorage.setItem(key, stringify(value));
+  } catch (ex) {
+    console.error(
+      'Could not save application state. Changes may not persist.',
+      ex,
+    );
+    if (!saveErrorReported) {
+      saveErrorReported = true;
+      saveErrorHandler?.();
+    }
+  }
+}
+
+/** Writes every pending save now, e.g. when the page is being hidden. */
+export function flushSaves(): void {
+  for (const [key, { value, timer }] of pending) {
+    clearTimeout(timer);
+    pending.delete(key);
+    write(key, value);
+  }
+}
 
 export function useLocalStorage() {
+  /** Saves `value` under `key` once no newer save for that key arrives for 200 ms. */
   function save(key: string, value: unknown): void {
-    try {
-      localStorage.setItem(key, stringify(value));
-    } catch (ex) {
-      if (!_saveErrorShownThisSession) _saveErrorShownThisSession = true;
-      console.error(
-        'Could not save application state. Changes may not persist.',
-        ex,
-      );
-    }
+    clearTimeout(pending.get(key)?.timer);
+    const timer = setTimeout(() => {
+      pending.delete(key);
+      write(key, value);
+    }, SAVE_DELAY_MS);
+    pending.set(key, { value, timer });
   }
 
   function load<T>(key: string): T | null {
@@ -36,8 +73,7 @@ export function useLocalStorage() {
     }
   }
 
-  const saveDebounced = useDebounceFn(save, 200);
-  return { save: saveDebounced, load, remove };
+  return { save, load, remove };
 }
 
 /**
