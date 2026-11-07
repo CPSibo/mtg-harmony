@@ -12,7 +12,10 @@ These instructions add to the shared `AGENTS.md` one folder up and win where the
 
 Follow these steps for every work item (a GitHub issue):
 
-1. `git fetch origin`, then create a branch from `origin/dev` (see [Branches](#branches-and-deploys)).
+1. `git fetch origin --prune`, then create a branch from `origin/dev` (see [Branches](#branches-and-deploys)). If
+   the branch you were on shows `[gone]` in `git branch -vv` and `gh pr view <branch> --json state` says `MERGED`,
+   delete it locally with `git branch -D <branch>`. Squash merges mean `git branch -d` always refuses, so check
+   the PR state instead of relying on it.
 2. Read the issue and the relevant docs and code.
 3. Plan the work.
 4. Ask any clarifying questions before starting, and wait for the answers.
@@ -42,6 +45,7 @@ Lint currently fails on `dev` (#13) and there are no unit tests yet (#14, #18).
 - `dev` is the trunk. PRs target `dev` and are squash-merged by the owner. Never push to `dev` or `main`.
 - Branch names: `<type>/<issue>-<slug>`, e.g. `feat/33-copy-variants`, `bug/24-duplicate-card-ids`. Types: `feat`,
   `bug`, `docs`, `chore`, `refactor`, `test`.
+- GitHub deletes a PR's remote branch when it merges. Local branches are cleaned up in step 1 of the work cycle.
 - Cloudflare Pages builds through its git integration: `main` deploys to mtg-harmony.com, `dev` to
   dev.mtg-harmony.com. Neither has users yet, so work targets `dev` only; the owner releases to `main`.
 - Work items are GitHub issues, grouped by milestone and labelled by type and `area:*`.
