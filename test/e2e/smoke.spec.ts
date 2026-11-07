@@ -69,8 +69,6 @@ test('a card fetched On-deck can be cast to the board', async ({ page }) => {
 });
 
 test('a card found through Add Card goes on the board', async ({ page }) => {
-  test.fixme(true, 'Add Card never lists results: #55');
-
   await page.keyboard.press('/');
   await page.getByRole('option', { name: /Add card/i }).click();
   const addCard = page.getByRole('dialog', { name: 'Add card' });
