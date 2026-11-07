@@ -197,7 +197,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
         x:
           stack.position.x +
           index * xSpacing -
-          (attachments.length - 1) * (xSpacing / 2),
+          (unders.length - 1) * (xSpacing / 2),
         y: stack.position.y + ySpacing * 2,
       };
       newStacks.underStacks.push(newStack);

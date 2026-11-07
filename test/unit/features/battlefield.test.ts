@@ -293,8 +293,8 @@ describe('battlefield store', () => {
       expect(underStacks.map((s) => s.position.y)).toEqual([1480, 1480]);
     });
 
-    // #26: the unders row is centred using the attachment count.
-    it.fails('centres the unders row on the stack (#26)', () => {
+    // #26: the unders row used to be centred using the attachment count.
+    it('centres the unders row on the stack', () => {
       const board = boardWithUnders(2);
 
       const { underStacks } = board.explodeStack(board.stacks[0]!);
