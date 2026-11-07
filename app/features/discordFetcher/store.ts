@@ -269,7 +269,14 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
   load();
 
   watch(
-    [cards, activeIndex, cardCleared],
+    [
+      cards,
+      activeIndex,
+      cardCleared,
+      fetchCardCount,
+      minQueuedCardCount,
+      preloadImagesEnabled,
+    ],
     () => {
       save();
     },
