@@ -40,6 +40,16 @@ npm run generate      # production build into dist/
 
 Lint currently fails on `dev` (#13) and there are no unit tests yet (#14, #18).
 
+## Node version
+
+- `.node-version` is the single source of the Node version. CI reads it (`node-version-file`), Cloudflare Pages
+  reads it, and fnm uses it locally. Don't set a `NODE_VERSION` variable in the Pages project: it overrides the
+  file. `package.json` `engines` mirrors it but nothing reads it for version selection.
+- Check `node -v` before running the Definition of Done; it must be 26.x.
+- npm 12 (bundled with Node 26) refuses to re-resolve one optional Tailwind package (`EALLOWREMOTE` on
+  `@tailwindcss/oxide-wasm32-wasi`). `npm ci` is unaffected. When changing dependencies, run
+  `npm install --allow-remote=all`.
+
 ## Branches and deploys
 
 - `dev` is the trunk. PRs target `dev` and are squash-merged by the owner. Never push to `dev` or `main`.
