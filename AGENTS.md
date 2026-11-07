@@ -6,7 +6,8 @@ Client-only (Vite + Vue 3 + Nuxt UI + Pinia + VueUse), state saved to `localStor
 
 These instructions add to the shared `AGENTS.md` one folder up and win where they disagree.
 
-**Entry document:** [README.md](README.md). Domain terms: [docs/domain.md](docs/domain.md).
+**Entry document:** [docs/architecture.md](docs/architecture.md). Domain terms: [docs/domain.md](docs/domain.md).
+Player-facing overview: [README.md](README.md).
 
 ## Work cycle
 
