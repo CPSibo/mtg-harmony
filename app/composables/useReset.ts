@@ -1,6 +1,5 @@
 import { useBattlefieldStore } from '~/features/battlefield';
 import { useDiscordFetcherStore } from '~/features/discordFetcher';
-import { useGraveyard } from '~/features/graveyard';
 
 export function useReset() {
   const toast = useToast();
@@ -8,7 +7,6 @@ export function useReset() {
   const battlefield = useBattlefieldStore();
   const settingsStore = useSettingsStore();
   const discordFetchStore = useDiscordFetcherStore();
-  const graveyard = useGraveyard();
 
   function clearBoard() {
     battlefield.reset();
@@ -23,9 +21,6 @@ export function useReset() {
     clearBoard();
 
     discordFetchStore.reset();
-    graveyard.reset();
-    // TODO: Clear history
-    // TODO: Clear exile
 
     toast.add({
       title: 'Session cleared',
