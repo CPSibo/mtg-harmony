@@ -61,6 +61,7 @@
 
     <UButton
       icon="i-lucide-trash"
+      aria-label="Remove card"
       :ui="{ base: 'bg-error/80 text-black' }"
       size="xs"
       variant="solid"
@@ -69,7 +70,7 @@
     />
 
     <PlayAreaRemoveCardModal
-      v-model.sync="showConfirmRemove"
+      v-model="showConfirmRemove"
       :card="props.stack.primary"
     />
   </div>
