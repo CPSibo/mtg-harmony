@@ -73,7 +73,7 @@ export const useSettingsStore = defineStore('settings', () => {
 
   load();
 
-  watch([onDeckExpanded, wakeLockEnabled], () => {
+  watch([onDeckExpanded, wakeLockEnabled, imagesEnabled], () => {
     save();
   });
 

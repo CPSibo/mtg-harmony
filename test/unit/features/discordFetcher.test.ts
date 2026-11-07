@@ -1,5 +1,7 @@
 import { stringify } from 'devalue';
+import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { nextTick } from 'vue';
 import type { ScryfallCardResponse } from '~/composables/useScryfall';
 import { useDiscordFetcherStore } from '~/features/discordFetcher';
 import { makeCard, makeScryfallCard } from '../fixtures/cards';
@@ -249,6 +251,25 @@ describe('discord fetcher store', () => {
   });
 
   describe('persistence', () => {
+    // #24: only the history, position and cleared flag were watched, so a
+    // settings change on its own was never saved.
+    it.each([
+      ['fetchCardCount', 4],
+      ['minQueuedCardCount', 1],
+      ['preloadImagesEnabled', false],
+    ] as const)('saves a change to %s on its own', async (name, value) => {
+      vi.useFakeTimers();
+      const store = useDiscordFetcherStore();
+      expect(store[name]).not.toBe(value);
+
+      (store[name] as typeof value) = value;
+      await nextTick();
+      vi.runAllTimers();
+      setActivePinia(createPinia());
+
+      expect(useDiscordFetcherStore()[name]).toBe(value);
+    });
+
     it('loads saved history and settings', () => {
       const saved = [makeCard({ name: 'A' }), makeCard({ name: 'B' })];
       localStorage.setItem(
