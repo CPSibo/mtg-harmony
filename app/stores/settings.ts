@@ -1,3 +1,6 @@
+import { useLocalStorage } from '~/composables/useLocalStorage';
+import { defineStore } from 'pinia';
+import { ref, watch } from 'vue';
 export interface AppSettings {
   /** Whether the On-Deck slot is expanded. */
   onDeckExpanded: boolean;
@@ -68,7 +71,7 @@ export const useSettingsStore = defineStore('settings', () => {
     return true;
   }
 
-  if (import.meta.client) load();
+  load();
 
   watch([onDeckExpanded, wakeLockEnabled], () => {
     save();

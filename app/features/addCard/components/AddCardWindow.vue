@@ -1,5 +1,5 @@
 <template>
-  <LazyUModal
+  <UModal
     v-model:open="addCardStore.addCardWindowIsOpen"
     :ui="{ body: 'flex flex-row gap-3' }"
     title="Add card"
@@ -28,32 +28,55 @@
         @update:model-value="onSelect"
       />
     </template>
-  </LazyUModal>
+  </UModal>
 </template>
 
 <script setup lang="ts">
+import UCommandPalette from '@nuxt/ui/components/CommandPalette.vue';
+import UModal from '@nuxt/ui/components/Modal.vue';
+import { refDebounced } from '@vueuse/core';
+import { pickImageUri } from '~/composables/useScryfall';
+import type { ScryfallCardSearchResponse } from '~/composables/useScryfall';
+import { computed, ref, watch } from 'vue';
 import type { CommandPaletteItem } from '@nuxt/ui';
 import { useAddCard } from '..';
 import { useBattlefieldStore } from '~/features/battlefield';
 import type { BoardCardModifier } from '~/types/PlayArea';
+import type { ScryfallCard } from '~/types/Scryfall';
 
 const addCardStore = useAddCard();
 
 const searchTerm = ref('');
 const searchTermDebounced = refDebounced(searchTerm, 500);
 
-const { data: cards, status } = useLazyFetch(
-  'https://api.scryfall.com/cards/search',
-  {
-    key: 'add-card-widget',
-    query: { q: searchTermDebounced },
-    transform: (data: ScryfallCardSearchResponse) => {
-      return data.data || [];
-    },
-    server: false,
-    immediate: true,
-    cache: 'default',
+// Search Scryfall whenever the debounced term changes, cancelling any request
+// still in flight. Scryfall answers "no matches" with a 404 and no `data`.
+const cards = ref<ScryfallCard[]>([]);
+const status = ref<'idle' | 'pending' | 'success' | 'error'>('idle');
+let searchAbort: AbortController | undefined;
+
+watch(
+  searchTermDebounced,
+  async (q) => {
+    searchAbort?.abort();
+    const abort = (searchAbort = new AbortController());
+    status.value = 'pending';
+    try {
+      const url = new URL('https://api.scryfall.com/cards/search');
+      url.searchParams.set('q', q);
+      const response = await fetch(url, { signal: abort.signal });
+      const body =
+        (await response.json()) as Partial<ScryfallCardSearchResponse>;
+      cards.value = body.data ?? [];
+      status.value = 'success';
+    } catch (ex) {
+      if (abort.signal.aborted) return;
+      console.error('Card search failed.', ex);
+      cards.value = [];
+      status.value = 'error';
+    }
   },
+  { immediate: true },
 );
 
 const mappedCards = computed(() => {

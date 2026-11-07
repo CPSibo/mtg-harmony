@@ -11,6 +11,7 @@
 </template>
 
 <script setup lang="ts">
+import UButton from '@nuxt/ui/components/Button.vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 
 const battlefield = useBattlefieldStore();

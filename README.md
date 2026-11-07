@@ -41,7 +41,7 @@ npm install           # Install dependencies
 ```
 
 ```bash
-# http://localhost:3000
+# http://localhost:5173
 
 npm run dev           # View locally
 npm run dev-host      # View from another device
@@ -60,7 +60,8 @@ npm run test:e2e      # Playwright (end-to-end)
 ### Production
 
 ```bash
-npm run generate      # .../.output/public
+npm run build         # dist/
+npm run preview       # Serve dist/ locally
 ```
 
 The output is a fully static site with no server requirements. Deploy to any static host (Vercel, Netlify, GitHub Pages, etc.).

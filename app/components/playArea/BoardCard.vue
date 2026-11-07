@@ -56,6 +56,10 @@
 </template>
 
 <script setup lang="ts">
+// Nuxt UI's plain-Vue Icon; components/Icon.vue is the Nuxt-only variant.
+import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
+import { useElementHover } from '@vueuse/core';
+import { computed, useTemplateRef } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import type { BoardCard } from '~/types/PlayArea';
 

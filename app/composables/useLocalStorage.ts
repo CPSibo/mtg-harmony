@@ -1,3 +1,4 @@
+import { useDebounceFn } from '@vueuse/core';
 import { stringify, parse } from 'devalue';
 
 // Per-session flag: only show one save error toast per browser session
@@ -5,7 +6,6 @@ let _saveErrorShownThisSession = false;
 
 export function useLocalStorage() {
   function save(key: string, value: unknown): void {
-    if (!import.meta.client) return;
     try {
       localStorage.setItem(key, stringify(value));
     } catch (ex) {
@@ -18,7 +18,6 @@ export function useLocalStorage() {
   }
 
   function load<T>(key: string): T | null {
-    if (!import.meta.client) return null;
     try {
       const raw = localStorage.getItem(key);
       if (raw === null) return null;
@@ -30,7 +29,6 @@ export function useLocalStorage() {
   }
 
   function remove(key: string): void {
-    if (!import.meta.client) return;
     try {
       localStorage.removeItem(key);
     } catch (ex) {

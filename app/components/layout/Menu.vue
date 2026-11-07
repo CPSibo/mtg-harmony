@@ -20,6 +20,10 @@
 </template>
 
 <script setup lang="ts">
+import UButton from '@nuxt/ui/components/Button.vue';
+import UDropdownMenu from '@nuxt/ui/components/DropdownMenu.vue';
+import { useFullscreen } from '@vueuse/core';
+import { computed, ref } from 'vue';
 import type { DropdownMenuItem } from '@nuxt/ui';
 
 const isMenuOpen = ref(false);

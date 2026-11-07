@@ -15,7 +15,7 @@
       :style="style"
     >
       <SharedGrid v-if="!!boardEl">
-        <LazyPlayAreaBoardCardStack
+        <PlayAreaBoardCardStack
           v-for="stack in orderedStacks"
           :key="stack.id"
           v-model:is-dragging="anyCardIsDragging"
@@ -42,6 +42,13 @@
 </template>
 
 <script setup lang="ts">
+import PlayAreaBoardCardStack from '~/components/playArea/BoardCardStack.vue';
+import PlayAreaCardDetails from '~/components/playArea/CardDetails.vue';
+import PlayAreaModifiersMenu from '~/components/playArea/ModifiersMenu.vue';
+import SharedGrid from '~/components/shared/Grid.vue';
+import { usePanAndZoom } from '~/composables/usePanAndZoom';
+import { storeToRefs } from 'pinia';
+import { onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import type { BoardCard } from '~/types/PlayArea';
 

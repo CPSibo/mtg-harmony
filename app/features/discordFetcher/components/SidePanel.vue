@@ -23,7 +23,7 @@
 
     <template #body>
       <div class="on-deck-display">
-        <LazyUSkeleton
+        <USkeleton
           v-if="loading"
           class="mtg-card-display vertical"
         />
@@ -33,7 +33,7 @@
           :alt="card?.name ?? 'Missing card'"
           class="mtg-card-display vertical"
         />
-        <LazySharedPlaceholder
+        <SharedPlaceholder
           v-else
           class="cursor-pointer mtg-card-display vertical"
           @click="goNext"
@@ -45,7 +45,7 @@
             />
             Tap to fetch next card
           </div>
-        </LazySharedPlaceholder>
+        </SharedPlaceholder>
       </div>
 
       <div class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -102,6 +102,15 @@
 </template>
 
 <script setup lang="ts">
+import UButton from '@nuxt/ui/components/Button.vue';
+// Nuxt UI's plain-Vue Icon; components/Icon.vue is the Nuxt-only variant.
+import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
+import USkeleton from '@nuxt/ui/components/Skeleton.vue';
+import USlideover from '@nuxt/ui/components/Slideover.vue';
+import SharedPlaceholder from '~/components/shared/Placeholder.vue';
+import { useToast } from '@nuxt/ui/composables';
+import { storeToRefs } from 'pinia';
+import { ref } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import { useDiscordFetcherStore } from '..';
 

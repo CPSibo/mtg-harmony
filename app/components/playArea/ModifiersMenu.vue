@@ -1,5 +1,5 @@
 <template>
-  <LazyUModal
+  <UModal
     v-if="!!card"
     v-model:open="open"
     :ui="{
@@ -52,15 +52,15 @@
           {{ modifier.name }}
         </span>
 
-        <LazyUInputNumber
+        <UInputNumber
           color="secondary"
           :value="getModCount(modifier.name)"
           :min="0"
           @update:model-value="
-            (value: number) => {
+            (value) => {
               if (!card) return;
 
-              const newValue = toValue(value) ?? 0;
+              const newValue = value ?? 0;
 
               let mod = findMod(modifier.name);
 
@@ -107,10 +107,15 @@
         Save & close
       </UButton>
     </template>
-  </LazyUModal>
+  </UModal>
 </template>
 
 <script setup lang="ts">
+import UButton from '@nuxt/ui/components/Button.vue';
+// Nuxt UI's plain-Vue Icon; components/Icon.vue is the Nuxt-only variant.
+import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
+import UInputNumber from '@nuxt/ui/components/InputNumber.vue';
+import UModal from '@nuxt/ui/components/Modal.vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import { MODIFIERS } from '~/types/MtgConcepts';
 import type { BoardCard } from '~/types/PlayArea';

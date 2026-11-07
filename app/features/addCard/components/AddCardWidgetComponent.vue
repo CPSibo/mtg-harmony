@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onMounted, onUnmounted } from 'vue';
 import { createAddCardWidget, useAddCard } from '..';
 import { useWidgetRegistry } from '~/features/widgets';
 

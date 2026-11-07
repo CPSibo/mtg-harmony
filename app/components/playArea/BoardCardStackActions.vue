@@ -76,6 +76,12 @@
 </template>
 
 <script setup lang="ts">
+import UButton from '@nuxt/ui/components/Button.vue';
+import UDropdownMenu from '@nuxt/ui/components/DropdownMenu.vue';
+import PlayAreaRemoveCardModal from '~/components/playArea/RemoveCardModal.vue';
+import { useInputModeStore } from '~/stores/inputMode';
+import { storeToRefs } from 'pinia';
+import { ref } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import type { BoardCard, BoardCardStack } from '~/types/PlayArea';
 

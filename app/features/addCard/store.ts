@@ -1,3 +1,5 @@
+import { defineStore } from 'pinia';
+import { ref } from 'vue';
 import type { AddCardState } from '.';
 
 const defaults: AddCardState = {
@@ -35,7 +37,7 @@ export const useAddCard = defineStore('addCard', () => {
     return true;
   }
 
-  if (import.meta.client) load();
+  load();
 
   return {
     save,

@@ -1,43 +1,21 @@
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, URL } from 'node:url';
+import vue from '@vitejs/plugin-vue';
 import { defineConfig } from 'vitest/config';
-import { defineVitestProject } from '@nuxt/test-utils/config';
 
+// Test setup is minimal until #18 adds the first tests.
 export default defineConfig({
+  plugins: [vue()],
+  resolve: {
+    alias: {
+      '~': fileURLToPath(new URL('./app', import.meta.url)),
+    },
+  },
   test: {
-    projects: [
-      {
-        test: {
-          name: 'unit',
-          include: ['test/unit/**/*.{test,spec}.ts'],
-          environment: 'node',
-        },
-      },
-      await defineVitestProject({
-        test: {
-          name: 'nuxt',
-          include: ['test/nuxt/**/*.{test,spec}.ts'],
-          environment: 'nuxt',
-          setupFiles: ['./test/setup/nuxt-env.ts'],
-          environmentOptions: {
-            nuxt: {
-              rootDir: fileURLToPath(new URL('.', import.meta.url)),
-              domEnvironment: 'happy-dom',
-            },
-          },
-        },
-      }),
-    ],
+    include: ['test/unit/**/*.{test,spec}.ts'],
+    environment: 'node',
     coverage: {
       enabled: true,
       provider: 'v8',
-    },
-    onConsoleLog(log: string) {
-      if (
-        log.includes(
-          '<Suspense> is an experimental feature and its API will likely change.',
-        )
-      )
-        return false;
     },
   },
 });

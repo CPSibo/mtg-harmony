@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1"
+    />
+    <link
+      rel="icon"
+      href="/favicon.ico"
+    />
+    <title>MTG Harmony</title>
+    <meta
+      name="description"
+      content='Pull random cards and display them in a grid when playing "Discord, Lord of Disharmony".'
+    />
+    <meta
+      property="og:title"
+      content="MTG Harmony"
+    />
+    <meta
+      property="og:description"
+      content='Pull random cards and display them in a grid when playing "Discord, Lord of Disharmony".'
+    />
+    <meta
+      property="og:image"
+      content="https://ui.nuxt.com/assets/templates/nuxt/starter-light.png"
+    />
+    <meta
+      name="twitter:card"
+      content="summary_large_image"
+    />
+    <meta
+      name="twitter:image"
+      content="https://ui.nuxt.com/assets/templates/nuxt/starter-light.png"
+    />
+    <script>
+      // crypto.randomUUID only exists in secure contexts (HTTPS). Patch it
+      // before any module code runs, so libraries that call it still work on a
+      // plain-HTTP dev server opened from a phone on the LAN.
+      if (
+        typeof crypto !== 'undefined' &&
+        typeof crypto.randomUUID !== 'function'
+      ) {
+        crypto.randomUUID = function () {
+          var b = new Uint8Array(16);
+          crypto.getRandomValues(b);
+          b[6] = (b[6] & 15) | 64;
+          b[8] = (b[8] & 63) | 128;
+          return Array.prototype.map
+            .call(b, function (x, i) {
+              return (
+                ([4, 6, 8, 10].indexOf(i) >= 0 ? '-' : '') +
+                x.toString(16).padStart(2, '0')
+              );
+            })
+            .join('');
+        };
+      }
+    </script>
+  </head>
+  <body>
+    <div
+      id="app"
+      class="isolate"
+    ></div>
+    <script
+      type="module"
+      src="/app/main.ts"
+    ></script>
+  </body>
+</html>

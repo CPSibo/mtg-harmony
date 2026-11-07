@@ -42,6 +42,11 @@
 </template>
 
 <script setup lang="ts">
+import PlayAreaBoardCard from '~/components/playArea/BoardCard.vue';
+import PlayAreaBoardCardStackActions from '~/components/playArea/BoardCardStackActions.vue';
+import { useBoardDraggable } from '~/composables/useScaledDraggable';
+import { storeToRefs } from 'pinia';
+import { useTemplateRef, watch } from 'vue';
 import type { Position } from '@vueuse/core';
 import { useBattlefieldStore } from '~/features/battlefield';
 import type { BoardCard, BoardCardStack } from '~/types/PlayArea';

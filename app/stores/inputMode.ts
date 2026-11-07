@@ -1,3 +1,6 @@
+import { useLocalStorage } from '~/composables/useLocalStorage';
+import { defineStore } from 'pinia';
+import { computed, ref, watch } from 'vue';
 export type InputMode = 'touch' | 'cursor';
 
 export interface InputModeState {
@@ -51,23 +54,21 @@ export const useInputModeStore = defineStore('inputMode', () => {
     return true;
   }
 
-  if (import.meta.client) {
-    const loaded = load();
+  const loaded = load();
 
-    // No prior session to go on - guess from the device's primary pointer
-    // so touch-first devices don't render a cursor-styled UI until the
-    // user's first tap.
-    if (!loaded && window.matchMedia?.('(pointer: coarse)').matches) {
-      inputMode.value = 'touch';
-    }
-
-    window.addEventListener('pointerdown', handlePointerEvent, {
-      passive: true,
-    });
-    window.addEventListener('pointermove', handlePointerEvent, {
-      passive: true,
-    });
+  // No prior session to go on - guess from the device's primary pointer
+  // so touch-first devices don't render a cursor-styled UI until the
+  // user's first tap.
+  if (!loaded && window.matchMedia?.('(pointer: coarse)').matches) {
+    inputMode.value = 'touch';
   }
+
+  window.addEventListener('pointerdown', handlePointerEvent, {
+    passive: true,
+  });
+  window.addEventListener('pointermove', handlePointerEvent, {
+    passive: true,
+  });
 
   watch(inputMode, () => {
     save();
