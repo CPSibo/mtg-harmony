@@ -1,8 +1,17 @@
 name: CI
 
 on:
+  # PR branches are tested through pull_request only, so each push runs once.
+  # dev and main are tested again after every merge.
   push:
+    branches: [dev, main]
   pull_request:
+
+# A new push to a PR cancels its superseded run. Runs on dev and main always
+# finish, so every merge gets a result.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   lint-and-typecheck:
