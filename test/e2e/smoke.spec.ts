@@ -80,3 +80,24 @@ test('a card found through Add Card goes on the board', async ({ page }) => {
   });
   await expect(boardCard).toBeVisible();
 });
+
+test('Add Card prompts before searching and says when nothing matches', async ({
+  page,
+}) => {
+  const searches: string[] = [];
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (url.pathname === '/cards/search')
+      searches.push(url.searchParams.get('q') ?? '');
+  });
+
+  await page.keyboard.press('/');
+  await page.getByRole('option', { name: /Add card/i }).click();
+  const addCard = page.getByRole('dialog', { name: 'Add card' });
+
+  await expect(addCard.getByText('Type a card name')).toBeVisible();
+
+  await addCard.getByRole('textbox').fill('nonexistent');
+  await expect(addCard.getByText('No cards found.')).toBeVisible();
+  expect(searches).toEqual(['nonexistent']);
+});
