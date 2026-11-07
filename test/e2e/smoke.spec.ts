@@ -96,6 +96,29 @@ test('a card cast just before a reload is still there', async ({ page }) => {
   await expect(boardCard).toBeVisible();
 });
 
+// #28: Cancel only emitted an event, so the modal stayed open.
+test('the stack remove button confirms before removing', async ({ page }) => {
+  await page.getByRole('button', { name: 'On-deck' }).click();
+  await page.getByRole('button', { name: 'Next card' }).click();
+  await page.getByRole('button', { name: 'Cast to board' }).click();
+  const boardCard = page.locator('.board-card').getByRole('img', {
+    name: card.name,
+  });
+  const confirm = page.getByRole('dialog', { name: 'Confirm' });
+
+  await boardCard.hover();
+  await page.getByRole('button', { name: 'Remove card' }).click();
+  await confirm.getByRole('button', { name: 'Cancel' }).click();
+  await expect(confirm).toBeHidden();
+  await expect(boardCard).toBeVisible();
+
+  await boardCard.hover();
+  await page.getByRole('button', { name: 'Remove card' }).click();
+  await confirm.getByRole('button', { name: 'Remove' }).click();
+  await expect(confirm).toBeHidden();
+  await expect(boardCard).toBeHidden();
+});
+
 test('a card found through Add Card goes on the board', async ({ page }) => {
   await page.keyboard.press('/');
   await page.getByRole('option', { name: /Add card/i }).click();

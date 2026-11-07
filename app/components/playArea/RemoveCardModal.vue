@@ -35,7 +35,7 @@
         color="neutral"
         variant="ghost"
         size="xl"
-        @click="emit('canceled')"
+        @click="cancel"
       >
         Cancel
       </UButton>
@@ -82,7 +82,14 @@ const stackHasAttachmentsOrUnders = computed(
   () => props.card?.stack?.attachments.size || props.card?.stack?.unders.size,
 );
 
+// The modal closes itself; the events are for parents that want to react.
+const cancel = () => {
+  showConfirmRemove.value = false;
+  emit('canceled');
+};
+
 const removeCard = () => {
+  showConfirmRemove.value = false;
   if (!props.card) return;
 
   battlefield.removeCardFromStack(props.card);
