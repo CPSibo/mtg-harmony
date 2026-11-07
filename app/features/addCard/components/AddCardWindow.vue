@@ -100,6 +100,9 @@ const groups = computed(() => [
   {
     id: 'cards',
     items: mappedCards.value,
+    // Scryfall already did the search. The palette's own fuzzy filter would
+    // run again over these results and hide them (#55).
+    ignoreFilter: true,
   },
 ]);
 
