@@ -10,6 +10,8 @@
       <div
         ref="cardImageSection"
         class="card-image"
+        role="img"
+        :aria-label="card.name"
         :style="{ backgroundImage: `url('${card.image_uri}')` }"
         title="Double tap to open"
         @dblclick="emits('showCardDetails', card)"
