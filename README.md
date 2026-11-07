@@ -44,7 +44,7 @@ Choose how many cards to fetch ahead, whether to preload the next card's image, 
 
 ## AI Disclosure
 
-This application was hand-written and designed by me. AI tooling was used for troubleshooting and pair programming tasks.
+I designed MTG Harmony and wrote its first version by hand. Since then, AI coding agents (Claude Code) have written much of the code under my direction. I decide what gets built and review and merge every change.
 
 ## Development
 
