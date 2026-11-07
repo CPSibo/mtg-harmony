@@ -1,7 +1,7 @@
 <template>
   <div
     class="stack-actions flex-col gap-4 flex"
-    :class="{ tapped: stack.primary.tapped, 'is-touch': isTouch }"
+    :class="{ 'is-touch': isTouch }"
   >
     <UButton
       :ui="{ base: 'bg-primary/80 text-black' }"
@@ -112,21 +112,12 @@ const showConfirmRemove = ref(false);
   &:not(.is-touch) * {
     display: none;
   }
-
-  &.tapped {
-    // margin-right: 35px;
-    // margin-top: 33px;
-  }
 }
 
 .board-card-stack:hover {
   .stack-actions {
     * {
       display: block;
-    }
-
-    &.tapped {
-      // right: 35px;
     }
   }
 }

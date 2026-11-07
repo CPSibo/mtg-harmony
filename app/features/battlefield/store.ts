@@ -76,7 +76,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
   }
 
   const snapScale = ref<number>(defaults.snapScale);
-  function setsnapScale(value: number) {
+  function setSnapScale(value: number) {
     snapScale.value = value;
   }
 
@@ -277,7 +277,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
 
   const isAttaching = computed(() => !!cardToAttach.value);
 
-  function isValidAttadchmentTarget(targetCard: BoardCard) {
+  function isValidAttachmentTarget(targetCard: BoardCard) {
     if (!isAttaching.value) return false;
 
     if (cardToAttach.value === targetCard) return false;
@@ -366,7 +366,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     reset,
 
     snapScale,
-    setsnapScale,
+    setSnapScale,
 
     untapAll,
     toggleTapped,
@@ -394,7 +394,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     cancelAttaching,
     finishAttaching,
     isAttaching,
-    isValidAttadchmentTarget,
+    isValidAttachmentTarget,
     detach,
   };
 });

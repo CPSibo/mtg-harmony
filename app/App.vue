@@ -38,7 +38,7 @@ import {
   removeRetiredStorage,
 } from '~/composables/useLocalStorage';
 import { AddCardWidgetComponent, AddCardWindow } from '~/features/addCard';
-import { FloatingBar } from '~/features/pallete';
+import { FloatingBar } from '~/features/palette';
 import { useInputModeStore } from '~/stores/inputMode';
 
 const ClearBoardModal = defineAsyncComponent(

@@ -203,13 +203,13 @@ describe('battlefield store', () => {
       const [host, other, equipment] = board.stacks as BoardCardStack[];
       const aura = [...host!.attachments][0]!;
 
-      expect(board.isValidAttadchmentTarget(other!.primary)).toBe(false); // Not attaching.
+      expect(board.isValidAttachmentTarget(other!.primary)).toBe(false); // Not attaching.
 
       board.startAttaching(equipment!.primary);
-      expect(board.isValidAttadchmentTarget(other!.primary)).toBe(true);
-      expect(board.isValidAttadchmentTarget(host!.primary)).toBe(true);
-      expect(board.isValidAttadchmentTarget(equipment!.primary)).toBe(false); // Itself.
-      expect(board.isValidAttadchmentTarget(aura)).toBe(false); // Not a primary.
+      expect(board.isValidAttachmentTarget(other!.primary)).toBe(true);
+      expect(board.isValidAttachmentTarget(host!.primary)).toBe(true);
+      expect(board.isValidAttachmentTarget(equipment!.primary)).toBe(false); // Itself.
+      expect(board.isValidAttachmentTarget(aura)).toBe(false); // Not a primary.
     });
 
     it('detaches a card into a new stack of its own', () => {
@@ -365,7 +365,7 @@ describe('battlefield store', () => {
       const board = useBattlefieldStore();
       board.addStackByCard(makeCard());
       board.setCenter({ x: 5, y: 5 });
-      board.setsnapScale(25);
+      board.setSnapScale(25);
       board.startAttaching(makeCard());
 
       board.reset();
