@@ -1,23 +1,26 @@
 <template>
-  <div class="h-full w-full">
-    <PlayAreaBoard />
+  <div class="contents">
+    <!-- Nuxt pages need a single root element; "contents" keeps it out of layout. -->
+    <div class="h-full w-full">
+      <PlayAreaBoard />
+    </div>
+
+    <LayoutGlobalButtons
+      @open-settings-requested="openSettings"
+      @clear-board-requested="showConfirmClearBoard = true"
+      @clear-session-requested="showConfirmClearSession = true"
+      @reset-all-requested="showConfirmResetAppData = true"
+    />
+
+    <LazySharedClearBoardModal v-model:open="showConfirmClearBoard" />
+    <LazySharedClearSessionModal v-model:open="showConfirmClearSession" />
+    <LazySharedResetAppDataModal v-model:open="showConfirmResetAppData" />
+
+    <AddCardWidgetComponent />
+    <AddCardWindow />
+
+    <FloatingBar />
   </div>
-
-  <LayoutGlobalButtons
-    @open-settings-requested="openSettings"
-    @clear-board-requested="showConfirmClearBoard = true"
-    @clear-session-requested="showConfirmClearSession = true"
-    @reset-all-requested="showConfirmResetAppData = true"
-  />
-
-  <LazySharedClearBoardModal v-model:open="showConfirmClearBoard" />
-  <LazySharedClearSessionModal v-model:open="showConfirmClearSession" />
-  <LazySharedResetAppDataModal v-model:open="showConfirmResetAppData" />
-
-  <AddCardWidgetComponent />
-  <AddCardWindow />
-
-  <FloatingBar />
 </template>
 
 <script setup lang="ts">
@@ -38,5 +41,5 @@ const showConfirmClearSession = ref(false);
 const showConfirmResetAppData = ref(false);
 
 // Load the store globally, so the values get set.
-const inputModeStore = useInputModeStore();
+useInputModeStore();
 </script>

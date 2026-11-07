@@ -38,7 +38,7 @@ npx vitest run
 npm run generate      # production build into dist/
 ```
 
-Lint currently fails on `dev` (#13) and there are no unit tests yet (#14, #18).
+There are no unit tests yet (#14, #18), so `npx vitest run` fails with "No test files found".
 
 ## Node version
 

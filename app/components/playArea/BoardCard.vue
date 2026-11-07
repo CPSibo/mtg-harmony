@@ -17,8 +17,8 @@
         @touchend="tryAttach"
       >
         <div
-          class="face-number"
           v-if="!!card.faceNumber"
+          class="face-number"
         >
           {{ card.faceNumber }}
         </div>

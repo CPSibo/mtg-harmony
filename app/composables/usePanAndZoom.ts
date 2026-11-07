@@ -44,7 +44,9 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
   const positionAtDragStart = ref<Position>({ x: 0, y: 0 });
 
   // Touch state for pinch and single-finger pan
-  const activeTouches = ref<Record<number, Position>>({});
+  // Touch points currently on the screen, by Touch.identifier. Not reactive:
+  // only the touch handlers read it.
+  const activeTouches = new Map<number, Position>();
   const pinchStartDistance = ref<number | null>(null);
   const scaleAtPinchStart = ref(1.0);
 
@@ -184,13 +186,13 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     e.preventDefault();
 
     for (const touch of e.changedTouches) {
-      activeTouches.value[touch.identifier] = {
+      activeTouches.set(touch.identifier, {
         x: touch.clientX,
         y: touch.clientY,
-      };
+      });
     }
 
-    const touchList = Object.values(activeTouches.value);
+    const touchList = [...activeTouches.values()];
 
     if (touchList.length === 1) {
       // Single finger: begin pan
@@ -211,13 +213,13 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     e.preventDefault();
 
     for (const touch of e.changedTouches) {
-      activeTouches.value[touch.identifier] = {
+      activeTouches.set(touch.identifier, {
         x: touch.clientX,
         y: touch.clientY,
-      };
+      });
     }
 
-    const touchList = Object.values(activeTouches.value);
+    const touchList = [...activeTouches.values()];
 
     if (touchList.length === 1 && isDragging.value) {
       // Pan
@@ -260,10 +262,10 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     e.preventDefault();
 
     for (const touch of e.changedTouches) {
-      delete activeTouches.value[touch.identifier];
+      activeTouches.delete(touch.identifier);
     }
 
-    const touchList = Object.values(activeTouches.value);
+    const touchList = [...activeTouches.values()];
 
     if (touchList.length < 2) {
       pinchStartDistance.value = null;
