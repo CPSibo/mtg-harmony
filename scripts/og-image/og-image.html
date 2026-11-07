@@ -1,0 +1,162 @@
+<!doctype html>
+<!--
+  Source of public/og-image.png, the 1200x630 social preview image.
+  Re-render after editing: npm run og-image
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link
+      rel="stylesheet"
+      href="../../node_modules/mana-font/css/mana.css"
+    />
+    <style>
+      @font-face {
+        font-family: 'Public Sans Variable';
+        font-weight: 100 900;
+        src: url('../../node_modules/@fontsource-variable/public-sans/files/public-sans-latin-wght-normal.woff2')
+          format('woff2');
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+
+      html,
+      body {
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+      }
+
+      body {
+        font-family: 'Public Sans Variable', sans-serif;
+        color: #fafafa;
+        background:
+          radial-gradient(
+            circle at 85% 20%,
+            rgb(192 38 211 / 0.35),
+            transparent 45%
+          ),
+          radial-gradient(
+            circle at 10% 100%,
+            rgb(212 160 23 / 0.25),
+            transparent 40%
+          ),
+          #18181b;
+        display: flex;
+        align-items: center;
+        padding: 0 80px;
+        gap: 40px;
+      }
+
+      .text {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+      }
+
+      h1 {
+        font-size: 96px;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        line-height: 1;
+      }
+
+      h1 span {
+        color: #e879f9;
+      }
+
+      p {
+        font-size: 32px;
+        line-height: 1.35;
+        color: #d4d4d8;
+        max-width: 620px;
+      }
+
+      p em {
+        font-style: normal;
+        color: #eed046;
+      }
+
+      .mana {
+        display: flex;
+        gap: 14px;
+        font-size: 30px;
+      }
+
+      .url {
+        font-size: 24px;
+        color: #a1a1aa;
+        letter-spacing: 0.02em;
+      }
+
+      /* A fan of blank card backs: no card art in the preview. */
+      .fan {
+        position: relative;
+        width: 360px;
+        height: 420px;
+      }
+
+      .card {
+        position: absolute;
+        left: 90px;
+        top: 40px;
+        width: 240px;
+        height: 340px;
+        border-radius: 16px;
+        border: 3px solid rgb(250 250 250 / 0.85);
+        background: linear-gradient(160deg, #3f3f46, #27272a);
+        box-shadow: 0 20px 40px rgb(0 0 0 / 0.45);
+        transform-origin: 50% 110%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 72px;
+      }
+
+      .card:nth-child(1) {
+        transform: rotate(-18deg);
+      }
+
+      .card:nth-child(2) {
+        transform: rotate(-6deg);
+      }
+
+      .card:nth-child(3) {
+        transform: rotate(6deg);
+      }
+
+      .card:nth-child(4) {
+        transform: rotate(18deg);
+        background: linear-gradient(160deg, #86198f, #4a044e);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="text">
+      <h1>MTG <span>Harmony</span></h1>
+      <p>
+        Random cards for <em>Discord, Lord of Disharmony</em>, cast as tokens
+        and tracked on the table.
+      </p>
+      <div class="mana">
+        <i class="ms ms-w ms-cost ms-shadow"></i>
+        <i class="ms ms-u ms-cost ms-shadow"></i>
+        <i class="ms ms-b ms-cost ms-shadow"></i>
+        <i class="ms ms-r ms-cost ms-shadow"></i>
+        <i class="ms ms-g ms-cost ms-shadow"></i>
+      </div>
+      <div class="url">mtg-harmony.com</div>
+    </div>
+
+    <div class="fan">
+      <div class="card"></div>
+      <div class="card"></div>
+      <div class="card"></div>
+      <div class="card"><i class="ms ms-chaos"></i></div>
+    </div>
+  </body>
+</html>
