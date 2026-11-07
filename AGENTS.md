@@ -27,6 +27,10 @@ Follow these steps for every work item (a GitHub issue):
    step 7.
 9. Push the branch and open a **draft** PR against `dev`. Link the issue (`Closes #N`) and any other issues, docs or
    artefacts of note.
+10. Before handing the task back, stop everything you started: dev and preview servers, background processes,
+    containers, and browser tabs or panes. Check nothing still listens on the ports you used (`3000`, `4173`,
+    `5173`), and delete temporary files outside the scratchpad. Stopping a background task can leave its child
+    process running, so check the port rather than trusting the task's status.
 
 ## Definition of Done
 
