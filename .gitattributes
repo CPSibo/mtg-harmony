@@ -1,0 +1,13 @@
+# Store and check out text files with LF on every OS, matching .editorconfig and
+# Prettier. This overrides a machine's core.autocrlf setting.
+* text=auto eol=lf
+
+# Binary assets: never convert or diff as text.
+*.ico binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.woff binary
+*.woff2 binary
