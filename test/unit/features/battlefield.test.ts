@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { nextTick } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import type { BoardCardModifier, BoardCardStack } from '~/types/PlayArea';
-import { makeCard } from '../fixtures/cards';
+import { makeCard, makeScryfallCard } from '../fixtures/cards';
 import { stubStorage } from '../fixtures/storage';
 
 const STORAGE_KEY = 'mtg-harmony_battlefield';
@@ -69,6 +69,24 @@ describe('battlefield store', () => {
       board.addStackByCard(makeCard());
 
       expect(board.stacks[0]!.id).not.toBe(board.stacks[1]!.id);
+    });
+
+    // #23: adding the same token twice used to give both copies one ID.
+    it('casts a fresh card each time, even from the same Scryfall card', () => {
+      const board = useBattlefieldStore();
+      const scryfallCard = makeScryfallCard({ name: 'Goblin' });
+
+      const a = board.castCard(scryfallCard);
+      const b = board.castCard(scryfallCard);
+
+      expect(names(board.stacks)).toEqual(['Goblin', 'Goblin']);
+      expect(a.primary).not.toBe(b.primary);
+      expect(a.primary.id).not.toBe(b.primary.id);
+      expect(a.primary.stack).toBe(a);
+      expect(b.primary.stack).toBe(b);
+
+      board.toggleTapped(a.primary);
+      expect(b.primary.tapped).toBe(false);
     });
 
     it('removes a stack and its z-order entry', () => {

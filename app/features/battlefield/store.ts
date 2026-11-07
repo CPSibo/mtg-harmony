@@ -7,8 +7,10 @@ import type {
   BoardCardModifier,
   BoardCardStack,
 } from '~/types/PlayArea';
-import { v4 as uuidv4 } from 'uuid';
+import type { ScryfallCard } from '~/types/Scryfall';
+import { randomUUID } from '~/utils/randomUUID';
 import type { Position } from '@vueuse/core';
+import { createBoardCard } from './boardCard';
 
 const STORAGE_KEY = 'mtg-harmony_battlefield';
 
@@ -80,7 +82,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
 
   function addStackByCard(card: BoardCard) {
     const newStack: BoardCardStack = {
-      id: uuidv4(),
+      id: randomUUID(),
       primary: card,
       attachments: new Set<BoardCard>(),
       unders: new Set<BoardCard>(),
@@ -93,6 +95,11 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     zOrder.value.push(newStack.id);
 
     return newStack;
+  }
+
+  /** Puts a new instance of a Scryfall card on the board in its own stack. */
+  function castCard(scryfallCard: ScryfallCard) {
+    return addStackByCard(createBoardCard(scryfallCard));
   }
 
   function removeStack(stack: BoardCardStack) {
@@ -372,6 +379,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     orderedStacks,
     setStacks,
     addStackByCard,
+    castCard,
     clearStacks,
     removeStack,
     removeCardFromStack,

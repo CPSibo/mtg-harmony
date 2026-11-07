@@ -22,7 +22,7 @@ export function makeScryfallCard(
 export function makeCard(overrides: Partial<BoardCard> = {}): BoardCard {
   const scryfallInfo = makeScryfallCard();
   return {
-    id: scryfallInfo.id,
+    id: `card-${nextId}`,
     scryfallInfo,
     name: scryfallInfo.name,
     mana_cost: scryfallInfo.mana_cost,

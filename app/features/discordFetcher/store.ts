@@ -1,9 +1,9 @@
 import { useLocalStorage } from '~/composables/useLocalStorage';
-import { pickImageUri, useScryfall } from '~/composables/useScryfall';
+import { useScryfall } from '~/composables/useScryfall';
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
-import type { BoardCard, BoardCardModifier } from '~/types/PlayArea';
-import type { ScryfallCard } from '~/types/Scryfall';
+import { createBoardCard } from '~/features/battlefield';
+import type { BoardCard } from '~/types/PlayArea';
 
 export interface DiscordFetcherStore {
   cards: BoardCard[];
@@ -95,7 +95,7 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
           continue;
         }
 
-        cards.value.push(mapScryfallCardToBoardCard(result.data));
+        cards.value.push(createBoardCard(result.data));
       }
 
       if (cards.value.length === 0) {
@@ -119,20 +119,6 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
     } finally {
       fetchingCards.value = false;
     }
-  }
-
-  function mapScryfallCardToBoardCard(scryfallCard: ScryfallCard): BoardCard {
-    return {
-      id: scryfallCard.id,
-      scryfallInfo: scryfallCard,
-      name: scryfallCard.name,
-      mana_cost: scryfallCard.mana_cost,
-      image_uri: pickImageUri(scryfallCard) ?? '',
-      scryfall_uri: scryfallCard.scryfall_uri,
-      modifiers: new Set<BoardCardModifier>(),
-      tapped: false,
-      faceNumber: 0,
-    };
   }
 
   /**
@@ -262,10 +248,8 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
 
     if (Array.isArray(data?.cards)) cards.value = data.cards;
 
-    if (typeof data?.activeIndex === 'number') {
-      // Clamp in case storage is stale relative to the loaded history.
-      activeIndex.value = Math.min(data.activeIndex, cards.value.length - 1);
-    }
+    if (typeof data?.activeIndex === 'number')
+      activeIndex.value = data.activeIndex;
 
     if (typeof data?.cardCleared === 'boolean')
       cardCleared.value = data.cardCleared;

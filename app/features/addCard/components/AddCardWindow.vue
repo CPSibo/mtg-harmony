@@ -41,12 +41,10 @@
 import UCommandPalette from '@nuxt/ui/components/CommandPalette.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
 import { refDebounced } from '@vueuse/core';
-import { pickImageUri } from '~/composables/useScryfall';
 import { computed, ref } from 'vue';
 import type { CommandPaletteItem } from '@nuxt/ui';
 import { useAddCard } from '..';
 import { useBattlefieldStore } from '~/features/battlefield';
-import type { BoardCardModifier } from '~/types/PlayArea';
 import { useCardSearch } from '../useCardSearch';
 
 const addCardStore = useAddCard();
@@ -96,17 +94,7 @@ function onSelect(item: CommandPaletteItem) {
 
   if (!card) return;
 
-  battlefield.addStackByCard({
-    id: card.id,
-    scryfallInfo: card,
-    name: card.name,
-    mana_cost: card.mana_cost,
-    image_uri: pickImageUri(card) ?? '',
-    scryfall_uri: card.scryfall_uri,
-    modifiers: new Set<BoardCardModifier>(),
-    tapped: false,
-    faceNumber: 0,
-  });
+  battlefield.castCard(card);
 
   cards.value = [];
   searchTerm.value = '';

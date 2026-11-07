@@ -159,7 +159,12 @@ Rules the battlefield store enforces:
   left without its primary explodes, and each remaining card becomes its own stack.
 - A card can't be attached to itself, or to a stack it's already in.
 - Only a stack's primary card is a valid attachment target.
-- Stack IDs come from `uuid`. Card IDs are currently the Scryfall ID, so two copies of a card share one (#23).
+- Every card is its own instance. `createBoardCard` builds one from Scryfall data with a fresh ID, and the
+  Scryfall ID stays on `scryfallInfo.id`. Casting from On-deck or Add Card goes through `castCard`, which puts a
+  new instance on the board, so casting the same card twice gives two independent cards. The On-deck history card
+  never goes on the board itself.
+- Card and stack IDs come from `randomUUID` (`utils/randomUUID.ts`). It falls back to `crypto.getRandomValues`
+  where `crypto.randomUUID` is missing, as on a plain-HTTP dev server opened from a phone.
 
 ## Scryfall
 

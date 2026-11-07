@@ -144,9 +144,10 @@ const goNext = async () => {
 };
 
 const cast = () => {
-  if (!card.value?.id) return;
+  if (!card.value) return;
 
-  board.addStackByCard(card.value);
+  // A fresh copy, so casting the same card twice gives two cards (#23).
+  board.castCard(card.value.scryfallInfo);
 
   discordFetchStore.clearCard();
 

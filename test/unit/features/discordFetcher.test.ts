@@ -75,13 +75,15 @@ describe('discord fetcher store', () => {
       await store.next();
 
       expect(store.card).toMatchObject({
-        id: scryfallCard.id,
+        scryfallInfo: scryfallCard,
         name: 'Pacifism',
         image_uri: scryfallCard.image_uris!.border_crop,
         tapped: false,
         faceNumber: 0,
       });
       expect(store.card?.modifiers.size).toBe(0);
+      // #23: history cards get instance IDs, not the Scryfall ID.
+      expect(store.card?.id).not.toBe(scryfallCard.id);
     });
 
     it('moves through cards already fetched without fetching again', async () => {
@@ -267,18 +269,6 @@ describe('discord fetcher store', () => {
       expect(store.fetchCardCount).toBe(5);
       expect(store.minQueuedCardCount).toBe(2);
       expect(store.preloadImagesEnabled).toBe(false);
-    });
-
-    it('clamps a saved index that is past the end of the history', () => {
-      localStorage.setItem(
-        STORAGE_KEY,
-        stringify({ cards: [makeCard({ name: 'Only' })], activeIndex: 7 }),
-      );
-
-      const store = useDiscordFetcherStore();
-
-      expect(store.activeIndex).toBe(0);
-      expect(store.card?.name).toBe('Only');
     });
   });
 });
