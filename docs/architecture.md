@@ -37,7 +37,9 @@ app/
   components/      Shared and layout components: the board, cards, corner buttons, dialogs
   composables/     useScryfall, useLocalStorage, usePanAndZoom, useScaledDraggable, useReset
   stores/          App-wide stores: settings, inputMode
-  types/           PlayArea (the board model), Scryfall, MtgConcepts (the modifier list), settings
+  types/           PlayArea (the board model), Scryfall, MtgConcepts (the modifier list)
+public/            Served as-is: favicon, og-image.png (the social preview)
+scripts/og-image/  Source of og-image.png. Edit og-image.html, then `npm run og-image`
 ```
 
 A feature exports its public surface from its `index.ts`. Import from the feature (`~/features/battlefield`), not
