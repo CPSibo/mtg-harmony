@@ -38,8 +38,18 @@ npm test
 npm run build         # production build into dist/
 ```
 
-There are no unit tests yet, so `npm test` runs Vitest with `--passWithNoTests` until #18 adds them. End-to-end
-tests (`npm run test:e2e`) and their CI job are paused until #19.
+End-to-end tests (`npm run test:e2e`) and their CI job are paused until #19.
+
+## Unit tests
+
+- Vitest, in `test/unit/` mirroring `app/`. The config reuses `vite.config.ts`, so imports resolve as in the app.
+- Tests run in happy-dom. `test/unit/setup.ts` gives each test empty `localStorage`, real timers and a fresh
+  Pinia, so a store created in a test starts from its defaults.
+- Mock Scryfall at the module boundary (`vi.mock('~/composables/useScryfall', …)`). Tests never hit the network.
+- Build cards with `test/unit/fixtures/cards.ts`. To watch or break storage writes, use `stubStorage()` from
+  `test/unit/fixtures/storage.ts`; spying on `Storage.prototype` leaks between tests under happy-dom.
+- A test for a known, unfixed bug asserts the correct behaviour and is marked `it.fails`, with the issue number
+  in its name. When the fix lands it fails loudly; change it to `it`.
 
 ## Node version
 
