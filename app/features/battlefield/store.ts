@@ -12,14 +12,19 @@ import type { Position } from '@vueuse/core';
 
 const STORAGE_KEY = 'mtg-harmony_battlefield';
 
-const defaults: Battlefield = {
-  stacks: [],
-  zOrder: [],
-  center: { x: 0, y: 0 },
-  snapScale: 10,
-};
+/** Fresh default state. A factory, so no store shares (and mutates) it. */
+function createDefaults(): Battlefield {
+  return {
+    stacks: [],
+    zOrder: [],
+    center: { x: 0, y: 0 },
+    snapScale: 10,
+  };
+}
 
 export const useBattlefieldStore = defineStore('battlefield', () => {
+  const defaults = createDefaults();
+
   const stacks = ref<BoardCardStack[]>(defaults.stacks);
   function setStacks(value: BoardCardStack[]) {
     stacks.value = value;
@@ -300,8 +305,9 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     clearStacks();
     cancelAttaching();
 
-    snapScale.value = defaults.snapScale;
-    setCenter(defaults.center);
+    const fresh = createDefaults();
+    snapScale.value = fresh.snapScale;
+    setCenter(fresh.center);
   }
 
   function save() {

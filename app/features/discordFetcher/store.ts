@@ -16,16 +16,21 @@ export interface DiscordFetcherStore {
 
 const STORAGE_KEY = 'mtg-harmony_discordFetcher';
 
-const defaults: DiscordFetcherStore = {
-  cards: [],
-  activeIndex: -1,
-  cardCleared: false,
-  fetchCardCount: 10,
-  minQueuedCardCount: 3,
-  preloadImagesEnabled: true,
-};
+/** Fresh default state. A factory, so no store shares (and mutates) it. */
+function createDefaults(): DiscordFetcherStore {
+  return {
+    cards: [],
+    activeIndex: -1,
+    cardCleared: false,
+    fetchCardCount: 10,
+    minQueuedCardCount: 3,
+    preloadImagesEnabled: true,
+  };
+}
 
 export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
+  const defaults = createDefaults();
+
   const scryfall = useScryfall();
 
   const fetchingCards = ref(false);
