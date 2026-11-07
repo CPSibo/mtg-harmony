@@ -1,4 +1,9 @@
-import type { Battlefield, BoardCard, BoardCardStack } from '~/types/PlayArea';
+import type {
+  Battlefield,
+  BoardCard,
+  BoardCardModifier,
+  BoardCardStack,
+} from '~/types/PlayArea';
 import { v4 as uuidv4 } from 'uuid';
 import type { Position } from '@vueuse/core';
 
@@ -200,6 +205,26 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     }
   }
 
+  /** Moves a stack to a new board position. */
+  function setStackPosition(stack: BoardCardStack, position: Position) {
+    stack.position = position;
+  }
+
+  /** Flips a card between tapped and untapped. */
+  function toggleTapped(card: BoardCard) {
+    card.tapped = !card.tapped;
+  }
+
+  /** Sets the number shown on a card's face (0 hides it). */
+  function setFaceNumber(card: BoardCard, value: number) {
+    card.faceNumber = value;
+  }
+
+  /** Removes every counter and granted keyword from a card. */
+  function clearModifiers(card: BoardCard) {
+    card.modifiers = new Set<BoardCardModifier>();
+  }
+
   const cardToAttach = ref<BoardCard | null>(null);
   function startAttaching(card: BoardCard) {
     cardToAttach.value = card;
@@ -328,9 +353,13 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     setsnapScale,
 
     untapAll,
+    toggleTapped,
+    setFaceNumber,
+    clearModifiers,
 
     stacks,
     bringToFront,
+    setStackPosition,
     orderedStacks,
     setStacks,
     addStackByCard,

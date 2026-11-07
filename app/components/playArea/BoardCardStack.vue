@@ -78,7 +78,7 @@ const { style, isDragging: myIsDragging } = useBoardDraggable(stackEl, {
   capture: true,
   disabled: () => battlefield.isAttaching,
   onEnd: (position: Position) => {
-    props.stack.position = position;
+    battlefield.setStackPosition(props.stack, position);
   },
 });
 

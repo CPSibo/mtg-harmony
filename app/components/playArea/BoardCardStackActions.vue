@@ -8,7 +8,7 @@
       size="xs"
       variant="solid"
       :disabled="battlefield.isAttaching"
-      @click="stack.primary.tapped = !stack.primary.tapped"
+      @click="battlefield.toggleTapped(stack.primary)"
     >
       <span
         class="ms"

@@ -39,9 +39,12 @@
         </UButton>
 
         <UInputNumber
-          v-model="card.faceNumber"
+          :model-value="card.faceNumber"
           :min="0"
           title="Number"
+          @update:model-value="
+            (value) => battlefield.setFaceNumber(card!, value ?? 0)
+          "
         />
 
         <LazyUSeparator />
@@ -175,7 +178,7 @@ const cardRemoved = () => {
 const toggleTap = () => {
   if (!props.card) return;
 
-  props.card.tapped = !props.card.tapped;
+  battlefield.toggleTapped(props.card);
 
   open.value = false;
 };

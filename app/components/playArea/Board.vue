@@ -43,7 +43,7 @@
 
 <script setup lang="ts">
 import { useBattlefieldStore } from '~/features/battlefield';
-import type { BoardCard, BoardCardStack } from '~/types/PlayArea';
+import type { BoardCard } from '~/types/PlayArea';
 
 const battlefield = useBattlefieldStore();
 const { orderedStacks, center: centerState } = storeToRefs(battlefield);

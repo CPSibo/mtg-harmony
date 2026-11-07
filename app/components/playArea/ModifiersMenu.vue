@@ -111,14 +111,17 @@
 </template>
 
 <script setup lang="ts">
+import { useBattlefieldStore } from '~/features/battlefield';
 import { MODIFIERS } from '~/types/MtgConcepts';
-import type { BoardCardModifier, BoardCard } from '~/types/PlayArea';
+import type { BoardCard } from '~/types/PlayArea';
 
 const open = defineModel<boolean>('open', { default: false });
 
 const props = defineProps<{
   card: BoardCard | undefined;
 }>();
+
+const battlefield = useBattlefieldStore();
 
 function findMod(name: string) {
   if (!props.card) return undefined;
@@ -137,7 +140,7 @@ function getModCount(name: string) {
 const removeAllCounters = () => {
   if (!props.card) return;
 
-  props.card.modifiers = new Set<BoardCardModifier>();
+  battlefield.clearModifiers(props.card);
 };
 </script>
 
