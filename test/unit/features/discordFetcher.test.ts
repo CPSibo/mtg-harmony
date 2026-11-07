@@ -75,13 +75,15 @@ describe('discord fetcher store', () => {
       await store.next();
 
       expect(store.card).toMatchObject({
-        id: scryfallCard.id,
+        scryfallInfo: scryfallCard,
         name: 'Pacifism',
         image_uri: scryfallCard.image_uris!.border_crop,
         tapped: false,
         faceNumber: 0,
       });
       expect(store.card?.modifiers.size).toBe(0);
+      // #23: history cards get instance IDs, not the Scryfall ID.
+      expect(store.card?.id).not.toBe(scryfallCard.id);
     });
 
     it('moves through cards already fetched without fetching again', async () => {
@@ -267,6 +269,30 @@ describe('discord fetcher store', () => {
       expect(store.fetchCardCount).toBe(5);
       expect(store.minQueuedCardCount).toBe(2);
       expect(store.preloadImagesEnabled).toBe(false);
+    });
+
+    // #23: before the fix, casting put the history card itself on the
+    // board, so saved history can carry a stale stack and a Scryfall ID.
+    it('drops stale stacks and Scryfall IDs from saved history', () => {
+      const old = makeCard({ name: 'Old' });
+      old.id = old.scryfallInfo.id;
+      old.stack = {
+        id: 'stack-0',
+        primary: old,
+        attachments: new Set(),
+        unders: new Set(),
+        position: { x: 0, y: 0 },
+      };
+      localStorage.setItem(
+        STORAGE_KEY,
+        stringify({ cards: [old], activeIndex: 0 }),
+      );
+
+      const store = useDiscordFetcherStore();
+
+      expect(store.card?.name).toBe('Old');
+      expect(store.card?.stack).toBeUndefined();
+      expect(store.card?.id).not.toBe(old.scryfallInfo.id);
     });
 
     it('clamps a saved index that is past the end of the history', () => {

@@ -7,8 +7,10 @@ import type {
   BoardCardModifier,
   BoardCardStack,
 } from '~/types/PlayArea';
-import { v4 as uuidv4 } from 'uuid';
+import type { ScryfallCard } from '~/types/Scryfall';
+import { randomUUID } from '~/utils/randomUUID';
 import type { Position } from '@vueuse/core';
+import { createBoardCard } from './boardCard';
 
 const STORAGE_KEY = 'mtg-harmony_battlefield';
 
@@ -20,6 +22,37 @@ function createDefaults(): Battlefield {
     center: { x: 0, y: 0 },
     snapScale: 10,
   };
+}
+
+/**
+ * Makes every saved card a separate object with its own ID. Boards saved
+ * before #23 used the Scryfall ID as the card ID, and casting the same
+ * On-deck card twice put one object on two stacks.
+ */
+function repairCardIds(stacks: BoardCardStack[]) {
+  const seenIds = new Set<string>();
+  const seenCards = new Set<BoardCard>();
+
+  function repair(card: BoardCard, stack: BoardCardStack): BoardCard {
+    if (seenCards.has(card)) {
+      card = { ...card, modifiers: new Set(card.modifiers), id: randomUUID() };
+    }
+    if (card.id === card.scryfallInfo?.id || seenIds.has(card.id)) {
+      card.id = randomUUID();
+    }
+    card.stack = stack;
+    seenCards.add(card);
+    seenIds.add(card.id);
+    return card;
+  }
+
+  for (const stack of stacks) {
+    stack.primary = repair(stack.primary, stack);
+    stack.attachments = new Set(
+      [...stack.attachments].map((c) => repair(c, stack)),
+    );
+    stack.unders = new Set([...stack.unders].map((c) => repair(c, stack)));
+  }
 }
 
 export const useBattlefieldStore = defineStore('battlefield', () => {
@@ -80,7 +113,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
 
   function addStackByCard(card: BoardCard) {
     const newStack: BoardCardStack = {
-      id: uuidv4(),
+      id: randomUUID(),
       primary: card,
       attachments: new Set<BoardCard>(),
       unders: new Set<BoardCard>(),
@@ -93,6 +126,11 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     zOrder.value.push(newStack.id);
 
     return newStack;
+  }
+
+  /** Puts a new instance of a Scryfall card on the board in its own stack. */
+  function castCard(scryfallCard: ScryfallCard) {
+    return addStackByCard(createBoardCard(scryfallCard));
   }
 
   function removeStack(stack: BoardCardStack) {
@@ -328,7 +366,10 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
       return false;
     }
 
-    if (Array.isArray(data?.stacks)) stacks.value = data.stacks;
+    if (Array.isArray(data?.stacks)) {
+      repairCardIds(data.stacks);
+      stacks.value = data.stacks;
+    }
 
     if (Array.isArray(data?.zOrder)) zOrder.value = data.zOrder;
 
@@ -372,6 +413,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     orderedStacks,
     setStacks,
     addStackByCard,
+    castCard,
     clearStacks,
     removeStack,
     removeCardFromStack,

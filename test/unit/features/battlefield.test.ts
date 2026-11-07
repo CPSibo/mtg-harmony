@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { nextTick } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import type { BoardCardModifier, BoardCardStack } from '~/types/PlayArea';
-import { makeCard } from '../fixtures/cards';
+import { makeCard, makeScryfallCard } from '../fixtures/cards';
 import { stubStorage } from '../fixtures/storage';
 
 const STORAGE_KEY = 'mtg-harmony_battlefield';
@@ -69,6 +69,24 @@ describe('battlefield store', () => {
       board.addStackByCard(makeCard());
 
       expect(board.stacks[0]!.id).not.toBe(board.stacks[1]!.id);
+    });
+
+    // #23: adding the same token twice used to give both copies one ID.
+    it('casts a fresh card each time, even from the same Scryfall card', () => {
+      const board = useBattlefieldStore();
+      const scryfallCard = makeScryfallCard({ name: 'Goblin' });
+
+      const a = board.castCard(scryfallCard);
+      const b = board.castCard(scryfallCard);
+
+      expect(names(board.stacks)).toEqual(['Goblin', 'Goblin']);
+      expect(a.primary).not.toBe(b.primary);
+      expect(a.primary.id).not.toBe(b.primary.id);
+      expect(a.primary.stack).toBe(a);
+      expect(b.primary.stack).toBe(b);
+
+      board.toggleTapped(a.primary);
+      expect(b.primary.tapped).toBe(false);
     });
 
     it('removes a stack and its z-order entry', () => {
@@ -405,6 +423,73 @@ describe('battlefield store', () => {
       const board = useBattlefieldStore();
 
       expect(names(board.orderedStacks)).toEqual(['B', 'A']);
+    });
+
+    // #23: boards saved before the fix use Scryfall IDs for cards, and a
+    // history card cast twice is one object on two stacks.
+    it('gives saved cards with shared or Scryfall IDs their own', () => {
+      const shared = makeCard({ name: 'Twice' });
+      shared.id = shared.scryfallInfo.id;
+      const aura = makeCard({ name: 'Aura', id: 'dup' });
+      const under = makeCard({ name: 'Under', id: 'dup' });
+      const stacks = [0, 1].map((i) => {
+        const stack: BoardCardStack = {
+          id: `stack-${i}`,
+          primary: shared,
+          attachments: new Set(i === 0 ? [aura] : []),
+          unders: new Set(i === 1 ? [under] : []),
+          position: { x: 0, y: 0 },
+        };
+        shared.stack = stack;
+        return stack;
+      });
+      aura.stack = stacks[0];
+      under.stack = stacks[1];
+      localStorage.setItem(
+        STORAGE_KEY,
+        stringify({
+          stacks,
+          zOrder: [],
+          center: { x: 0, y: 0 },
+          snapScale: 10,
+        }),
+      );
+
+      const board = useBattlefieldStore();
+
+      const [first, second] = board.stacks as [BoardCardStack, BoardCardStack];
+      const all = [
+        first.primary,
+        second.primary,
+        ...first.attachments,
+        ...second.unders,
+      ];
+      expect(new Set(all.map((c) => c.id)).size).toBe(4);
+      expect(all.map((c) => c.id)).not.toContain(shared.scryfallInfo.id);
+      expect(first.primary).not.toBe(second.primary);
+      expect(first.primary.stack).toBe(first);
+      expect(second.primary.stack).toBe(second);
+      expect(second.primary.name).toBe('Twice');
+    });
+
+    it('keeps saved card IDs that are already unique', () => {
+      const card = makeCard({ id: 'keep-me' });
+      const stack: BoardCardStack = {
+        id: 'stack-0',
+        primary: card,
+        attachments: new Set(),
+        unders: new Set(),
+        position: { x: 0, y: 0 },
+      };
+      card.stack = stack;
+      localStorage.setItem(
+        STORAGE_KEY,
+        stringify({ stacks: [stack], zOrder: ['stack-0'] }),
+      );
+
+      const board = useBattlefieldStore();
+
+      expect(board.stacks[0]!.primary.id).toBe('keep-me');
     });
 
     it('starts empty when nothing is saved', () => {

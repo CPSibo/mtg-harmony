@@ -68,6 +68,21 @@ test('a card fetched On-deck can be cast to the board', async ({ page }) => {
   await expect(boardCard).toBeVisible();
 });
 
+// #23: both copies used to share one ID.
+test('the same card cast twice gives two separate cards', async ({ page }) => {
+  // The mocked random endpoint always returns the same card.
+  for (let i = 0; i < 2; i++) {
+    await page.getByRole('button', { name: 'On-deck' }).click();
+    await page.getByRole('button', { name: 'Next card' }).click();
+    await page.getByRole('button', { name: 'Cast to board' }).click();
+  }
+
+  const boardCards = page.locator('.board-card').getByRole('img', {
+    name: card.name,
+  });
+  await expect(boardCards).toHaveCount(2);
+});
+
 test('a card found through Add Card goes on the board', async ({ page }) => {
   await page.keyboard.press('/');
   await page.getByRole('option', { name: /Add card/i }).click();
