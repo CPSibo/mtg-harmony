@@ -9,6 +9,7 @@
     "vite.config.ts",
     "vitest.config.ts",
     "playwright.config.ts",
-    "eslint.config.mjs"
+    "eslint.config.mjs",
+    "test/e2e/**/*.ts"
   ]
 }

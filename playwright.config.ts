@@ -5,7 +5,12 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  reporter: 'html',
+  // The HTML report is uploaded from CI on failure; open it locally with
+  // `npx playwright show-report`.
+  reporter: [
+    process.env.CI ? ['github'] : ['list'],
+    ['html', { open: 'never' }],
+  ],
   use: {
     baseURL: 'http://localhost:4173',
     trace: 'on-first-retry',

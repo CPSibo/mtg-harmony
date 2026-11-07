@@ -27,6 +27,10 @@ Follow these steps for every work item (a GitHub issue):
    step 7.
 9. Push the branch and open a **draft** PR against `dev`. Link the issue (`Closes #N`) and any other issues, docs or
    artefacts of note.
+10. Before handing the task back, stop everything you started: dev and preview servers, background processes,
+    containers, and browser tabs or panes. Check nothing still listens on the ports you used (`3000`, `4173`,
+    `5173`), and delete temporary files outside the scratchpad. Stopping a background task can leave its child
+    process running, so check the port rather than trusting the task's status.
 
 ## Definition of Done
 
@@ -38,7 +42,7 @@ npm test
 npm run build         # production build into dist/
 ```
 
-End-to-end tests (`npm run test:e2e`) and their CI job are paused until #19.
+`npm run test:e2e` runs the Playwright tests (CI runs them too). Run `npx playwright install chromium` once first.
 
 ## Unit tests
 
@@ -50,6 +54,17 @@ End-to-end tests (`npm run test:e2e`) and their CI job are paused until #19.
   `test/unit/fixtures/storage.ts`; spying on `Storage.prototype` leaks between tests under happy-dom.
 - A test for a known, unfixed bug asserts the correct behaviour and is marked `it.fails`, with the issue number
   in its name. When the fix lands it fails loudly; change it to `it`.
+
+## End-to-end tests
+
+- Playwright, in `test/e2e/`, Chromium only. It runs against `vite preview` of a fresh production build on port
+  4173, not the dev server.
+- Locally Playwright reuses whatever already listens on 4173, which may be a stale build. Stop old preview
+  servers before running it.
+- Mock Scryfall with `page.route` (see `mockScryfall` in `test/e2e/smoke.spec.ts`): API calls and card images.
+  Tests never hit the network.
+- Prefer role-based locators (`getByRole`). Board cards expose `role="img"` named after the card.
+- A test blocked by a known bug uses `test.fixme(true, '…: #N')`.
 
 ## Node version
 
