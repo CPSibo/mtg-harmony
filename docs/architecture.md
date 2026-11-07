@@ -165,8 +165,6 @@ Rules the battlefield store enforces:
   never goes on the board itself.
 - Card and stack IDs come from `randomUUID` (`utils/randomUUID.ts`). It falls back to `crypto.getRandomValues`
   where `crypto.randomUUID` is missing, as on a plain-HTTP dev server opened from a phone.
-- On load, saved cards with a Scryfall ID or a duplicate ID get a new one, and a card object saved on two stacks is
-  split into two cards. Saved On-deck history loses any stale stack reference.
 
 ## Scryfall
 

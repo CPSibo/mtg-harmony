@@ -4,7 +4,6 @@ import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { createBoardCard } from '~/features/battlefield';
 import type { BoardCard } from '~/types/PlayArea';
-import { randomUUID } from '~/utils/randomUUID';
 
 export interface DiscordFetcherStore {
   cards: BoardCard[];
@@ -247,15 +246,7 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
 
     if (!data) return false;
 
-    if (Array.isArray(data?.cards)) {
-      // History saved before #23 can hold cards that were cast onto the
-      // board: they carry a stack and use the Scryfall ID as their own.
-      for (const saved of data.cards) {
-        delete saved.stack;
-        if (saved.id === saved.scryfallInfo?.id) saved.id = randomUUID();
-      }
-      cards.value = data.cards;
-    }
+    if (Array.isArray(data?.cards)) cards.value = data.cards;
 
     if (typeof data?.activeIndex === 'number') {
       // Clamp in case storage is stale relative to the loaded history.
