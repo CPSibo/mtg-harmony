@@ -79,7 +79,7 @@ const stack = computed(() => props.card.stack);
 const battlefield = useBattlefieldStore();
 
 const isValidAttachmentTarget = computed(() => {
-  return battlefield.isValidAttadchmentTarget(props.card);
+  return battlefield.isValidAttachmentTarget(props.card);
 });
 
 const tryAttach = (ev: Event) => {

@@ -32,7 +32,7 @@ app/
     addCard/       Manual card search (store, window, widget)
     battlefield/   The board's state: stacks, z-order, attaching, save/load
     discordFetcher/ Random-card fetching and the On-deck panel
-    pallete/       The command palette (spelling is historical)
+    palette/       The command palette
     widgets/       The widget registry that feeds the palette and keyboard shortcuts
   components/      Shared and layout components: the board, cards, corner buttons, dialogs
   composables/     useScryfall, useLocalStorage, usePanAndZoom, useScaledDraggable, useReset
@@ -67,7 +67,7 @@ The flow:
 3. `register()` binds each command's `kbds` with Nuxt UI's `defineShortcuts`. Chords use a dash: `b-a` means "b,
    then a".
 4. The registry's `paletteGroups` turns every widget into a group of `UCommandPalette` items. The palette
-   (`features/pallete/components/FloatingBar.vue`) opens with `/` or the search button at the top of the screen.
+   (`features/palette/components/FloatingBar.vue`) opens with `/` or the search button at the top of the screen.
 
 Today only Add Card registers a widget. The registry also exposes `allSettings`, but the settings dialog doesn't
 read it yet: it binds to the settings store directly.

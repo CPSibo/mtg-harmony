@@ -2,10 +2,7 @@
   <div
     ref="stack"
     :style="style"
-    :class="[
-      'board-card-stack origin-top-left absolute',
-      { 'primary-tapped': stack.primary.tapped },
-    ]"
+    class="board-card-stack origin-top-left absolute"
   >
     <div class="primary-card-wrapper flex flex-row">
       <PlayAreaBoardCardStackActions
@@ -24,7 +21,6 @@
 
     <div
       class="attachments"
-      :class="{ 'primary-tapped': stack.primary.tapped }"
       :style="`--total: ${stack.attachments.size}`"
     >
       <PlayAreaBoardCard
@@ -62,7 +58,6 @@ const props = defineProps<{
 const emits = defineEmits<{
   showCardDetails: [BoardCard];
   showCardModifiers: [BoardCard];
-  clicked: [BoardCard, BoardCardStack];
 }>();
 
 const battlefield = useBattlefieldStore();
@@ -103,16 +98,11 @@ watch(myIsDragging, (value) => {
   --w: calc(var(--scaled-short) + var(--border-width) * 2);
   --h: calc(var(--scaled-long) + var(--border-width) * 2);
 
-  --actions-margin: 1.5em;
   --actions-width: 1.5em;
   --actions-padding-right: 0.3em;
   --actions-total-width: calc(
     var(--actions-width) + var(--actions-padding-right)
   );
-
-  // margin-left: var(--actions-margin);
-
-  background: green;
 
   .primary-card-wrapper {
     position: relative;
@@ -140,28 +130,10 @@ watch(myIsDragging, (value) => {
   /* TODO: This doesn't account for tapped attachments. */
   height: calc((var(--total) * var(--h)) + var(--vertical-offset));
 
-  &.primary-tapped {
-    // margin-left: 60px + var(--actions-margin);
-  }
-
   > .board-card {
     top: calc(var(--vertical-offset) * var(--index));
     z-index: calc(var(--index) * -1);
     position: relative;
-  }
-}
-
-.board-card-stack:hover {
-  // margin-left: 0;
-
-  &.primary-tapped {
-    .primary-card {
-      // margin-left: 60px + var(--actions-margin);
-    }
-  }
-
-  .attachments {
-    // margin-left: var(--actions-margin);
   }
 }
 </style>
