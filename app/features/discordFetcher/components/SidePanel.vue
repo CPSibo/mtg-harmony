@@ -85,19 +85,6 @@
         </UButton>
 
         <UButton
-          color="secondary"
-          variant="subtle"
-          icon="i-lucide-wand-sparkles"
-          :loading="loading"
-          :disabled="!card?.id"
-          size="xl"
-          class="md:col-span-2"
-          @click="cast"
-        >
-          Cast to graveyard
-        </UButton>
-
-        <UButton
           color="error"
           variant="ghost"
           icon="i-lucide-x"

@@ -17,19 +17,10 @@
   <AddCardWidgetComponent />
   <AddCardWindow />
 
-  <!-- <GraveyardWidgetComponent />
-  <GraveyardWindow />
-  <GraveyardButton v-model:open="showGraveyard" /> -->
-
-  <FloatingBar @graveyard_toggle-window="showGraveyard = true" />
+  <FloatingBar />
 </template>
 
 <script setup lang="ts">
-import {
-  GraveyardButton,
-  GraveyardWidgetComponent,
-  GraveyardWindow,
-} from '~/features/graveyard';
 import { LazySettingsModal } from '#components';
 import { AddCardWidgetComponent, AddCardWindow } from '~/features/addCard';
 import { FloatingBar } from '~/features/pallete';
@@ -45,8 +36,6 @@ async function openSettings() {
 const showConfirmClearBoard = ref(false);
 const showConfirmClearSession = ref(false);
 const showConfirmResetAppData = ref(false);
-
-const showGraveyard = ref(false);
 
 // Load the store globally, so the values get set.
 const inputModeStore = useInputModeStore();

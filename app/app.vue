@@ -7,6 +7,10 @@
 </template>
 
 <script setup lang="ts">
+import { removeRetiredStorage } from '~/composables/useLocalStorage';
+
+onMounted(removeRetiredStorage);
+
 /* Layout */
 
 useHead({
