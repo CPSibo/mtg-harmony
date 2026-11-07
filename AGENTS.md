@@ -34,11 +34,12 @@ Follow these steps for every work item (a GitHub issue):
 npm run format        # then commit any changes it makes
 npm run lint
 npm run typecheck
-npx vitest run
+npm test
 npm run generate      # production build into dist/
 ```
 
-There are no unit tests yet (#14, #18), so `npx vitest run` fails with "No test files found".
+There are no unit tests yet, so `npm test` runs Vitest with `--passWithNoTests` until #18 adds them. End-to-end
+tests (`npm run test:e2e`) and their CI job are paused until #19.
 
 ## Node version
 
