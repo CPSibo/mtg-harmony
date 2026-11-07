@@ -26,13 +26,9 @@ Each card on the board has quick buttons for tapping and removing it. Open a car
 
 The untap button in the top corner untaps everything at once.
 
-### Add card
-
-Search Scryfall for a specific card and put it on the board, for example to mirror a physical card.
-
 ### Command palette
 
-Press <kbd>/</kbd> or the search button at the top for a list of commands and their keyboard shortcuts, such as <kbd>B</kbd> <kbd>A</kbd> for Add card.
+Press <kbd>/</kbd> or the search button at the top for a list of commands and their keyboard shortcuts.
 
 ### Persistent sessions
 
