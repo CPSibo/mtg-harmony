@@ -14,7 +14,7 @@
     <template #content>
       <UCommandPalette
         v-model:search-term="searchTerm"
-        :loading="status === 'pending' || status === 'idle'"
+        :loading="status === 'pending'"
         :groups="groups"
         class="flex-1 h-80"
         size="xl"
@@ -26,7 +26,13 @@
           itemTrailingHighlightedIcon: 'hidden',
         }"
         @update:model-value="onSelect"
-      />
+      >
+        <template #empty>
+          <p class="py-6 text-center text-sm text-muted">
+            {{ emptyMessage }}
+          </p>
+        </template>
+      </UCommandPalette>
     </template>
   </UModal>
 </template>
@@ -36,48 +42,25 @@ import UCommandPalette from '@nuxt/ui/components/CommandPalette.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
 import { refDebounced } from '@vueuse/core';
 import { pickImageUri } from '~/composables/useScryfall';
-import type { ScryfallCardSearchResponse } from '~/composables/useScryfall';
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import type { CommandPaletteItem } from '@nuxt/ui';
 import { useAddCard } from '..';
 import { useBattlefieldStore } from '~/features/battlefield';
 import type { BoardCardModifier } from '~/types/PlayArea';
-import type { ScryfallCard } from '~/types/Scryfall';
+import { useCardSearch } from '../useCardSearch';
 
 const addCardStore = useAddCard();
 
 const searchTerm = ref('');
 const searchTermDebounced = refDebounced(searchTerm, 500);
 
-// Search Scryfall whenever the debounced term changes, cancelling any request
-// still in flight. Scryfall answers "no matches" with a 404 and no `data`.
-const cards = ref<ScryfallCard[]>([]);
-const status = ref<'idle' | 'pending' | 'success' | 'error'>('idle');
-let searchAbort: AbortController | undefined;
+const { cards, status } = useCardSearch(searchTermDebounced);
 
-watch(
-  searchTermDebounced,
-  async (q) => {
-    searchAbort?.abort();
-    const abort = (searchAbort = new AbortController());
-    status.value = 'pending';
-    try {
-      const url = new URL('https://api.scryfall.com/cards/search');
-      url.searchParams.set('q', q);
-      const response = await fetch(url, { signal: abort.signal });
-      const body =
-        (await response.json()) as Partial<ScryfallCardSearchResponse>;
-      cards.value = body.data ?? [];
-      status.value = 'success';
-    } catch (ex) {
-      if (abort.signal.aborted) return;
-      console.error('Card search failed.', ex);
-      cards.value = [];
-      status.value = 'error';
-    }
-  },
-  { immediate: true },
-);
+const emptyMessage = computed(() => {
+  if (status.value === 'error') return 'Search failed. Try again.';
+  if (status.value === 'success') return 'No cards found.';
+  return 'Type a card name to search Scryfall.';
+});
 
 const mappedCards = computed(() => {
   return (
