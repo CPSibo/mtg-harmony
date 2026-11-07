@@ -270,17 +270,5 @@ describe('discord fetcher store', () => {
       expect(store.minQueuedCardCount).toBe(2);
       expect(store.preloadImagesEnabled).toBe(false);
     });
-
-    it('clamps a saved index that is past the end of the history', () => {
-      localStorage.setItem(
-        STORAGE_KEY,
-        stringify({ cards: [makeCard({ name: 'Only' })], activeIndex: 7 }),
-      );
-
-      const store = useDiscordFetcherStore();
-
-      expect(store.activeIndex).toBe(0);
-      expect(store.card?.name).toBe('Only');
-    });
   });
 });

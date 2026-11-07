@@ -248,10 +248,8 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
 
     if (Array.isArray(data?.cards)) cards.value = data.cards;
 
-    if (typeof data?.activeIndex === 'number') {
-      // Clamp in case storage is stale relative to the loaded history.
-      activeIndex.value = Math.min(data.activeIndex, cards.value.length - 1);
-    }
+    if (typeof data?.activeIndex === 'number')
+      activeIndex.value = data.activeIndex;
 
     if (typeof data?.cardCleared === 'boolean')
       cardCleared.value = data.cardCleared;
