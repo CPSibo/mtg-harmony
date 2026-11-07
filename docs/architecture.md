@@ -104,9 +104,12 @@ points to its stack (`BoardCard.stack`), and the stack points back to the card. 
 board has the same object graph it was saved with.
 
 Retired keys are listed in `RETIRED_STORAGE_KEYS` and deleted on startup (`removeRetiredStorage()` in `App.vue`).
-Changing a key or a stored shape means old saves must still load, or be migrated or retired explicitly.
+Until v1 there are no users to protect, so a key or stored shape can change without migrating old saves.
 
-Known gaps: the save debounce doesn't work (#25), and some settings are never saved (#24).
+Saves are debounced per key: a burst of changes writes once, 200 ms after the last one, with the latest state.
+`App.vue` writes any pending saves straight away when the page is hidden (`pagehide`, `visibilitychange`), so the
+last change isn't lost when a phone kills the tab. If a write fails, the error is logged and the first failure in
+a session shows a toast.
 
 ## The board
 

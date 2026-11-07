@@ -27,11 +27,16 @@
 <script setup lang="ts">
 import UApp from '@nuxt/ui/components/App.vue';
 import UMain from '@nuxt/ui/components/Main.vue';
-import { useOverlay } from '@nuxt/ui/composables';
+import { useOverlay, useToast } from '@nuxt/ui/composables';
+import { useEventListener } from '@vueuse/core';
 import { defineAsyncComponent, onMounted, ref } from 'vue';
 import GlobalButtons from '~/components/layout/GlobalButtons.vue';
 import PlayAreaBoard from '~/components/playArea/Board.vue';
-import { removeRetiredStorage } from '~/composables/useLocalStorage';
+import {
+  flushSaves,
+  onSaveError,
+  removeRetiredStorage,
+} from '~/composables/useLocalStorage';
 import { AddCardWidgetComponent, AddCardWindow } from '~/features/addCard';
 import { FloatingBar } from '~/features/pallete';
 import { useInputModeStore } from '~/stores/inputMode';
@@ -50,6 +55,24 @@ const SettingsModal = defineAsyncComponent(
 );
 
 onMounted(removeRetiredStorage);
+
+// Saves are debounced, so write the last change before the page goes away.
+// Mobile browsers may kill a hidden tab without firing pagehide.
+useEventListener(window, 'pagehide', flushSaves);
+useEventListener(document, 'visibilitychange', () => {
+  if (document.visibilityState === 'hidden') flushSaves();
+});
+
+const toast = useToast();
+onSaveError(() =>
+  toast.add({
+    title: 'Could not save',
+    description:
+      'Your browser storage is full or blocked. Changes may be lost on reload.',
+    color: 'error',
+    icon: 'i-lucide-triangle-alert',
+  }),
+);
 
 const overlay = useOverlay();
 const settingsModal = overlay.create(SettingsModal);
