@@ -94,15 +94,15 @@ watch([…state], save, { deep }); // On every change
 - Stores build their defaults from a `createDefaults()` factory where the defaults hold objects or arrays, so no
   two store instances share them.
 - `reset()` returns a store to its defaults. `useReset()` chains these into the menu's three levels: **clear
-  board** (battlefield), **clear session** (plus the fetcher's history) and **reset all data** (plus settings).
+  board** (battlefield), **clear session** (plus On-deck's queue and shown card) and **reset all data** (plus settings).
 
-| Key                          | Store                    | Holds                                              |
-| ---------------------------- | ------------------------ | -------------------------------------------------- |
-| `mtg-harmony_battlefield`    | `useBattlefieldStore`    | Stacks, z-order, board centre, snap size           |
-| `mtg-harmony_discordFetcher` | `useDiscordFetcherStore` | Every fetched card, the current position, settings |
-| `mtg-harmony_settings`       | `useSettingsStore`       | App settings                                       |
-| `mtg-harmony_inputMode`      | `useInputModeStore`      | Last input mode (touch or cursor)                  |
-| `mtg-harmony_eventLog`       | `useEventLogStore`       | Event log entries and the current game ID          |
+| Key                          | Store                    | Holds                                     |
+| ---------------------------- | ------------------------ | ----------------------------------------- |
+| `mtg-harmony_battlefield`    | `useBattlefieldStore`    | Stacks, z-order, board centre, snap size  |
+| `mtg-harmony_discordFetcher` | `useDiscordFetcherStore` | Queued cards, the shown card, settings    |
+| `mtg-harmony_settings`       | `useSettingsStore`       | App settings                              |
+| `mtg-harmony_inputMode`      | `useInputModeStore`      | Last input mode (touch or cursor)         |
+| `mtg-harmony_eventLog`       | `useEventLogStore`       | Event log entries and the current game ID |
 
 `useLocalStorage` serializes with **devalue**, not JSON, because the board model has `Set`s and cycles: a card
 points to its stack (`BoardCard.stack`), and the stack points back to the card. devalue keeps both, so a loaded
@@ -172,8 +172,8 @@ Rules the battlefield store enforces:
   `detach` takes either out into its own stack; a taken-out under lands below its old stack.
 - Every card is its own instance. `createBoardCard` builds one from Scryfall data with a fresh ID, and the
   Scryfall ID stays on `scryfallInfo.id`. Casting from On-deck or Add Card goes through `castCard`, which puts a
-  new instance on the board, so casting the same card twice gives two independent cards. The On-deck history card
-  never goes on the board itself.
+  new instance on the board, so casting the same card twice gives two independent cards. The On-deck card never
+  goes on the board itself.
 - `copyCard(card, mode)` puts a copy in a new stack, 40 px down and right of the source, in front. `card` copies
   the card fresh, `counters` keeps its counters, face number and tapped state, and `stack` copies its whole stack
   (primary, attachments and unders, each with its state). Every copied card gets a new ID.
@@ -227,10 +227,12 @@ All calls go straight from the browser to `api.scryfall.com`. There is no proxy 
   batch.
 - **Images**: a fetched card without a usable image is retried once, then skipped. `pickImageUri()` prefers
   `border_crop`, then `normal`, then `small`.
-- **Look-ahead**: the fetcher fetches in batches of 10 and keeps the whole history, so "previous" works. `next()`
-  resolves as soon as the next card arrives, while the rest of the batch keeps loading. When fewer than 3 unseen
-  cards are left, it tops up in the background. Overlapping fetches share one request. The next card's image is
-  preloaded.
+- **Look-ahead**: the fetcher fetches in batches of 10 into a queue. `next()` resolves as soon as the first card
+  arrives, while the rest of the batch keeps loading. When fewer than 3 cards are queued, it tops up in the
+  background. Overlapping fetches share one request. The next queued card's image is preloaded.
+- **History**: the fetcher keeps only the queue and the newest card shown. Each shown card is logged as `fetched`,
+  and "previous" steps back through those log entries (since the last Clear session), rebuilding each card from
+  its snapshot. "Next" steps forward through them again before taking a new card from the queue.
 
 ## Gotchas
 
