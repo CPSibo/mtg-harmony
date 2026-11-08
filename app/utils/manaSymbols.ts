@@ -36,3 +36,21 @@ export function manaSymbols(cost: string | undefined): ManaPart[] {
     return text ? [{ text }] : [];
   });
 }
+
+/** A part of rules text, flagged when it's reminder text. */
+export type RulesPart = ManaPart & { reminder?: true };
+
+/**
+ * Rules text as {@link symbolize} parts, with reminder text flagged: text in
+ * parentheses, which real cards print in italics (CR 207.2a).
+ */
+export function rulesText(text: string | undefined): RulesPart[] {
+  if (!text) return [];
+  return text
+    .split(/(\([^()]*\))/)
+    .flatMap((chunk, i): RulesPart[] =>
+      i % 2
+        ? symbolize(chunk).map((part) => ({ ...part, reminder: true }))
+        : symbolize(chunk),
+    );
+}

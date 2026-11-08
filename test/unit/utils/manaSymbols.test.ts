@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { manaSymbols, symbolize } from '~/utils/manaSymbols';
+import { manaSymbols, rulesText, symbolize } from '~/utils/manaSymbols';
 
 describe('manaSymbols', () => {
   it('turns a mana cost into mana-font classes, one per symbol', () => {
@@ -54,5 +54,21 @@ describe('symbolize', () => {
       'ms ms-untap ms-cost',
       'ms ms-e ms-cost',
     ]);
+  });
+});
+
+describe('rulesText', () => {
+  it('marks text in parentheses, symbols too, as reminder text', () => {
+    expect(rulesText('Flying (Pay {1}.)\nDraw.')).toEqual([
+      { text: 'Flying ' },
+      { text: '(Pay ', reminder: true },
+      { symbol: 'ms ms-1 ms-cost', label: '1', reminder: true },
+      { text: '.)', reminder: true },
+      { text: '\nDraw.' },
+    ]);
+  });
+
+  it('is empty without text', () => {
+    expect(rulesText(undefined)).toEqual([]);
   });
 });

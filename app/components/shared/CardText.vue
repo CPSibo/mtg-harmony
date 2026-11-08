@@ -43,9 +43,14 @@
         >
           <i
             v-if="'symbol' in part"
-            :class="part.symbol"
+            :class="[part.symbol, { reminder: part.reminder }]"
             :title="part.label"
           />
+          <em
+            v-else-if="part.reminder"
+            class="reminder"
+            >{{ part.text }}</em
+          >
           <template v-else>{{ part.text }}</template>
         </template>
       </p>
@@ -63,7 +68,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { ScryfallCard, ScryfallCardFace } from '~/types/Scryfall';
-import { manaSymbols, symbolize } from '~/utils/manaSymbols';
+import { manaSymbols, rulesText } from '~/utils/manaSymbols';
 
 const props = defineProps<{
   card: Pick<
@@ -91,7 +96,7 @@ const face = computed<Omit<ScryfallCardFace, 'name'>>(() => {
 });
 
 const cost = computed(() => manaSymbols(face.value.mana_cost));
-const rules = computed(() => symbolize(face.value.oracle_text));
+const rules = computed(() => rulesText(face.value.oracle_text));
 </script>
 
 <style scoped>
@@ -160,6 +165,10 @@ const rules = computed(() => symbolize(face.value.oracle_text));
 .rules .ms {
   font-size: 0.9em;
   margin: 0 0.12em;
+}
+
+.reminder {
+  font-style: italic;
 }
 
 .pt {
