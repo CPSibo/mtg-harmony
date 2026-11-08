@@ -18,12 +18,21 @@ describe('shouldOfferNewGame', () => {
     const log = useEventLogStore();
     log.record('cast', { card: makeCard() });
 
-    expect(shouldOfferNewGame(log, 2 * HOUR - 1)).toBe(false);
-    expect(shouldOfferNewGame(log, 2 * HOUR + 1)).toBe(true);
+    expect(shouldOfferNewGame(log, 2 * HOUR - 1, true)).toBe(false);
+    expect(shouldOfferNewGame(log, 2 * HOUR + 1, true)).toBe(true);
+  });
+
+  it('does not offer one when the board is empty', () => {
+    vi.useFakeTimers({ now: 0 });
+    const log = useEventLogStore();
+    log.record('fetched', { card: makeCard() });
+
+    expect(shouldOfferNewGame(log, 10 * HOUR, false)).toBe(false);
+    expect(shouldOfferNewGame(log, 10 * HOUR, true)).toBe(true);
   });
 
   it('does not offer one with an empty log', () => {
-    expect(shouldOfferNewGame(useEventLogStore(), 10 * HOUR)).toBe(false);
+    expect(shouldOfferNewGame(useEventLogStore(), 10 * HOUR, true)).toBe(false);
   });
 
   it('does not offer one right after a new game started', () => {
@@ -32,7 +41,7 @@ describe('shouldOfferNewGame', () => {
     log.record('cast', { card: makeCard() });
     log.startNewGame('clearSession');
 
-    expect(shouldOfferNewGame(log, 10 * HOUR)).toBe(false);
+    expect(shouldOfferNewGame(log, 10 * HOUR, true)).toBe(false);
   });
 
   it('does not offer it again once dismissed, until there is new activity', () => {
@@ -42,10 +51,10 @@ describe('shouldOfferNewGame', () => {
 
     vi.setSystemTime(3 * HOUR);
     log.dismissNewGameOffer();
-    expect(shouldOfferNewGame(log, 4 * HOUR)).toBe(false);
+    expect(shouldOfferNewGame(log, 4 * HOUR, true)).toBe(false);
 
     vi.setSystemTime(4 * HOUR);
     log.record('cast', { card: makeCard() });
-    expect(shouldOfferNewGame(log, 6 * HOUR)).toBe(true);
+    expect(shouldOfferNewGame(log, 6 * HOUR, true)).toBe(true);
   });
 });

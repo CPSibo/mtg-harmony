@@ -210,7 +210,8 @@ copied, removed, board cleared and game markers. Moving, tapping and counters ar
 - The menu's **Clear board**, **Clear session** and **Reset all data** (`useReset`) each start a new game, so one
   marker per action. None of them clears the log.
 - After 2 hours without events (`IDLE_PROMPT_AFTER_MS`), `NewGamePrompt` offers a new game when the app opens or
-  its tab comes back into view (`shouldOfferNewGame`). **New game** does what Clear session does, with the reason
+  its tab comes back into view (`shouldOfferNewGame`). Only with cards on the board, and not when the last event
+  is already a new game, so a player who cleared up or never played isn't asked. **New game** does what Clear session does, with the reason
   `idlePrompt`. Closing it any other way dismisses the offer until there's new activity; the dismissal is saved.
 - The **Event log** window (`EventLogWindow.vue`) opens from the palette (`e`, then `l`) or the menu. It lists
   entries newest first (`filterEntries`), filtered by event type and part of a card name, and shows the newest 200

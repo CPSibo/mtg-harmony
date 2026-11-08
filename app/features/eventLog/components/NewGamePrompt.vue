@@ -39,18 +39,23 @@ import UModal from '@nuxt/ui/components/Modal.vue';
 import { useDocumentVisibility } from '@vueuse/core';
 import { onMounted, ref, watch } from 'vue';
 import { useReset } from '~/composables/useReset';
+import { useBattlefieldStore } from '~/features/battlefield';
 import { shouldOfferNewGame, useEventLogStore } from '..';
 
 /**
  * A soft, dismissible offer of a new game after 2 hours without events,
- * checked when the app opens and when its tab comes back into view.
+ * when there are cards on the board. Checked when the app opens and when its tab comes back into view.
  */
 const log = useEventLogStore();
 const reset = useReset();
+const battlefield = useBattlefieldStore();
+
+const offerNewGame = () =>
+  shouldOfferNewGame(log, Date.now(), battlefield.stacks.length > 0);
 const open = ref(false);
 
 function check() {
-  if (shouldOfferNewGame(log)) open.value = true;
+  if (offerNewGame()) open.value = true;
 }
 
 onMounted(check);
@@ -60,7 +65,7 @@ watch(visibility, (value) => value === 'visible' && check());
 // Closing any way but "New game" (button, X, Escape) dismisses the offer.
 function dismiss() {
   open.value = false;
-  if (shouldOfferNewGame(log)) log.dismissNewGameOffer();
+  if (offerNewGame()) log.dismissNewGameOffer();
 }
 
 function startNewGame() {
