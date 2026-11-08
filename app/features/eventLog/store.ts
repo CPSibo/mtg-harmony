@@ -48,6 +48,14 @@ export const useEventLogStore = defineStore('eventLog', () => {
   const entries = ref<EventEntry[]>([]);
   const gameId = ref(randomUUID());
 
+  const windowIsOpen = ref(false);
+  function openWindow() {
+    windowIsOpen.value = true;
+  }
+  function closeWindow() {
+    windowIsOpen.value = false;
+  }
+
   // Every entry about the same card points at one snapshot object, so the
   // saved log (devalue keeps shared references) stores each card once.
   const snapshots = new Map<string, LoggedCard>();
@@ -145,5 +153,16 @@ export const useEventLogStore = defineStore('eventLog', () => {
   load();
   watch([entries, gameId], save, { deep: true });
 
-  return { entries, gameId, record, startNewGame, reset, save, load };
+  return {
+    entries,
+    gameId,
+    record,
+    startNewGame,
+    reset,
+    save,
+    load,
+    windowIsOpen,
+    openWindow,
+    closeWindow,
+  };
 });

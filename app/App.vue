@@ -19,6 +19,9 @@
       <AddCardWidgetComponent />
       <AddCardWindow />
 
+      <EventLogWidgetComponent />
+      <EventLogWindow />
+
       <FloatingBar />
     </UMain>
   </UApp>
@@ -38,6 +41,7 @@ import {
   removeRetiredStorage,
 } from '~/composables/useLocalStorage';
 import { AddCardWidgetComponent, AddCardWindow } from '~/features/addCard';
+import { EventLogWidgetComponent, EventLogWindow } from '~/features/eventLog';
 import { FloatingBar } from '~/features/palette';
 import { useInputModeStore } from '~/stores/inputMode';
 

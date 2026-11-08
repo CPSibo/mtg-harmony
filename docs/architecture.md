@@ -73,7 +73,7 @@ The flow:
 4. The registry's `paletteGroups` turns every widget into a group of `UCommandPalette` items. The palette
    (`features/palette/components/FloatingBar.vue`) opens with `/` or the search button at the top of the screen.
 
-Today only Add Card registers a widget. The registry also exposes `allSettings`, but the settings dialog doesn't
+Add Card and the event log register widgets. The registry also exposes `allSettings`, but the settings dialog doesn't
 read it yet: it binds to the settings store directly.
 
 ## Stores and persistence
@@ -206,6 +206,10 @@ copied, removed, board cleared and game markers. Moving, tapping and counters ar
   Internal moves (`removeCardFromStack`, `explodeStack`, `detach`) aren't logged.
 
 - `startNewGame(reason)` switches to a new game ID and records a `gameMarker`. A refresh never ends a game.
+- The **Event log** window (`EventLogWindow.vue`) opens from the palette (`e`, then `l`) or the menu. It lists
+  entries newest first (`filterEntries`), filtered by event type and part of a card name, and shows the newest 200
+  matches. A fetched entry has **Cast**, which casts the card again from its snapshot
+  (`scryfallCardFromSnapshot`), for example after an accidental refetch.
 - The log keeps 30 days and at most 5000 entries (`MAX_AGE_MS`, `MAX_ENTRIES`), trimmed on load and on each
   record.
 
