@@ -15,6 +15,7 @@
     "test:watch": "vitest --watch",
     "test:coverage": "vitest run --coverage",
     "og-image": "node scripts/og-image/render.mjs",
+    "icons": "node scripts/icons/render.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },

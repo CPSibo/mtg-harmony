@@ -13,7 +13,7 @@
   >
     <UButton
       icon="i-lucide-search"
-      class="fixed top-2 left-1/2 -translate-x-1/2"
+      class="fixed top-[calc(0.5rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2"
       color="neutral"
       variant="subtle"
       @click="

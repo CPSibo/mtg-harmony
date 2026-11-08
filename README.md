@@ -4,6 +4,8 @@ Pull up this [helper app](https://mtg-harmony.com) on a phone, tablet, or other 
 
 Live: [mtg-harmony.com](https://mtg-harmony.com)
 
+On an iPhone or iPad, open it in Safari and choose Share → **Add to Home Screen**. Opened from the home screen, it runs full screen, and swiping from the screen edge can't navigate away mid-game. Chrome on Android offers to install it too.
+
 ## Features
 
 ### On-deck

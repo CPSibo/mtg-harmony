@@ -1,0 +1,53 @@
+<!doctype html>
+<!--
+  Source of the app icons in public/icons/. render.mjs sets the viewport size
+  and adds ?maskable for the maskable icon, which keeps the symbol inside the
+  central safe zone. Re-render after editing: npm run icons
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link
+      rel="stylesheet"
+      href="../../node_modules/mana-font/css/mana.css"
+    />
+    <style>
+      * {
+        margin: 0;
+      }
+
+      html,
+      body {
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fafafa;
+        background:
+          radial-gradient(circle at 30% 20%, #c026d3, transparent 70%),
+          linear-gradient(160deg, #86198f, #4a044e);
+        font-size: 62vmin;
+      }
+
+      body.maskable {
+        font-size: 44vmin;
+      }
+
+      i {
+        filter: drop-shadow(0 2vmin 3vmin rgb(0 0 0 / 0.45));
+      }
+    </style>
+  </head>
+  <body>
+    <i class="ms ms-chaos"></i>
+    <script>
+      if (location.search.includes('maskable'))
+        document.body.classList.add('maskable');
+    </script>
+  </body>
+</html>
