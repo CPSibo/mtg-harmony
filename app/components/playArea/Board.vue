@@ -94,9 +94,9 @@ const {
 
 const anyCardIsDragging = ref(false);
 
-// Screen pixels kept clear at the view's edges when placing a new card: the
-// top for the corner buttons, a margin elsewhere.
-const VIEW_INSET = { top: 64, right: 16, bottom: 16, left: 16 };
+// Screen pixels at the view's edges that don't count as in view when placing
+// a new card: the top, for the corner buttons.
+const VIEW_INSET = { top: 64, right: 0, bottom: 0, left: 0 };
 
 const { width: windowWidth, height: windowHeight } = useWindowSize();
 

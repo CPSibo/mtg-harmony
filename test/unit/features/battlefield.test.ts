@@ -738,10 +738,11 @@ describe('casting into the view', () => {
 
     const rects = stacks.map((s) => rectOf(board, s));
     for (const [i, a] of rects.entries()) {
-      expect(a.x).toBeGreaterThanOrEqual(view.x);
-      expect(a.y).toBeGreaterThanOrEqual(view.y);
-      expect(a.x + a.width).toBeLessThanOrEqual(view.x + view.width);
-      expect(a.y + a.height).toBeLessThanOrEqual(view.y + view.height);
+      const shownW =
+        Math.min(a.x + a.width, view.x + view.width) - Math.max(a.x, view.x);
+      const shownH =
+        Math.min(a.y + a.height, view.y + view.height) - Math.max(a.y, view.y);
+      expect(shownW * shownH).toBeGreaterThanOrEqual((a.width * a.height) / 3);
       for (const b of rects.slice(i + 1)) {
         expect(
           a.x < b.x + b.width &&
@@ -765,20 +766,27 @@ describe('casting into the view', () => {
     expect(second.position.y).toBeGreaterThanOrEqual(view.y + 400);
   });
 
-  it('goes on top of another card, still in view, when the view is full', () => {
+  it('with the view full, cards land offset from each other', () => {
     const board = useBattlefieldStore();
     board.setView(view);
     const filler = board.castCard(makeScryfallCard());
-    board.setStackSize(filler.id, { width: view.width, height: view.height });
-    board.setStackPosition(filler, { x: view.x, y: view.y });
+    board.setStackSize(filler.id, {
+      width: view.width * 2,
+      height: view.height * 2,
+    });
+    board.setStackPosition(filler, {
+      x: view.x - view.width / 2,
+      y: view.y - view.height / 2,
+    });
 
-    const next = board.castCard(makeScryfallCard());
+    const a = board.castCard(makeScryfallCard());
+    const b = board.castCard(makeScryfallCard());
 
-    expect(next.position.x).toBeGreaterThanOrEqual(view.x);
-    expect(next.position.x + size.width).toBeLessThanOrEqual(
-      view.x + view.width,
-    );
-    expect(next.position.y).toBeGreaterThanOrEqual(view.y);
+    expect(b.position).not.toEqual(a.position);
+    for (const s of [a, b]) {
+      expect(s.position.x).toBeGreaterThan(view.x - size.width);
+      expect(s.position.x).toBeLessThan(view.x + view.width);
+    }
   });
 
   it('falls back to the saved centre before the board reports a view', () => {

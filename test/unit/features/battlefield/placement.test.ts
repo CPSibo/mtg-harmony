@@ -6,23 +6,39 @@ const view: Rect = { x: 0, y: 0, width: 1000, height: 600 };
 
 const at = (x: number, y: number): Rect => ({ x, y, ...size });
 
+/** How much of `r` is inside `within`, from 0 to 1. */
+function visibleShare(r: Rect, within: Rect = view) {
+  const w =
+    Math.min(r.x + r.width, within.x + within.width) - Math.max(r.x, within.x);
+  const h =
+    Math.min(r.y + r.height, within.y + within.height) -
+    Math.max(r.y, within.y);
+  return (Math.max(0, w) * Math.max(0, h)) / (r.width * r.height);
+}
+
 describe('findFreeSpot', () => {
   it('puts the first card in the middle of an empty view', () => {
     expect(findFreeSpot(view, [], size)).toEqual({ x: 450, y: 230 });
   });
 
-  it('puts cards cast in a row side by side, all in view, none overlapping', () => {
+  it('puts cards cast in a row side by side, at least a third in view, none overlapping', () => {
     const placed: Rect[] = [];
     for (let i = 0; i < 8; i++) {
       const spot = findFreeSpot(view, placed, size)!;
       const rect = at(spot.x, spot.y);
       expect(placed.some((r) => overlaps(r, rect))).toBe(false);
-      expect(rect.x).toBeGreaterThanOrEqual(view.x);
-      expect(rect.y).toBeGreaterThanOrEqual(view.y);
-      expect(rect.x + rect.width).toBeLessThanOrEqual(view.x + view.width);
-      expect(rect.y + rect.height).toBeLessThanOrEqual(view.y + view.height);
+      expect(visibleShare(rect)).toBeGreaterThanOrEqual(1 / 3);
       placed.push(rect);
     }
+  });
+
+  it('lets a card hang off the view while a third of it shows', () => {
+    const left: Rect = { x: 0, y: 0, width: 920, height: 600 };
+
+    const spot = findFreeSpot(view, [left], size)!;
+
+    expect(spot.x + size.width).toBeGreaterThan(view.x + view.width);
+    expect(visibleShare(at(spot.x, spot.y))).toBeGreaterThanOrEqual(1 / 3);
   });
 
   it('keeps clear of stacks of any size', () => {
@@ -33,8 +49,19 @@ describe('findFreeSpot', () => {
     expect(overlaps(big, at(spot.x, spot.y))).toBe(false);
   });
 
-  it('finds nothing when the view is full', () => {
-    expect(findFreeSpot(view, [view], size)).toBeNull();
+  it('with the view full, lands where it overlaps least, so cards spread out', () => {
+    // Four cards filling a small view, meeting in its middle.
+    const small: Rect = { x: 0, y: 0, width: 200, height: 280 };
+    const placed: Rect[] = [at(0, 0), at(100, 0), at(0, 140), at(100, 140)];
+
+    const first = findFreeSpot(small, placed, size)!;
+    placed.push(at(first.x, first.y));
+    const second = findFreeSpot(small, placed, size)!;
+
+    expect(first).not.toEqual(second);
+    expect(visibleShare(at(second.x, second.y), small)).toBeGreaterThanOrEqual(
+      1 / 3,
+    );
   });
 
   it('finds nothing when the card is bigger than the view', () => {

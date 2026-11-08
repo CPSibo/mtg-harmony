@@ -115,8 +115,9 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
   }
 
   /**
-   * Where a new stack goes: a free spot in view, else the middle of the view
-   * (on top of whatever is there), else the saved centre.
+   * Where a new stack goes: a spot at least a third in view, clear of other
+   * stacks or, when the view is full, overlapping them least. Before the
+   * board reports a view, the saved centre.
    */
   function newStackPosition(): Position {
     const shown = view.value;
