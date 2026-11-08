@@ -95,6 +95,17 @@
           >
             <USwitch v-model="cardOutlineEnabled" />
           </UFormField>
+
+          <UFormField
+            label="Pointer smoothing"
+            description="How dragging and panning follow the mouse between its updates. Predict has no lag but can overshoot a little; Ease glides but trails slightly"
+          >
+            <URadioGroup
+              v-model="pointerSmoothing"
+              orientation="horizontal"
+              :items="smoothingItems"
+            />
+          </UFormField>
         </template>
       </UTabs>
     </template>
@@ -107,6 +118,7 @@ import UFormField from '@nuxt/ui/components/FormField.vue';
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
 import UInputNumber from '@nuxt/ui/components/InputNumber.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
+import URadioGroup from '@nuxt/ui/components/RadioGroup.vue';
 import USwitch from '@nuxt/ui/components/Switch.vue';
 import UTabs from '@nuxt/ui/components/Tabs.vue';
 import { useSettingsStore } from '~/stores/settings';
@@ -118,8 +130,14 @@ import { useDiscordFetcherStore } from '~/features/discordFetcher';
 const emit = defineEmits<{ close: [boolean] }>();
 
 const settingsStore = useSettingsStore();
-const { wakeLockEnabled, imagesEnabled, cardOutlineEnabled } =
+const { wakeLockEnabled, imagesEnabled, cardOutlineEnabled, pointerSmoothing } =
   storeToRefs(settingsStore);
+
+const smoothingItems = [
+  { label: 'Off', value: 'off' },
+  { label: 'Predict', value: 'predict' },
+  { label: 'Ease', value: 'ease' },
+];
 
 // The Wake Lock API needs a secure context (HTTPS or localhost).
 const wakeLockSupported = useSupported(

@@ -2,11 +2,17 @@ import { useWindowSize } from '@vueuse/core';
 import { computed, ref, toValue, watch } from 'vue';
 import type { MaybeRefOrGetter } from 'vue';
 import type { ElementSize, Position } from '@vueuse/core';
+import {
+  createFollower,
+  pointerPosition,
+  type PointerSmoothing,
+} from './pointerSmoothing';
 
 export interface PanAndZoomSettings {
   size: ElementSize;
   onEnd?: (position: Position) => void;
   disabled?: MaybeRefOrGetter<boolean>;
+  smoothing?: MaybeRefOrGetter<PointerSmoothing>;
 }
 
 export function usePanAndZoom(settings: PanAndZoomSettings) {
@@ -33,6 +39,12 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
       y: -position.value.y / scale.value + halfWindowHeight.value / 2,
     };
   });
+
+  const smoothing = () => toValue(settings.smoothing) ?? 'off';
+  // Pans go through this, so they can ease (#104). Zoom is immediate.
+  const panFollower = createFollower((p) => {
+    position.value = clampPosition(p.x, p.y);
+  }, smoothing);
 
   const scrollSpeed = 0.1;
   const pinchSpeed = 0.01;
@@ -67,6 +79,7 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     if (!isEnabled.value) return;
 
     e.preventDefault();
+    panFollower.finish();
 
     let delta = e.deltaY;
     let factor: number;
@@ -114,6 +127,7 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     isDragging.value = true;
     dragStart = { x: e.clientX, y: e.clientY };
     positionAtDragStart = { ...position.value };
+    panFollower.jump(positionAtDragStart);
   }
 
   function onMouseMove(e: MouseEvent) {
@@ -121,10 +135,11 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
 
     if (!isDragging.value) return;
 
-    const requestedX = positionAtDragStart.x + (e.clientX - dragStart.x);
-    const requestedY = positionAtDragStart.y + (e.clientY - dragStart.y);
-
-    position.value = clampPosition(requestedX, requestedY);
+    const pointer = pointerPosition(e, smoothing());
+    panFollower.to({
+      x: positionAtDragStart.x + (pointer.x - dragStart.x),
+      y: positionAtDragStart.y + (pointer.y - dragStart.y),
+    });
   }
 
   function clampPosition(requestedX: number, requestedY: number) {
@@ -156,16 +171,21 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     );
   }
 
+  function endPan() {
+    panFollower.finish();
+    isDragging.value = false;
+  }
+
   function onMouseUp(_e: MouseEvent) {
     if (!isEnabled.value) return;
 
-    isDragging.value = false;
+    endPan();
   }
 
   function onMouseLeave(_e: MouseEvent) {
     if (!isEnabled.value) return;
 
-    isDragging.value = false;
+    endPan();
   }
 
   // ─── Touch pan + pinch-to-zoom ───────────────────────────────────────────
@@ -197,8 +217,10 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
       isDragging.value = true;
       dragStart = { ...touchList[0]! };
       positionAtDragStart = { ...position.value };
+      panFollower.jump(positionAtDragStart);
     } else if (touchList.length === 2) {
       // Two fingers: begin pinch, cancel pan
+      panFollower.finish();
       isDragging.value = false;
       pinchStartDistance = getTouchDistance(touchList[0]!, touchList[1]!);
       scaleAtPinchStart = scale.value;
@@ -221,10 +243,10 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
 
     if (touchList.length === 1 && isDragging.value) {
       // Pan
-      position.value = {
+      panFollower.to({
         x: positionAtDragStart.x + (touchList[0]!.x - dragStart.x),
         y: positionAtDragStart.y + (touchList[0]!.y - dragStart.y),
-      };
+      });
     } else if (touchList.length === 2 && pinchStartDistance !== null) {
       const currentDistance = getTouchDistance(touchList[0]!, touchList[1]!);
       const factor =
@@ -269,12 +291,13 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     }
 
     if (touchList.length === 0) {
-      isDragging.value = false;
+      endPan();
     } else if (touchList.length === 1) {
       // Finger lifted during pinch → resume pan with remaining finger
       isDragging.value = true;
       dragStart = { ...touchList[0]! };
       positionAtDragStart = { ...position.value };
+      panFollower.jump(positionAtDragStart);
     }
   }
 

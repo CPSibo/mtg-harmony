@@ -2,7 +2,6 @@ import { defineStore } from 'pinia';
 import { computed, ref, shallowRef, triggerRef, watch } from 'vue';
 import { useLocalStorage } from '~/composables/useLocalStorage';
 import { randomUUID } from '~/utils/randomUUID';
-import { archiveEntries, clearArchive, loadArchive } from './archive';
 import { snapshotCard } from './snapshot';
 import {
   EVENT_TYPES,
@@ -60,6 +59,12 @@ function isEntry(value: unknown): value is EventEntry {
  * `loadHistory()` and `history`. Without IndexedDB the log is the current
  * game only.
  */
+/**
+ * The IndexedDB archive and `idb`, loaded on first use: the current game
+ * never needs them, so they stay out of the startup bundle (#102).
+ */
+const archive = () => import('./archive');
+
 export const useEventLogStore = defineStore('eventLog', () => {
   // Shallow: entries never change once recorded, and making thousands of them
   // deeply reactive cost tens of milliseconds per event (#81). Changes to the
@@ -95,7 +100,7 @@ export const useEventLogStore = defineStore('eventLog', () => {
     return enqueue(async () => {
       const batch = pending.value;
       if (!batch.length) return;
-      const ok = await archiveEntries(batch);
+      const ok = await (await archive()).archiveEntries(batch);
       archiveAvailable.value = ok;
       // Archived, or nowhere to put it: either way it leaves localStorage.
       const done = new Set(batch);
@@ -116,7 +121,7 @@ export const useEventLogStore = defineStore('eventLog', () => {
     historyLoading.value = true;
     return enqueue(async () => {
       try {
-        const loaded = await loadArchive();
+        const loaded = await (await archive()).loadArchive();
         archiveAvailable.value = loaded !== null;
         archived.value = loaded ?? [];
       } finally {
@@ -136,7 +141,7 @@ export const useEventLogStore = defineStore('eventLog', () => {
   function clearHistory() {
     pending.value = [];
     if (archived.value) archived.value = [];
-    void enqueue(clearArchive);
+    void enqueue(async () => (await archive()).clearArchive());
   }
 
   const nearlyFull = computed(

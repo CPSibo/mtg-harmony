@@ -1,91 +1,137 @@
-import { ref, computed, toValue, type MaybeRefOrGetter } from 'vue';
-import { useDraggable, type UseDraggableOptions } from '@vueuse/core';
+import type { Position } from '@vueuse/core';
+import {
+  computed,
+  onScopeDispose,
+  ref,
+  toValue,
+  watch,
+  type MaybeRefOrGetter,
+} from 'vue';
+import {
+  createFollower,
+  pointerPosition,
+  type PointerSmoothing,
+} from './pointerSmoothing';
 
-export interface UseBoardDraggableOptions extends Omit<
-  UseDraggableOptions,
-  'containerElement'
-> {
-  containerElement?: MaybeRefOrGetter<HTMLElement | null | undefined>;
+export interface UseBoardDraggableOptions {
+  initialValue?: Position;
+  /** The board's zoom; pointer movement is divided by it. */
   scale?: MaybeRefOrGetter<number>;
+  /** Grid size in board pixels; 0 doesn't snap. */
   snapScale?: MaybeRefOrGetter<number>;
+  /** Keeps the element inside this one. */
+  containerElement?: MaybeRefOrGetter<HTMLElement | null | undefined>;
+  disabled?: MaybeRefOrGetter<boolean>;
+  smoothing?: MaybeRefOrGetter<PointerSmoothing>;
+  onEnd?: (position: Position, event: PointerEvent) => void;
 }
 
+/**
+ * Drags an element across the board with the primary pointer button, a
+ * finger or a pen. The element listens for its own presses; the window is
+ * only listened to while a drag is under way, so a board of many stacks
+ * doesn't run a handler per stack on every pointer move (#103).
+ */
 export function useBoardDraggable(
-  el: Parameters<typeof useDraggable>[0],
+  el: MaybeRefOrGetter<HTMLElement | null | undefined>,
   options: UseBoardDraggableOptions = {},
 ) {
-  const { scale = 1, snapScale = 0, containerElement, ...rest } = options;
+  const scale = () => toValue(options.scale) || 1;
+  const snap = () => toValue(options.snapScale) ?? 0;
+  const smoothing = () => toValue(options.smoothing) ?? 'off';
 
-  const s = () => toValue(scale) || 1;
-  const snap = () => toValue(snapScale) ?? 0;
+  const x = ref(options.initialValue?.x ?? 0);
+  const y = ref(options.initialValue?.y ?? 0);
+  const isDragging = ref(false);
 
-  const x = ref(toValue(options.initialValue)?.x ?? 0);
-  const y = ref(toValue(options.initialValue)?.y ?? 0);
+  // The gesture's state; only the handlers read it.
+  let pointerId: number | null = null;
+  let startPointer: Position = { x: 0, y: 0 };
+  let start: Position = { x: 0, y: 0 };
+  // How far the element can go, in board pixels. Measured when a drag
+  // starts, not on every move: reading layout each move forces a layout.
+  let max: Position = { x: Infinity, y: Infinity };
 
-  let startPointerX = 0;
-  let startPointerY = 0;
-  let startX = 0;
-  let startY = 0;
-  // How far the stack can go, in board pixels. Measured when a drag starts,
-  // not on every move: reading layout each move forces a layout per event.
-  let maxX = Infinity;
-  let maxY = Infinity;
+  const follower = createFollower((p) => {
+    x.value = p.x;
+    y.value = p.y;
+  }, smoothing);
 
-  function clamp(val: number, min: number, max: number) {
-    return Math.min(Math.max(val, min), max);
-  }
-
-  function snapTo(val: number, grid: number) {
-    return grid > 0 ? Math.round(val / grid) * grid : val;
-  }
+  const clamp = (v: number, hi: number) => Math.min(Math.max(v, 0), hi);
+  const snapTo = (v: number, grid: number) =>
+    grid > 0 ? Math.round(v / grid) * grid : v;
 
   function measureBounds() {
-    const containerEl = toValue(containerElement);
-    const dragEl = toValue(el) as HTMLElement | null | undefined;
-    if (!containerEl || !dragEl) {
-      maxX = maxY = Infinity;
+    const container = toValue(options.containerElement);
+    const self = toValue(el);
+    if (!container || !self) {
+      max = { x: Infinity, y: Infinity };
       return;
     }
-    const containerRect = containerEl.getBoundingClientRect();
-    const dragRect = dragEl.getBoundingClientRect();
-    const sc = s();
-    maxX = Math.max(0, (containerRect.width - dragRect.width) / sc);
-    maxY = Math.max(0, (containerRect.height - dragRect.height) / sc);
+    const outer = container.getBoundingClientRect();
+    const inner = self.getBoundingClientRect();
+    max = {
+      x: Math.max(0, (outer.width - inner.width) / scale()),
+      y: Math.max(0, (outer.height - inner.height) / scale()),
+    };
   }
 
-  const drag = useDraggable(el, {
-    ...rest,
-    containerElement: undefined,
+  function onDown(e: PointerEvent) {
+    if (e.button !== 0 || pointerId !== null || toValue(options.disabled))
+      return;
+    // Keeps the board from panning and the page from scrolling, without
+    // stopping the event: buttons on the stack still get their clicks.
+    e.preventDefault();
+    pointerId = e.pointerId;
+    startPointer = { x: e.clientX, y: e.clientY };
+    start = { x: x.value, y: y.value };
+    measureBounds();
+    follower.jump(start);
+    isDragging.value = true;
+    window.addEventListener('pointermove', onMove, { capture: true });
+    window.addEventListener('pointerup', onUp, { capture: true });
+    window.addEventListener('pointercancel', onUp, { capture: true });
+  }
 
-    onStart(pos, event) {
-      startPointerX = event.clientX;
-      startPointerY = event.clientY;
-      startX = x.value;
-      startY = y.value;
-      measureBounds();
-      return rest.onStart?.(pos, event);
+  function onMove(e: PointerEvent) {
+    if (e.pointerId !== pointerId) return;
+    e.preventDefault();
+    const p = pointerPosition(e, smoothing());
+    const s = scale();
+    follower.to({
+      x: clamp(snapTo(start.x + (p.x - startPointer.x) / s, snap()), max.x),
+      y: clamp(snapTo(start.y + (p.y - startPointer.y) / s, snap()), max.y),
+    });
+  }
+
+  function stopListening() {
+    window.removeEventListener('pointermove', onMove, { capture: true });
+    window.removeEventListener('pointerup', onUp, { capture: true });
+    window.removeEventListener('pointercancel', onUp, { capture: true });
+  }
+
+  function onUp(e: PointerEvent) {
+    if (e.pointerId !== pointerId) return;
+    stopListening();
+    pointerId = null;
+    const end = follower.finish() ?? start;
+    isDragging.value = false;
+    options.onEnd?.({ ...end }, e);
+  }
+
+  // The element's own listener, moved along if the element changes.
+  watch(
+    () => toValue(el),
+    (next, prev) => {
+      prev?.removeEventListener('pointerdown', onDown, { capture: true });
+      next?.addEventListener('pointerdown', onDown, { capture: true });
     },
-
-    onMove(pos, event) {
-      const rawX = snapTo(
-        startX + (event.clientX - startPointerX) / s(),
-        snap(),
-      );
-      const rawY = snapTo(
-        startY + (event.clientY - startPointerY) / s(),
-        snap(),
-      );
-
-      x.value = clamp(rawX, 0, maxX);
-      y.value = clamp(rawY, 0, maxY);
-
-      rest.onMove?.(pos, event);
-    },
-
-    onEnd(pos, event) {
-      // Use our scaled [x,y], instead of the naive positon.
-      rest.onEnd?.({ x: x.value, y: y.value }, event);
-    },
+    { immediate: true },
+  );
+  onScopeDispose(() => {
+    toValue(el)?.removeEventListener('pointerdown', onDown, { capture: true });
+    stopListening();
+    follower.finish();
   });
 
   // A transform, not left/top, so a move skips layout.
@@ -93,10 +139,5 @@ export function useBoardDraggable(
     () => `transform: translate(${x.value}px, ${y.value}px);`,
   );
 
-  return {
-    ...drag,
-    x,
-    y,
-    style,
-  };
+  return { x, y, isDragging, style };
 }

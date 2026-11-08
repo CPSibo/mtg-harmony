@@ -121,3 +121,12 @@ There are no auto-imports. Import every component, composable and Vue API explic
 - The app is plain Vite + Vue 3, not Nuxt. Don't bring back Nuxt-only features (Nuxt modules, auto-imports,
   `#app`/`#imports` APIs, file-based routing).
 - Renovate stays off until the project is stable.
+
+## Generated assets
+
+- Icons are bundled, not fetched from Iconify: after using a new `i-lucide-*` icon (or upgrading Nuxt UI), run
+  `npm run icons:lucide`. A unit test fails until you do.
+- `app/assets/css/mana.css` and `app/assets/fonts/mana.woff2` are a mana-font subset. Run `npm run fonts:mana`
+  after upgrading mana-font or naming a new `ms-ability-*`/`ms-counter-*` class. Don't edit them by hand.
+- The Add Card and Event log windows and the IndexedDB archive load on first use. Import them by path, not
+  through their feature barrels, or they land back in the startup bundle.
