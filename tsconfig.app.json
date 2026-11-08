@@ -1,0 +1,11 @@
+{
+  "extends": "@vue/tsconfig/tsconfig.dom.json",
+  "compilerOptions": {
+    "types": ["vite/client"],
+    "noUncheckedIndexedAccess": true,
+    "paths": {
+      "~/*": ["./app/*"]
+    }
+  },
+  "include": ["app/**/*.ts", "app/**/*.vue", "test/unit/**/*.ts"]
+}

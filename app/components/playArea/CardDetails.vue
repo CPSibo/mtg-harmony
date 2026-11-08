@@ -1,5 +1,5 @@
 <template>
-  <LazyUModal
+  <UModal
     v-if="!!card"
     v-model:open="open"
     :ui="{ content: 'flex flex-row gap-3 p-6' }"
@@ -9,9 +9,17 @@
     <template #content>
       <div>
         <img
+          v-if="settings.imagesEnabled"
           :src="card.image_uri"
           :alt="card.name"
           class="max-h-[80svh] mtg-card-display"
+        />
+        <SharedCardText
+          v-else
+          :card="card.scryfallInfo"
+          role="img"
+          :aria-label="card.name"
+          class="w-72"
         />
       </div>
 
@@ -39,16 +47,28 @@
         </UButton>
 
         <UInputNumber
-          v-model="card.stack!.counter"
+          :model-value="card.faceNumber"
           :min="0"
           title="Number"
-          :disabled="!card.stack"
+          @update:model-value="
+            (value) => battlefield.setFaceNumber(card!, value ?? 0)
+          "
         />
 
-        <LazyUSeparator />
+        <USeparator />
 
         <UButton
-          v-if="!isAttached"
+          v-if="hasAttachments"
+          icon="i-lucide-unlink"
+          color="neutral"
+          variant="ghost"
+          size="xl"
+          @click="explodeStack"
+        >
+          Detach all
+        </UButton>
+        <UButton
+          v-else-if="!isAttached && !isUnder"
           icon="i-lucide-link"
           color="neutral"
           variant="ghost"
@@ -58,7 +78,7 @@
           Attach to...
         </UButton>
         <UButton
-          v-else
+          v-else-if="isAttached"
           icon="i-lucide-unlink"
           color="neutral"
           variant="ghost"
@@ -67,21 +87,44 @@
         >
           Detach
         </UButton>
+        <UButton
+          v-if="isUnder"
+          icon="i-lucide-arrow-up-from-line"
+          color="neutral"
+          variant="ghost"
+          size="xl"
+          @click="tryDetach"
+        >
+          Take out
+        </UButton>
+        <UButton
+          v-else
+          icon="i-lucide-layers"
+          color="neutral"
+          variant="ghost"
+          size="xl"
+          @click="startPuttingUnder"
+        >
+          Put under...
+        </UButton>
 
         <UDropdownMenu
           :items="[
             {
               label: 'Copy card',
               icon: 'i-lucide-copy',
+              onSelect: () => battlefield.copyCard(card!, 'card'),
               color: 'primary',
             },
             {
               label: 'Copy card + counters',
               icon: 'i-lucide-copy-plus',
+              onSelect: () => battlefield.copyCard(card!, 'counters'),
             },
             {
               label: 'Copy everything',
               icon: 'i-lucide-square-stack',
+              onSelect: () => battlefield.copyCard(card!, 'stack'),
             },
           ]"
           :content="{
@@ -101,42 +144,17 @@
           </UButton>
         </UDropdownMenu>
 
-        <UDropdownMenu
-          :items="[
-            {
-              label: 'Destroy',
-              icon: 'i-lucide-swords',
-              color: 'primary',
-            },
-            {
-              label: 'Exile',
-              icon: 'i-lucide-ban',
-              color: 'warning',
-            },
-            {
-              label: 'Delete',
-              icon: 'i-lucide-trash',
-              color: 'error',
-            },
-          ]"
-          :content="{
-            align: 'start',
-            side: 'bottom',
-          }"
+        <UButton
+          icon="i-lucide-trash"
+          color="neutral"
+          variant="ghost"
           size="xl"
+          @click="confirmRemoval"
         >
-          <UButton
-            icon="i-lucide-trash"
-            trailing-icon="i-lucide-chevron-down"
-            color="neutral"
-            variant="ghost"
-            size="xl"
-          >
-            Remove
-          </UButton>
-        </UDropdownMenu>
+          Remove
+        </UButton>
 
-        <LazyUSeparator />
+        <USeparator />
 
         <UButton
           icon="i-lucide-external-link"
@@ -150,10 +168,26 @@
         </UButton>
       </div>
     </template>
-  </LazyUModal>
+  </UModal>
+
+  <PlayAreaRemoveCardModal
+    v-model="showConfirmRemove"
+    :card="props.card"
+    @canceled="confirmRemovedCanceled"
+  />
 </template>
 
 <script setup lang="ts">
+import UButton from '@nuxt/ui/components/Button.vue';
+import UDropdownMenu from '@nuxt/ui/components/DropdownMenu.vue';
+import UInputNumber from '@nuxt/ui/components/InputNumber.vue';
+import UModal from '@nuxt/ui/components/Modal.vue';
+import USeparator from '@nuxt/ui/components/Separator.vue';
+import PlayAreaRemoveCardModal from '~/components/playArea/RemoveCardModal.vue';
+import SharedCardText from '~/components/shared/CardText.vue';
+import { useSettingsStore } from '~/stores/settings';
+import { computed, ref } from 'vue';
+import { useBattlefieldStore } from '~/features/battlefield';
 import type { BoardCard } from '~/types/PlayArea';
 
 const open = defineModel<boolean>('open', { default: false });
@@ -166,21 +200,47 @@ const emit = defineEmits<{
   showCardModifiers: [BoardCard];
 }>();
 
-const battlefield = useBattlefield();
+const battlefield = useBattlefieldStore();
+const settings = useSettingsStore();
+
+const showConfirmRemove = ref(false);
+
+// Cancelling the removal goes back to the details.
+const confirmRemovedCanceled = () => {
+  open.value = true;
+};
 
 const toggleTap = () => {
   if (!props.card) return;
 
-  props.card.tapped = !props.card.tapped;
+  battlefield.toggleTapped(props.card);
 
   open.value = false;
 };
 
-const isAttached = computed(() => {
-  if (!props.card || !props.card.stack?.attachments) return false;
+const hasAttachments = computed(() => {
+  if (!props.card || !props.card.stack?.primary) return false;
 
-  return props.card.stack.attachments.includes(props.card);
+  if (props.card.stack.primary !== props.card) return false;
+
+  if (!props.card.stack.attachments.size && !props.card.stack.unders.size)
+    return false;
+
+  return true;
 });
+
+const isAttached = computed(() => {
+  if (!props.card?.stack?.attachments) return false;
+
+  return props.card.stack.attachments.has(props.card);
+});
+
+const isUnder = computed(() => !!props.card?.stack?.unders.has(props.card));
+
+const startPuttingUnder = () => {
+  battlefield.startAttaching(props.card!, 'under');
+  open.value = false;
+};
 
 const startAttaching = () => {
   battlefield.startAttaching(props.card!);
@@ -189,6 +249,16 @@ const startAttaching = () => {
 
 const tryDetach = () => {
   battlefield.detach(props.card!);
+  open.value = false;
+};
+
+const explodeStack = () => {
+  battlefield.explodeStack(props.card!.stack!);
+  open.value = false;
+};
+
+const confirmRemoval = () => {
+  showConfirmRemove.value = true;
   open.value = false;
 };
 </script>

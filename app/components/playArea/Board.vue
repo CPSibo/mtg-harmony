@@ -1,31 +1,41 @@
 <template>
   <div
     ref="wrapper"
-    class="board-wrapper"
+    class="board-wrapper touch-none"
     :style="{ cursor: isDragging ? 'grabbing' : 'grab' }"
     @wheel.prevent="onWheel"
     @mousedown="onMouseDown"
-    @mousemove="onMouseMove"
+    @pointermove="(e) => e.pointerType === 'mouse' && onMouseMove(e)"
     @mouseup="onMouseUp"
     @mouseleave="onMouseLeave"
   >
+    <!-- The grid, outside the board's transform: a viewport-sized background
+         that follows the pan and zoom, so they never repaint a 5000 px layer. -->
+    <div
+      class="board-backdrop"
+      aria-hidden="true"
+      :style="backdropStyle"
+    />
     <div
       ref="board"
       class="board"
+      :class="{ moving: isDragging }"
       :style="style"
     >
-      <SharedGrid v-if="!!boardEl">
-        <LazyPlayAreaBoardCardStack
-          v-for="stack in stacks"
+      <div
+        v-if="!!boardEl"
+        class="relative size-full"
+      >
+        <PlayAreaBoardCardStack
+          v-for="stack in orderedStacks"
           :key="stack.id"
           v-model:is-dragging="anyCardIsDragging"
           :stack="stack"
           :board="boardEl"
-          :scale="scale"
           @show-card-details="showCardDetails"
           @show-card-modifiers="showCardModifiers"
         />
-      </SharedGrid>
+      </div>
     </div>
   </div>
 
@@ -39,23 +49,49 @@
     v-model:open="cardModifiersIsOpen"
     :card="selectedCard"
   />
-
-  <WidgetsAddCard v-model:open="addCardsIsOpen" />
 </template>
 
 <script setup lang="ts">
+import PlayAreaBoardCardStack from '~/components/playArea/BoardCardStack.vue';
+import { useBlockBrowserZoom } from '~/composables/useBlockBrowserZoom';
+import { usePanAndZoom } from '~/composables/usePanAndZoom';
+import { storeToRefs } from 'pinia';
+import { useWindowSize } from '@vueuse/core';
+import {
+  computed,
+  defineAsyncComponent,
+  onMounted,
+  onUnmounted,
+  ref,
+  useTemplateRef,
+  watchEffect,
+} from 'vue';
+import { useBattlefieldStore } from '~/features/battlefield';
+import { useSettingsStore } from '~/stores/settings';
 import type { BoardCard } from '~/types/PlayArea';
 
-import { onKeyPressed } from '@vueuse/core';
+// Card details and modifiers (with the number input) load when the browser is
+// idle or on first use, so they stay out of the startup bundle.
+const loadCardDetails = () => import('~/components/playArea/CardDetails.vue');
+const loadModifiersMenu = () =>
+  import('~/components/playArea/ModifiersMenu.vue');
+const PlayAreaCardDetails = defineAsyncComponent(loadCardDetails);
+const PlayAreaModifiersMenu = defineAsyncComponent(loadModifiersMenu);
+window.requestIdleCallback?.(() => {
+  void loadCardDetails();
+  void loadModifiersMenu();
+});
 
-const battlefield = useBattlefield();
-const { stacks, center: centerState } = storeToRefs(battlefield);
+const battlefield = useBattlefieldStore();
+const settings = useSettingsStore();
+const { orderedStacks, center: centerState } = storeToRefs(battlefield);
 
 const wrapperEl = useTemplateRef('wrapper');
 const boardEl = useTemplateRef('board');
 
 const {
   center,
+  position,
   scale,
   style,
   isDragging,
@@ -73,12 +109,48 @@ const {
     // Performance consideration.
     // Watching the center directly does bad
     // stuff, even with `save` being debounced.
-    centerState.value = center.value;
+    centerState.value = center();
   },
   disabled: () => battlefield.isAttaching,
+  smoothing: () => settings.pointerSmoothing,
 });
 
 const anyCardIsDragging = ref(false);
+
+// CSS variables only: the backdrop's gradients scale and move in CSS.
+const backdropStyle = computed(
+  () =>
+    `--x: ${position.value.x}px; --y: ${position.value.y}px; --s: ${scale.value}`,
+);
+
+// Screen pixels at the view's edges that don't count as in view when placing
+// a new card: the top, for the corner buttons.
+const VIEW_INSET = { top: 64, right: 0, bottom: 0, left: 0 };
+
+const { width: windowWidth, height: windowHeight } = useWindowSize();
+
+// Tells the store what's in view, in board pixels, so cast cards land there,
+// and the pan and zoom, so a card dropped on the board lands under the pointer.
+watchEffect(() => {
+  const s = scale.value;
+  battlefield.setTransform({ ...position.value, scale: s });
+  battlefield.setView({
+    x: (VIEW_INSET.left - position.value.x) / s,
+    y: (VIEW_INSET.top - position.value.y) / s,
+    width: Math.max(
+      0,
+      (windowWidth.value - VIEW_INSET.left - VIEW_INSET.right) / s,
+    ),
+    height: Math.max(
+      0,
+      (windowHeight.value - VIEW_INSET.top - VIEW_INSET.bottom) / s,
+    ),
+  });
+});
+
+// The centre goes to the store when a pan or zoom ends (`onEnd`), not on
+// every frame.
+battlefield.setCenter(center());
 
 // ─── Imperative touch listeners ───────────────────────────────────────────────
 //
@@ -129,6 +201,10 @@ onUnmounted(() => {
   el.removeEventListener('touchend', guardedTouchEnd);
 });
 
+// The touch handlers above pan and zoom the board; this stops Safari zooming
+// the page as well.
+useBlockBrowserZoom(wrapperEl);
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 const selectedCard = ref<BoardCard | undefined>();
@@ -148,15 +224,6 @@ const showCardModifiers = (card: BoardCard) => {
   cardDetailsIsOpen.value = false;
   cardModifiersIsOpen.value = true;
 };
-
-const addCardsIsOpen = ref(false);
-
-onKeyPressed('\\', (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-
-  addCardsIsOpen.value = true;
-});
 </script>
 
 <style lang="css" scoped>
@@ -168,9 +235,52 @@ onKeyPressed('\\', (e) => {
   contain: strict; /* Disable CLS hints for children. */
 }
 
+.board-backdrop {
+  --cell: calc(40px * var(--s));
+  --line: color-mix(in oklab, var(--ui-border-inverted) 8%, transparent);
+  --stroke: calc(0.5px * var(--s));
+
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    /* Vignette over the whole board, darkest at its edges. */
+    radial-gradient(
+      circle calc(3500px * var(--s)) at center,
+      transparent,
+      rgb(0 0 0 / 0.65)
+    ),
+    /* A dot in the middle of each cell. */
+    radial-gradient(
+        circle calc(1.25px * var(--s)) at center,
+        var(--line) 99%,
+        transparent
+      ),
+    /* Cell lines along the top and left of each cell. */
+    linear-gradient(to right, var(--line) var(--stroke), transparent 0),
+    linear-gradient(to bottom, var(--line) var(--stroke), transparent 0);
+  background-size:
+    calc(5000px * var(--s)) calc(5000px * var(--s)),
+    var(--cell) var(--cell),
+    var(--cell) var(--cell),
+    var(--cell) var(--cell);
+  background-repeat: no-repeat, repeat, repeat, repeat;
+  background-position: var(--x) var(--y);
+}
+
 .board {
   position: absolute;
   transform-origin: 0 0;
+  /* A long press is the app's, not the browser's text selection or menu. */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
   user-select: none;
+
+  /* Its own GPU layer while panning, so the compositor moves it without
+     repainting. Only then: a layer kept through a zoom would stay rastered
+     at the old scale and blur. */
+  &.moving {
+    will-change: transform;
+  }
 }
 </style>

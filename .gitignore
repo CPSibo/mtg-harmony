@@ -1,13 +1,11 @@
-# Nuxt dev/build outputs
-.output
-.data
-.nuxt
-.nitro
-.cache
+# Build output
 dist
 
 # Node dependencies
 node_modules
+
+# Test coverage
+coverage
 
 # Logs
 logs
@@ -22,3 +20,7 @@ logs
 .env
 .env.*
 !.env.example
+
+# Playwright
+test-results
+playwright-report

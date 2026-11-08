@@ -14,21 +14,23 @@
       color="info"
       size="xl"
       title="Open menu"
-      @click="isMenuOpen = true"
     />
   </UDropdownMenu>
 </template>
 
 <script setup lang="ts">
+import { useEventLogStore } from '~/features/eventLog';
+import UButton from '@nuxt/ui/components/Button.vue';
+import UDropdownMenu from '@nuxt/ui/components/DropdownMenu.vue';
+import { useFullscreen } from '@vueuse/core';
+import { computed } from 'vue';
 import type { DropdownMenuItem } from '@nuxt/ui';
 
-const isMenuOpen = ref(false);
-
+const eventLog = useEventLogStore();
 const fullscreen = useFullscreen();
-const fullscreenIcon = computed(() =>
-  fullscreen.isFullscreen.value ? 'i-lucide-shrink' : 'i-lucide-expand',
-);
-const items = ref<DropdownMenuItem[][]>([
+// Rebuilt only when fullscreen toggles (its icon); nothing else in it changes,
+// so it isn't a deep ref.
+const items = computed<DropdownMenuItem[][]>(() => [
   [
     {
       label: 'MTG Harmony',
@@ -45,8 +47,16 @@ const items = ref<DropdownMenuItem[][]>([
       onSelect: () => emit('openSettingsRequested'),
     },
     {
+      label: 'Event log',
+      icon: 'i-lucide-scroll-text',
+      color: 'neutral',
+      onSelect: () => eventLog.openWindow(),
+    },
+    {
       label: 'Fullscreen',
-      icon: fullscreenIcon,
+      icon: fullscreen.isFullscreen.value
+        ? 'i-lucide-shrink'
+        : 'i-lucide-expand',
       color: 'neutral',
       onSelect: () => fullscreen.toggle(),
     },
@@ -59,13 +69,13 @@ const items = ref<DropdownMenuItem[][]>([
       onSelect: () => emit('clearBoardRequested'),
     },
     {
-      label: 'Clear session',
-      icon: 'i-lucide-rotate-ccw',
+      label: 'New game',
+      icon: 'i-lucide-flag',
       color: 'warning',
-      onSelect: () => emit('clearSessionRequested'),
+      onSelect: () => emit('newGameRequested'),
     },
     {
-      label: 'Reset all data',
+      label: 'Reset app',
       icon: 'i-lucide-trash',
       color: 'error',
       onSelect: () => emit('resetAllRequested'),
@@ -86,7 +96,7 @@ const items = ref<DropdownMenuItem[][]>([
 const emit = defineEmits<{
   openSettingsRequested: [];
   clearBoardRequested: [];
-  clearSessionRequested: [];
+  newGameRequested: [];
   resetAllRequested: [];
 }>();
 </script>

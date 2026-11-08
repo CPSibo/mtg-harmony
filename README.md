@@ -4,69 +4,85 @@ Pull up this [helper app](https://mtg-harmony.com) on a phone, tablet, or other 
 
 Live: [mtg-harmony.com](https://mtg-harmony.com)
 
+On an iPhone or iPad, open it in Safari and choose Share → **Add to Home Screen**. Opened from the home screen, it runs full screen, and swiping from the screen edge can't navigate away mid-game. Chrome on Android offers to install it too.
+
 ## Features
 
 ### On-deck
 
-Fetch a random non-land paper card from Scryfall at any time with one tap/click. Cast it or discard it.
+Open the On-deck panel and fetch a random non-land paper card from Scryfall with one tap or click. Cast it to the board, or clear it and fetch the next one. Previous and next step back and forth through every card fetched this session.
 
-### Card grid
+### The board
 
-A grid of permanents you cast from the On-deck slot. Swipe to change pages.
+Every card you cast lands on a large board you can pan and zoom: drag and scroll with a mouse, or drag and pinch on a touchscreen. Drag a card to move it, and it snaps to a grid.
 
-### Context menu
+### Card actions
 
-Long-press or right-click any grid slot to open the card in Scryfall, remove the card, duplicate it, adjust its count, or add a modifier.
+Each card on the board has quick buttons for tapping and removing it. Open a card's details (the **…** button, or double-click it) to:
 
-### Fetch history
+- Tap or untap it.
+- Add counters and keywords (+1/+1, loyalty, flying, haste, and more).
+- Show a big number on the card, for anything you need to count.
+- Attach it to another card, such as an Aura or Equipment, or detach it again. **Detach all** splits a card from everything attached to it.
+- Open it on Scryfall.
 
-A log of every card fetched, with the option to export the log in multiple formats.
+The untap button in the top corner untaps everything at once.
+
+### Add card
+
+Search Scryfall for a specific card and put it on the board, for example to mirror a physical card.
+
+### Command palette
+
+Press <kbd>/</kbd> or the search button at the top for a list of commands and their keyboard shortcuts, such as <kbd>B</kbd> <kbd>A</kbd> for Add card.
 
 ### Persistent sessions
 
-The app's state is automatically saved to your device and reloaded when you visit the page (so no worries if you accidentally refresh or close the browser). Clear the session under the settings menu.
+The board and the On-deck history are saved on your device and come back when you reopen the page, so an accidental refresh or closed tab loses nothing. The menu can clear the board, clear the whole session, or reset all app data.
 
 ### Settings
 
-Multiple options to pick how compact or easy-to-see your board state and the On-deck cards are.
+Choose how many cards to fetch ahead, whether to preload the next card's image, and the board's grid size.
 
 ## AI Disclosure
 
-This application was hand-written and designed by me. AI tooling was used for troubleshooting and pair programming tasks.
+I designed MTG Harmony and wrote its first version by hand. Since then, AI coding agents (Claude Code) have written much of the code under my direction. I decide what gets built and review and merge every change.
 
 ## Development
 
+The app is a static Vue 3 + Vite site. [docs/architecture.md](docs/architecture.md) explains how it fits together, and [AGENTS.md](AGENTS.md) has the contributor workflow.
+
+Use the Node version in `.node-version` (26). [fnm](https://github.com/Schniz/fnm) picks it up automatically.
+
 ```bash
-npm install           # Install dependencies
+npm ci                # Install dependencies
 ```
 
 ```bash
-# http://localhost:3000
-
-npm run dev           # View locally
-npm run dev-host      # View from another device
+npm run dev           # http://localhost:5173
+npm run dev-host      # Also reachable from other devices on your network
 ```
 
-### Testing
+### Checks
 
 ```bash
+npm run format:check  # Prettier (npm run format to fix)
 npm run lint          # ESLint
-npm run format:check  # Prettier
 npm run typecheck     # vue-tsc
-npm run test          # Vitest (unit)
-npm run test:e2e      # Playwright (end-to-end)
+npm test              # Vitest unit tests
+npm run test:e2e      # Playwright end-to-end tests (run `npx playwright install chromium` once first)
 ```
 
 ### Production
 
 ```bash
-npm run generate      # .../.output/
+npm run build         # Static site in dist/
+npm run preview       # Serve dist/ locally
 ```
 
-The output is a fully static site with no server requirements. Deploy to any static host (Vercel, Netlify, GitHub Pages, etc.).
+Cloudflare Pages builds and deploys from git: `main` to [mtg-harmony.com](https://mtg-harmony.com) and `dev` to [dev.mtg-harmony.com](https://dev.mtg-harmony.com).
 
 ## Credits
 
 - [Scryfall API](https://scryfall.com/docs/api)
 - [Mana font](https://mana.andrewgioia.com)
-- [Keyrune font](https://keyrune.andrewgioia.com)

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <link
+      rel="icon"
+      href="/favicon.ico"
+    />
+    <link
+      rel="manifest"
+      href="/manifest.webmanifest"
+    />
+    <link
+      rel="apple-touch-icon"
+      href="/icons/apple-touch-icon.png"
+    />
+    <meta
+      name="theme-color"
+      content="#18181b"
+    />
+    <meta
+      name="mobile-web-app-capable"
+      content="yes"
+    />
+    <meta
+      name="apple-mobile-web-app-capable"
+      content="yes"
+    />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta
+      name="apple-mobile-web-app-title"
+      content="Harmony"
+    />
+    <!-- Card images (a restored board shows them at once) and the card API. -->
+    <link
+      rel="preconnect"
+      href="https://cards.scryfall.io"
+    />
+    <link
+      rel="dns-prefetch"
+      href="https://api.scryfall.com"
+    />
+    <title>MTG Harmony</title>
+    <meta
+      name="description"
+      content='Pull random cards and display them in a grid when playing "Discord, Lord of Disharmony".'
+    />
+    <meta
+      property="og:title"
+      content="MTG Harmony"
+    />
+    <meta
+      property="og:description"
+      content='Pull random cards and display them in a grid when playing "Discord, Lord of Disharmony".'
+    />
+    <meta
+      property="og:image"
+      content="https://mtg-harmony.com/og-image.png"
+    />
+    <meta
+      property="og:image:width"
+      content="1200"
+    />
+    <meta
+      property="og:image:height"
+      content="630"
+    />
+    <meta
+      property="og:image:alt"
+      content="MTG Harmony: random cards for Discord, Lord of Disharmony, cast as tokens and tracked on the table."
+    />
+    <meta
+      name="twitter:card"
+      content="summary_large_image"
+    />
+    <meta
+      name="twitter:image"
+      content="https://mtg-harmony.com/og-image.png"
+    />
+  </head>
+  <body>
+    <div
+      id="app"
+      class="isolate"
+    ></div>
+    <script
+      type="module"
+      src="/app/main.ts"
+    ></script>
+  </body>
+</html>

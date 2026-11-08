@@ -1,5 +1,7 @@
 <template>
-  <div class="fixed left-3 right-3 top-3 z-10 flex gap-6 justify-end">
+  <div
+    class="fixed left-[calc(0.75rem+env(safe-area-inset-left))] right-[calc(0.75rem+env(safe-area-inset-right))] top-[calc(0.75rem+env(safe-area-inset-top))] flex gap-6 justify-end"
+  >
     <DiscordFetch />
 
     <div class="grow" />
@@ -9,19 +11,21 @@
     <LayoutMenu
       @open-settings-requested="emit('openSettingsRequested')"
       @clear-board-requested="emit('clearBoardRequested')"
-      @clear-session-requested="emit('clearSessionRequested')"
+      @new-game-requested="emit('newGameRequested')"
       @reset-all-requested="emit('resetAllRequested')"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import DiscordFetch from './DiscordFetch.vue';
+import LayoutMenu from '~/components/layout/Menu.vue';
+import LayoutTapButton from '~/components/layout/TapButton.vue';
+import DiscordFetch from '../../features/discordFetcher/components/SidePanel.vue';
 
 const emit = defineEmits<{
   openSettingsRequested: [];
   clearBoardRequested: [];
-  clearSessionRequested: [];
+  newGameRequested: [];
   resetAllRequested: [];
 }>();
 </script>

@@ -1,5 +1,5 @@
 <template>
-  <LazyUModal
+  <UModal
     v-model:open="open"
     :ui="{
       title: 'flex items-center gap-2 text-inverted',
@@ -9,7 +9,7 @@
       footer: 'flex flex-row justify-between',
     }"
     :close="false"
-    description="Confirm that you want to reset all app data"
+    description="Confirm that you want to reset the app"
   >
     <template #title>
       <UIcon
@@ -23,8 +23,9 @@
       <p>This will remove:</p>
       <ul>
         <li>All cards on the board</li>
-        <li>All history</li>
+        <li>The On-deck card and the cards fetched ahead</li>
         <li>All settings</li>
+        <li>The event log</li>
       </ul>
     </template>
 
@@ -46,28 +47,22 @@
         Confirm
       </UButton>
     </template>
-  </LazyUModal>
+  </UModal>
 </template>
 
 <script setup lang="ts">
-const toast = useToast();
-const battlefield = useBattlefield();
-const settingsStore = useSettingsStore();
-const onDeckStore = useOnDeckStore();
+import UButton from '@nuxt/ui/components/Button.vue';
+// Nuxt UI's plain-Vue Icon; components/Icon.vue is the Nuxt-only variant.
+import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
+import UModal from '@nuxt/ui/components/Modal.vue';
+import { useReset } from '~/composables/useReset';
+const reset = useReset();
 
 const open = defineModel<boolean>('open');
 
 const resetAppData = () => {
-  battlefield.clear();
-  // TODO: Clear history
-  onDeckStore.clearCard();
-  settingsStore.clear();
+  reset.resetAppData();
 
   open.value = false;
-
-  toast.add({
-    title: 'App data reset',
-    color: 'info',
-  });
 };
 </script>

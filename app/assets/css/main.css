@@ -2,7 +2,7 @@
 @import '@nuxt/ui';
 
 @theme static {
-  --font-sans: 'Public Sans', sans-serif;
+  --font-sans: 'Public Sans Variable', sans-serif;
 
   --color-green-50: #effdf5;
   --color-green-100: #d9fbe8;
@@ -33,13 +33,48 @@ button:not(:disabled) {
   cursor: pointer;
 }
 
+/*
+ * Touch: no rubber-banding or pull-to-refresh, and no double-tap zoom.
+ * `manipulation` still allows pinch-zoom and scrolling, so dialogs and menus
+ * stay zoomable. The board blocks pinch-zoom itself (Board.vue).
+ */
+html,
+body {
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+/* Card images: a long press shouldn't open the browser's image menu. */
+.mtg-card-display,
+.add-card-avatar img {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 :root {
-  --card-ratio: 12/17;
+  --card-ratio-vertical: 12/17;
+  --card-ratio-horizontal: 17/12;
+  --card-short-side: 480px;
+  --card-long-side: 680px;
 }
 
 .mtg-card-display {
+  border-radius: 3%;
+}
+
+.mtg-card-display.vertical {
   height: 100%;
   width: auto;
-  aspect-ratio: var(--card-ratio);
-  border-radius: 3%;
+  aspect-ratio: var(--card-ratio-vertical);
+}
+
+.mtg-card-display.horizontal {
+  height: auto;
+  width: 100%;
+  aspect-ratio: var(--card-ratio-horizontal);
+}
+
+iframe {
+  pointer-events: none;
 }

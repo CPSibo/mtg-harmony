@@ -2,39 +2,63 @@
   <div
     ref="boardCard"
     class="board-card origin-top-left flex gap-1"
+    :class="{ tapped: card.tapped }"
   >
     <div
-      ref="cardImageSection"
-      class="cursor-pointer"
-      :class="{ tapped: card.tapped }"
-      title="Double tap to open"
-      @dblclick="emits('showCardDetails', card)"
-      @click="tryAttach"
+      class="card-image-wrapper cursor-pointer rounded-lg"
+      :class="
+        settings.cardOutlineEnabled
+          ? 'border-slate-600 hover:border-primary-800'
+          : 'border-transparent'
+      "
     >
-      <img
-        :src="card.image_uri"
-        class="mtg-card-display"
-        :alt="card.name"
-      />
-
-      <!-- TODO: -->
-      <!-- <div class="counter" v-if="!!stack.counter">
-        {{ stack.counter }}
-      </div> -->
-
       <div
-        v-if="battlefield.isAttaching && isHovered && isValidAttachmentTarget"
-        class="attach-overlay text-5xl"
+        ref="cardImageSection"
+        class="card-image"
+        role="img"
+        :aria-label="card.name"
+        :style="
+          settings.imagesEnabled
+            ? { backgroundImage: `url('${card.image_uri}')` }
+            : undefined
+        "
+        title="Double tap to open"
+        @dblclick="emits('showCardDetails', card)"
+        @click="tryAttach"
+        @touchend="tryAttach"
       >
-        <UIcon
-          name="i-lucide-link"
-          class="text-primary"
+        <SharedCardText
+          v-if="!settings.imagesEnabled"
+          :card="card.scryfallInfo"
+          class="size-full"
         />
+
+        <div
+          v-if="!!card.faceNumber"
+          class="face-number"
+        >
+          {{ card.faceNumber }}
+        </div>
+
+        <div
+          v-if="battlefield.isAttaching && isHovered && isValidAttachmentTarget"
+          class="attach-overlay text-5xl"
+        >
+          <UIcon
+            :name="
+              battlefield.attachMode === 'under'
+                ? 'i-lucide-layers'
+                : 'i-lucide-link'
+            "
+            class="text-primary"
+          />
+        </div>
       </div>
     </div>
+
     <div class="modifiers grid grid-flow-col gap-1 place-items-start">
       <div
-        v-for="modifier in card.modifiers.filter((f) => f.count > 0)"
+        v-for="modifier in card.modifiers"
         :key="modifier.modifier.name"
         class="modifier-icon gap-1 flex items-center bg-gray-950/90 px-1 py-0.5 rounded-sm cursor-pointer"
         :title="modifier.modifier.name"
@@ -53,6 +77,13 @@
 </template>
 
 <script setup lang="ts">
+// Nuxt UI's plain-Vue Icon; components/Icon.vue is the Nuxt-only variant.
+import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
+import { useElementHover } from '@vueuse/core';
+import SharedCardText from '~/components/shared/CardText.vue';
+import { useSettingsStore } from '~/stores/settings';
+import { computed, useTemplateRef } from 'vue';
+import { useBattlefieldStore } from '~/features/battlefield';
 import type { BoardCard } from '~/types/PlayArea';
 
 const props = defineProps<{
@@ -66,13 +97,14 @@ const emits = defineEmits<{
 
 const stack = computed(() => props.card.stack);
 
-const battlefield = useBattlefield();
+const battlefield = useBattlefieldStore();
+const settings = useSettingsStore();
 
 const isValidAttachmentTarget = computed(() => {
-  return battlefield.isValidAttadchmentTarget(props.card);
+  return battlefield.isValidAttachmentTarget(props.card);
 });
 
-const tryAttach = (ev: MouseEvent) => {
+const tryAttach = (ev: Event) => {
   if (!battlefield.isAttaching) return;
 
   if (!isValidAttachmentTarget.value) return;
@@ -91,11 +123,45 @@ const isHovered = useElementHover(cardImageSection);
 
 <style lang="css" scoped>
 .board-card {
-  width: auto;
-  height: 226px;
+  .card-image-wrapper {
+    width: var(--w);
+    height: var(--h);
+    position: relative;
 
-  .tapped {
-    transform: rotate(90deg);
+    box-sizing: border-box;
+    overflow: hidden;
+
+    border-width: 2px;
+    border-style: solid;
+
+    .card-image {
+      width: var(--scaled-short);
+      height: var(--scaled-long);
+
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(0deg);
+
+      background-origin: center;
+      background-color: black;
+      background-attachment: local;
+      background-repeat: no-repeat;
+      background-clip: border-box;
+      background-position: center center;
+      background-size: var(--scaled-short) var(--scaled-long);
+    }
+  }
+
+  &.tapped {
+    .card-image-wrapper {
+      width: var(--h);
+      height: var(--w);
+
+      .card-image {
+        transform: translate(-50%, -50%) rotate(90deg);
+      }
+    }
   }
 
   &:hover .modifier-icon {
@@ -108,14 +174,14 @@ const isHovered = useElementHover(cardImageSection);
 }
 
 .modifiers {
-  position: relative;
+  position: absolute;
   grid-template-rows: repeat(5, minmax(0, 1fr));
   height: fit-content;
+  left: calc(100% + 0.3em);
 }
 
 .attachment .modifiers {
-  padding-top: 45%;
-  padding-bottom: 10px;
+  margin-top: calc(var(--h) * 0.58);
   grid-template-rows: repeat(3, minmax(0, 1fr));
 }
 
@@ -145,7 +211,7 @@ const isHovered = useElementHover(cardImageSection);
   padding-top: 2px;
 }
 
-.counter {
+.face-number {
   position: absolute;
   top: 32%;
   left: 50%;

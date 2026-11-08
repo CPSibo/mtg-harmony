@@ -1,5 +1,5 @@
 <template>
-  <LazyUModal
+  <UModal
     v-model:open="open"
     :ui="{
       title: 'flex items-center gap-2 text-inverted',
@@ -22,8 +22,9 @@
     <template #body>
       <p>This will remove:</p>
       <ul>
-        <li>All cards</li>
+        <li>All cards on the board</li>
       </ul>
+      <p>The game goes on; the event log notes the cleared board.</p>
     </template>
 
     <template #footer>
@@ -44,23 +45,22 @@
         Confirm
       </UButton>
     </template>
-  </LazyUModal>
+  </UModal>
 </template>
 
 <script setup lang="ts">
-const toast = useToast();
-const battlefield = useBattlefield();
+import UButton from '@nuxt/ui/components/Button.vue';
+// Nuxt UI's plain-Vue Icon; components/Icon.vue is the Nuxt-only variant.
+import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
+import UModal from '@nuxt/ui/components/Modal.vue';
+import { useReset } from '~/composables/useReset';
+const reset = useReset();
 
 const open = defineModel<boolean>('open');
 
 const clearBoard = () => {
-  battlefield.clear();
+  reset.clearBoard();
 
   open.value = false;
-
-  toast.add({
-    title: 'Board cleared',
-    color: 'info',
-  });
 };
 </script>

@@ -1,0 +1,4 @@
+# Cloudflare Pages. Files in /assets have content-hashed names, so a changed
+# file gets a new URL: cache them for good instead of revalidating each visit.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

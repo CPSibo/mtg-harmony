@@ -1,9 +1,15 @@
+import { useWindowSize } from '@vueuse/core';
+import { computed, ref, toValue, watch } from 'vue';
+import type { MaybeRefOrGetter } from 'vue';
 import type { ElementSize, Position } from '@vueuse/core';
+import { createFollower } from './pointerSmoothing';
 
 export interface PanAndZoomSettings {
   size: ElementSize;
   onEnd?: (position: Position) => void;
   disabled?: MaybeRefOrGetter<boolean>;
+  /** Pan easing in ms; 0 is off (#104). */
+  smoothing?: MaybeRefOrGetter<number>;
 }
 
 export function usePanAndZoom(settings: PanAndZoomSettings) {
@@ -11,46 +17,47 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     return !(toValue(settings.disabled) ?? false);
   });
 
-  const size = ref<ElementSize>(
-    settings?.size ?? { width: 5000, height: 5000 },
-  );
-
-  const halfWidth = computed(() => size.value.width / 2.0);
-  const halfHeight = computed(() => size.value.height / 2.0);
+  // Fixed for the board's life, so not reactive.
+  const size: ElementSize = settings?.size ?? { width: 5000, height: 5000 };
 
   const { width: windowWidth, height: windowHeight } = useWindowSize();
 
-  const halfWindowWidth = computed(() => windowWidth.value / 2.0);
-  const halfWindowHeight = computed(() => windowHeight.value / 2.0);
-
   const scale = ref(1.5);
   const position = ref<Position>({
-    x: -halfWidth.value * scale.value + halfWindowWidth.value,
-    y: -halfHeight.value * scale.value + halfWindowHeight.value,
+    x: (-size.width / 2) * scale.value + windowWidth.value / 2,
+    y: (-size.height / 2) * scale.value + windowHeight.value / 2,
   });
-  const center = computed(() => {
-    return {
-      x: -position.value.x / scale.value + halfWindowWidth.value,
-      y: -position.value.y / scale.value + halfWindowHeight.value,
-    };
+  // Read when a gesture ends, not reacted to, so a function (#105).
+  const center = (): Position => ({
+    x: -position.value.x / scale.value + windowWidth.value / 4,
+    y: -position.value.y / scale.value + windowHeight.value / 4,
   });
 
-  const scrollSpeed = ref(0.1);
-  const pinchSpeed = ref(0.01);
+  const smoothing = () => toValue(settings.smoothing) ?? 0;
+  // Pans go through this, so they can ease (#104). Zoom is immediate.
+  const panFollower = createFollower((p) => {
+    position.value = clampPosition(p.x, p.y);
+  }, smoothing);
 
-  // Internal pan state — not exposed
+  const scrollSpeed = 0.1;
+  const pinchSpeed = 0.01;
+
+  // Shown by the board (its cursor), so reactive.
   const isDragging = ref(false);
-  const dragStart = ref<Position>({ x: 0, y: 0 });
-  const positionAtDragStart = ref<Position>({ x: 0, y: 0 });
+  // Only the handlers read the rest of the gesture state, so it isn't.
+  let dragStart: Position = { x: 0, y: 0 };
+  let positionAtDragStart: Position = { x: 0, y: 0 };
 
   // Touch state for pinch and single-finger pan
-  const activeTouches = ref<Record<number, Position>>({});
-  const pinchStartDistance = ref<number | null>(null);
-  const scaleAtPinchStart = ref(1.0);
+  // Touch points currently on the screen, by Touch.identifier. Not reactive:
+  // only the touch handlers read it.
+  const activeTouches = new Map<number, Position>();
+  let pinchStartDistance: number | null = null;
+  let scaleAtPinchStart = 1.0;
 
   const style = computed(() => {
-    const width = `width:${size.value.width}px`;
-    const height = `height:${size.value.height}px`;
+    const width = `width:${size.width}px`;
+    const height = `height:${size.height}px`;
     const transform = `transform:translate(${position.value.x}px, ${position.value.y}px) scale(${scale.value})`;
 
     return [width, height, transform].reduce(
@@ -65,6 +72,7 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     if (!isEnabled.value) return;
 
     e.preventDefault();
+    panFollower.finish();
 
     let delta = e.deltaY;
     let factor: number;
@@ -72,11 +80,11 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     const isPinch = e.ctrlKey && e.deltaMode === 0 && !Number.isInteger(delta);
 
     if (isPinch) {
-      factor = 1 - delta * pinchSpeed.value;
+      factor = 1 - delta * pinchSpeed;
     } else {
       if (e.deltaMode === 0) delta /= 100;
       if (e.deltaMode === 1) delta /= 3;
-      factor = 1 - delta * scrollSpeed.value;
+      factor = 1 - delta * scrollSpeed;
     }
 
     // Cursor position relative to the canvas origin (top-left corner)
@@ -85,13 +93,20 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     const cursorX = e.clientX - originX;
     const cursorY = e.clientY - originY;
 
-    // Shift position so the point under the cursor stays fixed
-    const requestedX = position.value.x - cursorX * (factor - 1);
-    const requestedY = position.value.y - cursorY * (factor - 1);
+    const requestedScale = scale.value * factor;
 
-    position.value = clampPosition(requestedX, requestedY);
+    const previousScale = scale.value;
+    scale.value = clampScale(requestedScale);
 
-    scale.value *= factor;
+    const appliedFactor = scale.value / previousScale;
+
+    if (scale.value !== previousScale) {
+      // Shift position so the point under the cursor stays fixed
+      const requestedX = position.value.x - cursorX * (appliedFactor - 1);
+      const requestedY = position.value.y - cursorY * (appliedFactor - 1);
+
+      position.value = clampPosition(requestedX, requestedY);
+    }
 
     if (settings.onEnd) settings.onEnd(position.value);
   }
@@ -103,8 +118,9 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
 
     e.preventDefault();
     isDragging.value = true;
-    dragStart.value = { x: e.clientX, y: e.clientY };
-    positionAtDragStart.value = { ...position.value };
+    dragStart = { x: e.clientX, y: e.clientY };
+    positionAtDragStart = { ...position.value };
+    panFollower.jump(positionAtDragStart);
   }
 
   function onMouseMove(e: MouseEvent) {
@@ -112,47 +128,57 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
 
     if (!isDragging.value) return;
 
-    const requestedX =
-      positionAtDragStart.value.x + (e.clientX - dragStart.value.x);
-    const requestedY =
-      positionAtDragStart.value.y + (e.clientY - dragStart.value.y);
-
-    position.value = clampPosition(requestedX, requestedY);
+    const pointer = { x: e.clientX, y: e.clientY };
+    panFollower.to({
+      x: positionAtDragStart.x + (pointer.x - dragStart.x),
+      y: positionAtDragStart.y + (pointer.y - dragStart.y),
+    });
   }
 
   function clampPosition(requestedX: number, requestedY: number) {
-    // TODO: Need to account for zoom scale.
+    const minAllowableX = -size.width * scale.value + windowWidth.value;
+    const maxAllowableX = 0;
 
-    // const minAllowableX = -size.value.width + windowWidth.value;
-    // const maxAllowableX = 0;
+    const minAllowableY = -size.height * scale.value + windowHeight.value;
+    const maxAllowableY = 0;
 
-    // const minAllowableY = -size.value.height + windowHeight.value;
-    // const maxAllowableY = 0;
-
-    // const finalX = Math.min(Math.max(requestedX, minAllowableX), maxAllowableX);
-    // const finalY = Math.min(Math.max(requestedY, minAllowableY), maxAllowableY);
-
-    // return {
-    //   x: finalX,
-    //   y: finalY,
-    // };
+    const finalX = Math.min(Math.max(requestedX, minAllowableX), maxAllowableX);
+    const finalY = Math.min(Math.max(requestedY, minAllowableY), maxAllowableY);
 
     return {
-      x: requestedX,
-      y: requestedY,
+      x: finalX,
+      y: finalY,
     };
+  }
+
+  function clampScale(requestedScale: number) {
+    const minAllowableScale = Math.max(
+      windowWidth.value / size.width,
+      windowHeight.value / size.height,
+    );
+    const maxAllowableScale = 3;
+
+    return Math.min(
+      Math.max(requestedScale, minAllowableScale),
+      maxAllowableScale,
+    );
+  }
+
+  function endPan() {
+    panFollower.finish();
+    isDragging.value = false;
   }
 
   function onMouseUp(_e: MouseEvent) {
     if (!isEnabled.value) return;
 
-    isDragging.value = false;
+    endPan();
   }
 
   function onMouseLeave(_e: MouseEvent) {
     if (!isEnabled.value) return;
 
-    isDragging.value = false;
+    endPan();
   }
 
   // ─── Touch pan + pinch-to-zoom ───────────────────────────────────────────
@@ -171,24 +197,26 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     e.preventDefault();
 
     for (const touch of e.changedTouches) {
-      activeTouches.value[touch.identifier] = {
+      activeTouches.set(touch.identifier, {
         x: touch.clientX,
         y: touch.clientY,
-      };
+      });
     }
 
-    const touchList = Object.values(activeTouches.value);
+    const touchList = [...activeTouches.values()];
 
     if (touchList.length === 1) {
       // Single finger: begin pan
       isDragging.value = true;
-      dragStart.value = { ...touchList[0]! };
-      positionAtDragStart.value = { ...position.value };
+      dragStart = { ...touchList[0]! };
+      positionAtDragStart = { ...position.value };
+      panFollower.jump(positionAtDragStart);
     } else if (touchList.length === 2) {
       // Two fingers: begin pinch, cancel pan
+      panFollower.finish();
       isDragging.value = false;
-      pinchStartDistance.value = getTouchDistance(touchList[0]!, touchList[1]!);
-      scaleAtPinchStart.value = scale.value;
+      pinchStartDistance = getTouchDistance(touchList[0]!, touchList[1]!);
+      scaleAtPinchStart = scale.value;
     }
   }
 
@@ -198,25 +226,24 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     e.preventDefault();
 
     for (const touch of e.changedTouches) {
-      activeTouches.value[touch.identifier] = {
+      activeTouches.set(touch.identifier, {
         x: touch.clientX,
         y: touch.clientY,
-      };
+      });
     }
 
-    const touchList = Object.values(activeTouches.value);
+    const touchList = [...activeTouches.values()];
 
     if (touchList.length === 1 && isDragging.value) {
       // Pan
-      position.value = {
-        x: positionAtDragStart.value.x + (touchList[0]!.x - dragStart.value.x),
-        y: positionAtDragStart.value.y + (touchList[0]!.y - dragStart.value.y),
-      };
-    } else if (touchList.length === 2 && pinchStartDistance.value !== null) {
+      panFollower.to({
+        x: positionAtDragStart.x + (touchList[0]!.x - dragStart.x),
+        y: positionAtDragStart.y + (touchList[0]!.y - dragStart.y),
+      });
+    } else if (touchList.length === 2 && pinchStartDistance !== null) {
       const currentDistance = getTouchDistance(touchList[0]!, touchList[1]!);
       const factor =
-        (scaleAtPinchStart.value *
-          (currentDistance / pinchStartDistance.value)) /
+        (scaleAtPinchStart * (currentDistance / pinchStartDistance)) /
         scale.value;
 
       const midpoint = getTouchMidpoint(touchList[0]!, touchList[1]!);
@@ -224,13 +251,20 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
       const midX = midpoint.x - position.value.x;
       const midY = midpoint.y - position.value.y;
 
-      // Shift canvas so the pinch midpoint stays fixed on screen.
-      const requestedX = position.value.x - midX * (factor - 1);
-      const requestedY = position.value.y - midY * (factor - 1);
+      const requestedScale = scale.value * factor;
 
-      position.value = clampPosition(requestedX, requestedY);
+      const previousScale = scale.value;
+      scale.value = clampScale(requestedScale);
 
-      scale.value *= factor;
+      const appliedFactor = scale.value / previousScale;
+
+      if (scale.value !== previousScale) {
+        // Shift canvas so the pinch midpoint stays fixed on screen.
+        const requestedX = position.value.x - midX * (appliedFactor - 1);
+        const requestedY = position.value.y - midY * (appliedFactor - 1);
+
+        position.value = clampPosition(requestedX, requestedY);
+      }
     }
   }
 
@@ -240,22 +274,23 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     e.preventDefault();
 
     for (const touch of e.changedTouches) {
-      delete activeTouches.value[touch.identifier];
+      activeTouches.delete(touch.identifier);
     }
 
-    const touchList = Object.values(activeTouches.value);
+    const touchList = [...activeTouches.values()];
 
     if (touchList.length < 2) {
-      pinchStartDistance.value = null;
+      pinchStartDistance = null;
     }
 
     if (touchList.length === 0) {
-      isDragging.value = false;
+      endPan();
     } else if (touchList.length === 1) {
       // Finger lifted during pinch → resume pan with remaining finger
       isDragging.value = true;
-      dragStart.value = { ...touchList[0]! };
-      positionAtDragStart.value = { ...position.value };
+      dragStart = { ...touchList[0]! };
+      positionAtDragStart = { ...position.value };
+      panFollower.jump(positionAtDragStart);
     }
   }
 
