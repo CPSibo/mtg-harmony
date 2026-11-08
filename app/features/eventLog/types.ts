@@ -13,8 +13,7 @@ export interface LoggedCard {
 }
 
 /** Why a new game started. */
-export type GameMarkerReason =
-  'clearBoard' | 'clearSession' | 'resetAll' | 'idlePrompt';
+export type GameMarkerReason = 'clearBoard' | 'clearSession' | 'idlePrompt';
 
 type AnyCard = BoardCard | ScryfallCard;
 

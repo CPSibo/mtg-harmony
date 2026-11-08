@@ -95,7 +95,7 @@ watch([…state], save, { deep }); // On every change
   two store instances share them.
 - `reset()` returns a store to its defaults. `useReset()` builds the menu's three levels from these: **clear
   board** (battlefield), **clear session** (plus On-deck's queue and shown card) and **reset all data** (plus
-  settings). Each shows one toast and starts a new game in the event log.
+  settings and the event log). Each shows one toast.
 
 | Key                          | Store                    | Holds                                     |
 | ---------------------------- | ------------------------ | ----------------------------------------- |
@@ -207,8 +207,9 @@ copied, removed, board cleared and game markers. Moving, tapping and counters ar
   Internal moves (`removeCardFromStack`, `explodeStack`, `detach`) aren't logged.
 
 - `startNewGame(reason)` switches to a new game ID and records a `gameMarker`. A refresh never ends a game.
-- The menu's **Clear board**, **Clear session** and **Reset all data** (`useReset`) each start a new game, so one
-  marker per action. None of them clears the log.
+- The menu's **Clear board**, **Clear session** and **Reset all data** (`useReset`) each show one toast. Clear
+  board and Clear session start a new game, one marker each. Reset all data empties the log (`reset()`), back to
+  a fresh install.
 - After 2 hours without events (`IDLE_PROMPT_AFTER_MS`), `NewGamePrompt` offers a new game when the app opens or
   its tab comes back into view (`shouldOfferNewGame`). Only with cards on the board, and not when the last event
   is already a new game, so a player who cleared up or never played isn't asked. **New game** does what Clear session does, with the reason

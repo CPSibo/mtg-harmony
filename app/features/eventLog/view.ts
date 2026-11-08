@@ -29,7 +29,6 @@ const COPY_MODE_LABELS = {
 const REASON_LABELS: Record<GameMarkerReason, string> = {
   clearBoard: 'cleared board',
   clearSession: 'cleared session',
-  resetAll: 'reset all data',
   idlePrompt: 'after a break',
 };
 

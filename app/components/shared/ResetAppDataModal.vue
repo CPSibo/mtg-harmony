@@ -25,8 +25,8 @@
         <li>All cards on the board</li>
         <li>The On-deck card and the cards fetched ahead</li>
         <li>All settings</li>
+        <li>The event log</li>
       </ul>
-      <p>The event log keeps everything and marks a new game.</p>
     </template>
 
     <template #footer>
