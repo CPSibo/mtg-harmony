@@ -32,6 +32,7 @@ app/
     addCard/       Manual card search (store, window, widget)
     battlefield/   The board's state: stacks, z-order, attaching, save/load
     discordFetcher/ Random-card fetching and the On-deck panel
+    eventLog/      The event log: entry types, card snapshots, the store
     palette/       The command palette
     widgets/       The widget registry that feeds the palette and keyboard shortcuts
   components/      Shared and layout components: the board, cards, corner buttons, dialogs
@@ -101,6 +102,7 @@ watch([…state], save, { deep }); // On every change
 | `mtg-harmony_discordFetcher` | `useDiscordFetcherStore` | Every fetched card, the current position, settings |
 | `mtg-harmony_settings`       | `useSettingsStore`       | App settings                                       |
 | `mtg-harmony_inputMode`      | `useInputModeStore`      | Last input mode (touch or cursor)                  |
+| `mtg-harmony_eventLog`       | `useEventLogStore`       | Event log entries and the current game ID          |
 
 `useLocalStorage` serializes with **devalue**, not JSON, because the board model has `Set`s and cycles: a card
 points to its stack (`BoardCard.stack`), and the stack points back to the card. devalue keeps both, so a loaded
@@ -177,6 +179,18 @@ Rules the battlefield store enforces:
   (primary, attachments and unders, each with its state). Every copied card gets a new ID.
 - Card and stack IDs come from `randomUUID` (`utils/randomUUID.ts`). It falls back to `crypto.getRandomValues`
   where `crypto.randomUUID` is missing, as on a plain-HTTP dev server opened from a phone.
+
+## Event log
+
+`features/eventLog` keeps one list of meaningful changes, newest last: fetched, cast, added, attached, put under,
+copied, removed, board cleared and game markers. Moving, tapping and counters aren't logged.
+
+- `record(type, payload)` adds an entry with an ID, timestamp and the current game ID. Cards in the payload are
+  stored as snapshots (`snapshotCard`: instance ID, Scryfall ID, name, image and Scryfall URI), so later changes
+  on the board don't rewrite history. A card fetched but not yet on the board has no instance ID.
+- `startNewGame(reason)` switches to a new game ID and records a `gameMarker`. A refresh never ends a game.
+- The log keeps 30 days and at most 5000 entries (`MAX_AGE_MS`, `MAX_ENTRIES`), trimmed on load and on each
+  record.
 
 ## Scryfall
 
