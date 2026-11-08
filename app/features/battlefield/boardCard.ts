@@ -21,3 +21,19 @@ export function createBoardCard(scryfallCard: ScryfallCard): BoardCard {
     faceNumber: 0,
   };
 }
+
+/**
+ * A new instance of `card` with a fresh ID, in no stack. With `keepState`, it
+ * keeps the card's own counters, face number and tapped state (counters are
+ * copied, not shared); without, it starts fresh like a newly cast card.
+ */
+export function copyBoardCard(card: BoardCard, keepState: boolean): BoardCard {
+  const copy = createBoardCard(card.scryfallInfo);
+  if (!keepState) return copy;
+  return {
+    ...copy,
+    tapped: card.tapped,
+    faceNumber: card.faceNumber,
+    modifiers: new Set([...card.modifiers].map((m) => ({ ...m }))),
+  };
+}

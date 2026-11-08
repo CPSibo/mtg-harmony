@@ -169,6 +169,9 @@ Rules the battlefield store enforces:
   Scryfall ID stays on `scryfallInfo.id`. Casting from On-deck or Add Card goes through `castCard`, which puts a
   new instance on the board, so casting the same card twice gives two independent cards. The On-deck history card
   never goes on the board itself.
+- `copyCard(card, mode)` puts a copy in a new stack, 40 px down and right of the source, in front. `card` copies
+  the card fresh, `counters` keeps its counters, face number and tapped state, and `stack` copies its whole stack
+  (primary, attachments and unders, each with its state). Every copied card gets a new ID.
 - Card and stack IDs come from `randomUUID` (`utils/randomUUID.ts`). It falls back to `crypto.getRandomValues`
   where `crypto.randomUUID` is missing, as on a plain-HTTP dev server opened from a phone.
 

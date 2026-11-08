@@ -10,7 +10,13 @@ import type {
 import type { ScryfallCard } from '~/types/Scryfall';
 import { randomUUID } from '~/utils/randomUUID';
 import type { Position } from '@vueuse/core';
-import { createBoardCard } from './boardCard';
+import { copyBoardCard, createBoardCard } from './boardCard';
+
+/** How much of a card `copyCard` copies. */
+export type CopyMode = 'card' | 'counters' | 'stack';
+
+/** How far a copy sits from its source, in board pixels. */
+const COPY_OFFSET = 40;
 
 const STORAGE_KEY = 'mtg-harmony_battlefield';
 
@@ -100,6 +106,48 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
   /** Puts a new instance of a Scryfall card on the board in its own stack. */
   function castCard(scryfallCard: ScryfallCard) {
     return addStackByCard(createBoardCard(scryfallCard));
+  }
+
+  /**
+   * Puts a copy on the board in its own stack, offset from the source and in
+   * front. `card` copies the card fresh, `counters` with its own state, and
+   * `stack` the card's whole stack (primary, attachments and unders, each with
+   * its state). Every copied card gets a new ID.
+   */
+  function copyCard(card: BoardCard, mode: CopyMode) {
+    const source = card.stack;
+    const whole = mode === 'stack' && source;
+    const origin = source?.position ?? center.value;
+    const primary = copyBoardCard(
+      whole ? source.primary : card,
+      mode !== 'card',
+    );
+    const copy: BoardCardStack = {
+      id: randomUUID(),
+      primary,
+      attachments: new Set<BoardCard>(),
+      unders: new Set<BoardCard>(),
+      position: { x: origin.x + COPY_OFFSET, y: origin.y + COPY_OFFSET },
+    };
+    primary.stack = copy;
+
+    if (whole) {
+      for (const [from, to] of [
+        [source.attachments, copy.attachments],
+        [source.unders, copy.unders],
+      ] as const) {
+        for (const c of from) {
+          const cardCopy = copyBoardCard(c, true);
+          cardCopy.stack = copy;
+          to.add(cardCopy);
+        }
+      }
+    }
+
+    // Add it only once complete, and return the store's reactive copy.
+    stacks.value.push(copy);
+    zOrder.value.push(copy.id);
+    return stacks.value.at(-1)!;
   }
 
   function removeStack(stack: BoardCardStack) {
@@ -380,6 +428,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     setStacks,
     addStackByCard,
     castCard,
+    copyCard,
     clearStacks,
     removeStack,
     removeCardFromStack,

@@ -194,3 +194,19 @@ test('the app is installable with its icons', async ({ page, request }) => {
     /viewport-fit=cover/,
   );
 });
+
+// #33: the copy menu had no handlers.
+test('copying a card puts a second one on the board', async ({ page }) => {
+  await page.getByRole('button', { name: 'On-deck' }).click();
+  await page.getByRole('button', { name: 'Next card' }).click();
+  await page.getByRole('button', { name: 'Cast to board' }).click();
+  const boardCards = page.locator('.board-card').getByRole('img', {
+    name: card.name,
+  });
+
+  await boardCards.first().hover();
+  await page.getByRole('button', { name: 'Copy', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Copy everything' }).click();
+
+  await expect(boardCards).toHaveCount(2);
+});
