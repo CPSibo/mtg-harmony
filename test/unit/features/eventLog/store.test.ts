@@ -120,6 +120,42 @@ describe('event log store', () => {
     expect(reloaded.gameId).toBe(gameId);
   });
 
+  it('saves each card once, however many entries mention it', async () => {
+    const log = useEventLogStore();
+    const card = makeCard({ name: 'Mentioned Often' });
+    const host = makeCard({ name: 'Host' });
+    log.record('cast', { card });
+    log.record('attached', { card, target: host });
+    log.record('removed', { card });
+    await nextTick();
+    flushSaves();
+
+    // devalue writes an object once and refers back to it after that.
+    const saved = localStorage.getItem('mtg-harmony_eventLog')!;
+    expect(saved.match(/"instanceId":/g)).toHaveLength(2); // card and host
+
+    setActivePinia(createPinia());
+    const [cast, attached] = useEventLogStore().entries;
+    expect(cardName(cast)).toBe('Mentioned Often');
+    expect(cast && 'card' in cast && cast.card).toBe(
+      attached && 'card' in attached && attached.card,
+    );
+  });
+
+  it('keeps cards that are still on the board apart from new instances', () => {
+    const log = useEventLogStore();
+    const first = makeCard({ name: 'Twin' });
+    const second = { ...first, id: 'another-instance' };
+
+    log.record('cast', { card: first });
+    log.record('cast', { card: second });
+
+    const ids = log.entries.map((e) =>
+      'card' in e ? e.card.instanceId : undefined,
+    );
+    expect(ids).toEqual([first.id, 'another-instance']);
+  });
+
   it('ignores saved entries that are not entries', () => {
     localStorage.setItem(
       'mtg-harmony_eventLog',

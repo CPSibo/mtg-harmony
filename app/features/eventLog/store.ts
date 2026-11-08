@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, watch } from 'vue';
+import { ref, toRaw, watch } from 'vue';
 import { useLocalStorage } from '~/composables/useLocalStorage';
 import { randomUUID } from '~/utils/randomUUID';
 import { snapshotCard } from './snapshot';
@@ -10,6 +10,7 @@ import {
   type EventPayloads,
   type EventType,
   type GameMarkerReason,
+  type LoggedCard,
 } from './types';
 
 const STORAGE_KEY = 'mtg-harmony_eventLog';
@@ -20,6 +21,11 @@ export const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 export const MAX_ENTRIES = 5000;
 
 const CARD_FIELDS = ['card', 'target', 'source'] as const;
+
+/** One key per board instance, or per Scryfall card for unplaced cards. */
+function cardKey(card: LoggedCard) {
+  return card.instanceId ?? `scryfall:${card.scryfallId}`;
+}
 
 function isEntry(value: unknown): value is EventEntry {
   if (!value || typeof value !== 'object') return false;
@@ -42,12 +48,40 @@ export const useEventLogStore = defineStore('eventLog', () => {
   const entries = ref<EventEntry[]>([]);
   const gameId = ref(randomUUID());
 
+  // Every entry about the same card points at one snapshot object, so the
+  // saved log (devalue keeps shared references) stores each card once.
+  const snapshots = new Map<string, LoggedCard>();
+
+  function sharedSnapshot(card: Parameters<typeof snapshotCard>[0]) {
+    const fresh = snapshotCard(card);
+    const key = cardKey(fresh);
+    const known = snapshots.get(key);
+    if (known) return known;
+    snapshots.set(key, fresh);
+    return fresh;
+  }
+
+  /** Rebuilds the snapshot index from the entries left after a load or trim. */
+  function reindexSnapshots() {
+    snapshots.clear();
+    for (const entry of entries.value) {
+      for (const field of CARD_FIELDS) {
+        const card = toRaw((entry as Record<string, unknown>)[field]) as
+          LoggedCard | undefined;
+        if (card) snapshots.set(cardKey(card), card);
+      }
+    }
+  }
+
   function trim(now = Date.now()) {
     const cutoff = now - MAX_AGE_MS;
     let start = entries.value.findIndex((e) => e.at >= cutoff);
     if (start === -1) start = entries.value.length;
     start = Math.max(start, entries.value.length - MAX_ENTRIES);
-    if (start > 0) entries.value.splice(0, start);
+    if (start > 0) {
+      entries.value.splice(0, start);
+      reindexSnapshots();
+    }
   }
 
   /** Adds an entry for the current game and returns it. */
@@ -58,7 +92,7 @@ export const useEventLogStore = defineStore('eventLog', () => {
     const logged: Record<string, unknown> = { ...payload };
     for (const field of CARD_FIELDS) {
       const card = (payload as Record<string, unknown>)[field];
-      if (card) logged[field] = snapshotCard(card as never);
+      if (card) logged[field] = sharedSnapshot(card as never);
     }
 
     const entry = {
@@ -82,6 +116,7 @@ export const useEventLogStore = defineStore('eventLog', () => {
 
   function reset() {
     entries.value = [];
+    snapshots.clear();
     gameId.value = randomUUID();
   }
 
@@ -102,6 +137,7 @@ export const useEventLogStore = defineStore('eventLog', () => {
     if (Array.isArray(data.entries))
       entries.value = data.entries.filter(isEntry);
     if (typeof data.gameId === 'string') gameId.value = data.gameId;
+    reindexSnapshots();
     trim();
     return true;
   }
