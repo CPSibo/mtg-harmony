@@ -2,6 +2,7 @@ import { stringify } from 'devalue';
 import { describe, expect, it, vi } from 'vitest';
 import { nextTick } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
+import { useEventLogStore, type EventEntry } from '~/features/eventLog';
 import type { BoardCardModifier, BoardCardStack } from '~/types/PlayArea';
 import { makeCard, makeScryfallCard } from '../fixtures/cards';
 import { stubStorage } from '../fixtures/storage';
@@ -621,5 +622,96 @@ describe('unders', () => {
 
     expect(board.stacks[0]!.unders.size).toBe(0);
     expect(board.stacks).toHaveLength(1);
+  });
+});
+
+// #36
+describe('event log', () => {
+  /** Each entry as "type card [target|source]". */
+  function logged() {
+    return useEventLogStore().entries.map((e: EventEntry) =>
+      [
+        e.type,
+        'card' in e ? e.card.name : '',
+        'target' in e ? e.target.name : '',
+        'source' in e ? e.source.name : '',
+        'mode' in e ? e.mode : '',
+      ]
+        .filter(Boolean)
+        .join(' '),
+    );
+  }
+
+  it('logs casting from On-deck and adding through Add Card', () => {
+    const board = useBattlefieldStore();
+
+    board.castCard(makeScryfallCard({ name: 'Cast' }));
+    board.castCard(makeScryfallCard({ name: 'Added' }), 'added');
+
+    expect(logged()).toEqual(['cast Cast', 'added Added']);
+    const [entry] = useEventLogStore().entries;
+    expect(entry && 'card' in entry && entry.card.instanceId).toBe(
+      board.stacks[0]!.primary.id,
+    );
+  });
+
+  it('logs attaching and putting under, with the target', () => {
+    const board = useBattlefieldStore();
+    const host = board.addStackByCard(makeCard({ name: 'Host' }));
+    board.addStackByCard(makeCard({ name: 'Aura' }));
+    board.addStackByCard(makeCard({ name: 'Exiled' }));
+
+    board.startAttaching(board.stacks[1]!.primary);
+    board.finishAttaching(host);
+    board.startAttaching(board.stacks[1]!.primary, 'under');
+    board.finishAttaching(board.stacks[0]!);
+
+    expect(logged()).toEqual(['attached Aura Host', 'putUnder Exiled Host']);
+  });
+
+  it('logs a copy with its source and mode', () => {
+    const board = useBattlefieldStore();
+    const host = board.addStackByCard(makeCard({ name: 'Host' }));
+
+    const copy = board.copyCard(host.primary, 'counters');
+
+    expect(logged()).toEqual(['copied Host Host counters']);
+    const [entry] = useEventLogStore().entries;
+    expect(entry && 'card' in entry && entry.card.instanceId).toBe(
+      copy.primary.id,
+    );
+  });
+
+  it('logs removing a card, but not the moves it causes', () => {
+    const board = boardWithAttachments(1);
+
+    board.removeCard(board.stacks[0]!.primary);
+
+    expect(logged()).toEqual(['attached Aura 0 Host', 'removed Host']);
+    expect(names(board.stacks)).toEqual(['Aura 0']);
+  });
+
+  it('does not log moving, tapping, detaching or counters', () => {
+    const board = boardWithAttachments(1);
+    const host = board.stacks[0]!;
+    useEventLogStore().reset();
+
+    board.setStackPosition(host, { x: 1, y: 2 });
+    board.toggleTapped(host.primary);
+    board.setFaceNumber(host.primary, 3);
+    board.clearModifiers(host.primary);
+    board.detach([...host.attachments][0]!);
+
+    expect(logged()).toEqual([]);
+  });
+
+  it('logs clearing the board', () => {
+    const board = useBattlefieldStore();
+    board.castCard(makeScryfallCard({ name: 'Gone' }));
+
+    board.clearBoard();
+
+    expect(logged()).toEqual(['cast Gone', 'boardCleared']);
+    expect(board.stacks).toEqual([]);
   });
 });

@@ -191,6 +191,20 @@ copied, removed, board cleared and game markers. Moving, tapping and counters ar
 - Every entry about the same card shares one snapshot object, keyed by instance ID (or Scryfall ID for a card not
   on the board). devalue writes a shared object once, so the saved log stores each card once. 5000 typical
   entries come to about 0.9 MB.
+- Events are recorded in the store actions, not in components:
+
+  | Event          | Recorded by                                                        |
+  | -------------- | ------------------------------------------------------------------ |
+  | `fetched`      | `discordFetcher.next()`, the first time On-deck shows a card       |
+  | `cast`/`added` | `battlefield.castCard(card, how)`; Add Card passes `'added'`       |
+  | `attached`     | `battlefield.finishAttaching` in attach mode                       |
+  | `putUnder`     | `battlefield.finishAttaching` in under mode                        |
+  | `copied`       | `battlefield.copyCard`, with the new card, its source and the mode |
+  | `removed`      | `battlefield.removeCard`, not the moves it causes                  |
+  | `boardCleared` | `battlefield.clearBoard`, which the menu's clear actions call      |
+
+  Internal moves (`removeCardFromStack`, `explodeStack`, `detach`) aren't logged.
+
 - `startNewGame(reason)` switches to a new game ID and records a `gameMarker`. A refresh never ends a game.
 - The log keeps 30 days and at most 5000 entries (`MAX_AGE_MS`, `MAX_ENTRIES`), trimmed on load and on each
   record.

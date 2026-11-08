@@ -1,3 +1,4 @@
+import { useEventLogStore } from '~/features/eventLog';
 import { useLocalStorage } from '~/composables/useLocalStorage';
 import { useScryfall } from '~/composables/useScryfall';
 import { defineStore } from 'pinia';
@@ -168,6 +169,19 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
    * (fire-and-forget; `fetchCards` handles its own errors and re-entrancy,
    * so nothing here needs to await or catch it).
    */
+  /**
+   * Logs a card the first time On-deck shows it. Prefetched cards aren't
+   * logged, and stepping back and forth doesn't log again.
+   */
+  function logIfFirstShown(shown: BoardCard | undefined) {
+    if (!shown) return;
+    const log = useEventLogStore();
+    const seen = log.entries.some(
+      (e) => e.type === 'fetched' && e.card.instanceId === shown.id,
+    );
+    if (!seen) log.record('fetched', { card: shown });
+  }
+
   async function next(): Promise<FetchResult> {
     const hasNextCard = activeIndex.value + 1 < cards.value.length;
 
@@ -178,6 +192,7 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
 
     cardCleared.value = false;
     activeIndex.value++;
+    logIfFirstShown(cards.value[activeIndex.value]);
 
     const remainingAhead = cards.value.length - 1 - activeIndex.value;
     if (remainingAhead < minQueuedCardCount.value) {

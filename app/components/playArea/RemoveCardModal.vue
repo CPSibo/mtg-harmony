@@ -92,7 +92,7 @@ const removeCard = () => {
   showConfirmRemove.value = false;
   if (!props.card) return;
 
-  battlefield.removeCardFromStack(props.card);
+  battlefield.removeCard(props.card);
 
   emit('removed');
 };

@@ -11,7 +11,7 @@ export function useReset() {
   const discordFetchStore = useDiscordFetcherStore();
 
   function clearBoard() {
-    battlefield.reset();
+    battlefield.clearBoard();
 
     toast.add({
       title: 'Board cleared',
