@@ -32,28 +32,39 @@
         {{ face.type_line }}
       </span>
 
-      <p
-        v-if="rules.length"
+      <div
+        v-if="paragraphs.length"
         class="rules"
         :class="{ long: (face.oracle_text?.length ?? 0) > 220 }"
       >
         <template
-          v-for="(part, i) in rules"
-          :key="i"
+          v-for="(paragraph, p) in paragraphs"
+          :key="p"
         >
-          <i
-            v-if="'symbol' in part"
-            :class="[part.symbol, { reminder: part.reminder }]"
-            :title="part.label"
+          <span
+            v-if="p > 0"
+            class="paragraph-gap"
           />
-          <em
-            v-else-if="part.reminder"
-            class="reminder"
-            >{{ part.text }}</em
-          >
-          <template v-else>{{ part.text }}</template>
+          <p>
+            <template
+              v-for="(part, i) in paragraph"
+              :key="i"
+            >
+              <i
+                v-if="'symbol' in part"
+                :class="[part.symbol, { reminder: part.reminder }]"
+                :title="part.label"
+              />
+              <em
+                v-else-if="part.reminder"
+                class="reminder"
+                >{{ part.text }}</em
+              >
+              <template v-else>{{ part.text }}</template>
+            </template>
+          </p>
         </template>
-      </p>
+      </div>
 
       <span
         v-if="face.power !== undefined && face.toughness !== undefined"
@@ -68,7 +79,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { ScryfallCard, ScryfallCardFace } from '~/types/Scryfall';
-import { manaSymbols, rulesText } from '~/utils/manaSymbols';
+import { manaSymbols, rulesText, type RulesPart } from '~/utils/manaSymbols';
 
 const props = defineProps<{
   card: Pick<
@@ -96,7 +107,21 @@ const face = computed<Omit<ScryfallCardFace, 'name'>>(() => {
 });
 
 const cost = computed(() => manaSymbols(face.value.mana_cost));
-const rules = computed(() => rulesText(face.value.oracle_text));
+// One list of parts per paragraph (line) of the rules text.
+const paragraphs = computed(() => {
+  const result: RulesPart[][] = [[]];
+  for (const part of rulesText(face.value.oracle_text)) {
+    if (!('text' in part)) {
+      result.at(-1)!.push(part);
+      continue;
+    }
+    part.text.split('\n').forEach((text, i) => {
+      if (i > 0) result.push([]);
+      if (text) result.at(-1)!.push({ ...part, text });
+    });
+  }
+  return result.filter((paragraph) => paragraph.length);
+});
 </script>
 
 <style scoped>
@@ -154,8 +179,19 @@ const rules = computed(() => rulesText(face.value.oracle_text));
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
   font-size: 5.2cqw;
-  white-space: pre-line;
+}
+
+.rules p {
+  flex-shrink: 0;
+}
+
+/* Half a line between paragraphs, as on paper, that gives way to nothing
+   when the text needs the room. */
+.paragraph-gap {
+  flex: 0 1 0.6em;
 }
 
 .rules.long {
