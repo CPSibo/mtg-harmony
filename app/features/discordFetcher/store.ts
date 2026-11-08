@@ -5,7 +5,7 @@ import {
 import { useLocalStorage } from '~/composables/useLocalStorage';
 import { useScryfall } from '~/composables/useScryfall';
 import { defineStore } from 'pinia';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, shallowRef, triggerRef, watch } from 'vue';
 import { cardData, createBoardCard } from '~/features/battlefield';
 import { useSettingsStore } from '~/stores/settings';
 import type { BoardCard } from '~/types/PlayArea';
@@ -51,11 +51,13 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
 
   const fetchingCards = ref(false);
 
+  // Cards here are replaced, never changed in place, so the refs are shallow
+  // (#105): `queue` is triggered after a push or shift.
   /** Cards fetched ahead and not shown yet, next first. */
-  const queue = ref<BoardCard[]>(defaults.queue);
+  const queue = shallowRef<BoardCard[]>(defaults.queue);
 
   /** The newest card On-deck has shown. */
-  const current = ref<BoardCard | null>(defaults.current);
+  const current = shallowRef<BoardCard | null>(defaults.current);
 
   /** How many cards back from `current` "previous" has gone. 0 is current. */
   const stepsBack = ref(defaults.stepsBack);
@@ -129,6 +131,7 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
         }
 
         queue.value.push(createBoardCard(result.data));
+        triggerRef(queue);
       }
 
       if (queue.value.length === 0) {
@@ -201,6 +204,7 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
     if (!result.success) return result;
 
     const shown = queue.value.shift()!;
+    triggerRef(queue);
     current.value = shown;
     cardCleared.value = false;
     log.record('fetched', { card: shown });
@@ -320,10 +324,7 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
       minQueuedCardCount,
       preloadImagesEnabled,
     ],
-    () => {
-      save();
-    },
-    { deep: true },
+    save,
   );
 
   return {

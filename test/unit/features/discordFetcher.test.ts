@@ -421,6 +421,27 @@ describe('discord fetcher store', () => {
       expect(isReactive(reloaded.queue[0]!.scryfallInfo)).toBe(false);
     });
 
+    // #105: cards are replaced, never changed in place, so a shallow ref will do.
+    it('holds On-deck cards without deep reactivity', async () => {
+      const store = useDiscordFetcherStore();
+      await store.next();
+      await settle(store);
+
+      expect(isReactive(store.card)).toBe(false);
+      expect(isReactive(store.queue[0])).toBe(false);
+    });
+
+    it('saves cards queued in the background', async () => {
+      const store = useDiscordFetcherStore();
+      await store.next();
+      await settle(store);
+      await nextTick();
+      flushSaves();
+
+      setActivePinia(createPinia());
+      expect(useDiscordFetcherStore().queue).toHaveLength(9);
+    });
+
     it('loads saved settings', () => {
       localStorage.setItem(
         STORAGE_KEY,

@@ -22,19 +22,15 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
 
   const { width: windowWidth, height: windowHeight } = useWindowSize();
 
-  const halfWindowWidth = computed(() => windowWidth.value / 2.0);
-  const halfWindowHeight = computed(() => windowHeight.value / 2.0);
-
   const scale = ref(1.5);
   const position = ref<Position>({
-    x: (-size.width / 2) * scale.value + halfWindowWidth.value,
-    y: (-size.height / 2) * scale.value + halfWindowHeight.value,
+    x: (-size.width / 2) * scale.value + windowWidth.value / 2,
+    y: (-size.height / 2) * scale.value + windowHeight.value / 2,
   });
-  const center = computed(() => {
-    return {
-      x: -position.value.x / scale.value + halfWindowWidth.value / 2,
-      y: -position.value.y / scale.value + halfWindowHeight.value / 2,
-    };
+  // Read when a gesture ends, not reacted to, so a function (#105).
+  const center = (): Position => ({
+    x: -position.value.x / scale.value + windowWidth.value / 4,
+    y: -position.value.y / scale.value + windowHeight.value / 4,
   });
 
   const smoothing = () => toValue(settings.smoothing) ?? 0;
