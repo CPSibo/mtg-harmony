@@ -79,7 +79,7 @@ function layerShifts(step: Position): Position[] {
 /**
  * The top-left corner for a new stack of `size`: the first slot, spiralling
  * out from the middle of `view` in card-sized steps (plus a gap), that has
- * at least 75% of the card in view and doesn't overlap another stack. When the view has no such slot, the spiral
+ * at least 75% of the card in view (not counting `cardInset`) and doesn't overlap another stack. When the view has no such slot, the spiral
  * starts again shifted by a multiple of {@link LAYER_OFFSET} on each axis,
  * nearest shift first, so new cards sit offset from the ones below rather
  * than on top; a slot then only needs no stack already on that spot. Only
@@ -89,6 +89,8 @@ export function findFreeSpot(
   view: Rect,
   occupied: readonly Rect[],
   size: ElementSize,
+  /** How much of a stack's left side isn't card (its action buttons). */
+  cardInset = 0,
 ): Position {
   const middle = {
     x: view.x + (view.width - size.width) / 2,
@@ -102,7 +104,7 @@ export function findFreeSpot(
     Math.ceil(Math.max(view.width / step.x, view.height / step.y) / 2) + 1;
   const slots = spiral(rings);
   const shifts = layerShifts(step);
-  const area = size.width * size.height;
+  const cardArea = (size.width - cardInset) * size.height;
 
   for (const [layer, shift] of shifts.entries()) {
     for (const slot of slots) {
@@ -111,7 +113,12 @@ export function findFreeSpot(
         y: middle.y + slot.y * step.y + shift.y,
       };
       const rect = { ...spot, ...size };
-      if (visibleArea(rect, view) < area * MIN_VISIBLE_SHARE) continue;
+      const card = {
+        ...rect,
+        x: rect.x + cardInset,
+        width: rect.width - cardInset,
+      };
+      if (visibleArea(card, view) < cardArea * MIN_VISIBLE_SHARE) continue;
 
       const taken =
         layer === 0

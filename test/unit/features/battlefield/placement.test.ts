@@ -65,6 +65,16 @@ describe('findFreeSpot', () => {
     expect(placed.some((r) => r.x + r.width > view.x + view.width)).toBe(true);
   });
 
+  it('counts only the card, not the stack column left of it, as visible', () => {
+    // Slots at x = -30, 86 and 202. The left one shows 70% of the stack, but
+    // all of its card when the stack's first 40 px aren't card.
+    const narrow: Rect = { x: 0, y: 0, width: 272, height: 140 };
+    const placed = [at(86, 0)];
+
+    expect(findFreeSpot(narrow, placed, size)).not.toEqual({ x: -30, y: 0 });
+    expect(findFreeSpot(narrow, placed, size, 40)).toEqual({ x: -30, y: 0 });
+  });
+
   it('ignores stacks outside the view', () => {
     const far: Rect = { x: 5000, y: 5000, width: 100, height: 140 };
 

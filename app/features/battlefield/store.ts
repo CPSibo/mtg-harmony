@@ -34,6 +34,13 @@ const STORAGE_KEY = 'mtg-harmony_battlefield';
  */
 const NEW_STACK_SIZE: ElementSize = { width: 210, height: 250 };
 
+/**
+ * The action buttons' column left of a stack's card, in board pixels. Mirrors
+ * `--actions-total-width` (1.8em) in BoardCardStack.vue. Placement doesn't
+ * count it when checking how much of a new card shows.
+ */
+const STACK_ACTIONS_WIDTH = 29;
+
 /** Fresh default state. A factory, so no store shares (and mutates) it. */
 function createDefaults(): Battlefield {
   return {
@@ -127,7 +134,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
       ...s.position,
       ...stackSize(s),
     }));
-    return findFreeSpot(shown, occupied, NEW_STACK_SIZE);
+    return findFreeSpot(shown, occupied, NEW_STACK_SIZE, STACK_ACTIONS_WIDTH);
   }
 
   const snapScale = ref<number>(defaults.snapScale);
