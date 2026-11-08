@@ -32,7 +32,7 @@ const STORAGE_KEY = 'mtg-harmony_battlefield';
  * A lone untapped card's stack, actions column included, in board pixels.
  * Used for a stack the board hasn't measured yet.
  */
-const NEW_STACK_SIZE: ElementSize = { width: 200, height: 250 };
+const NEW_STACK_SIZE: ElementSize = { width: 210, height: 250 };
 
 /** Fresh default state. A factory, so no store shares (and mutates) it. */
 function createDefaults(): Battlefield {

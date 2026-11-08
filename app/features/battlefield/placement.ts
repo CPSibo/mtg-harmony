@@ -67,8 +67,8 @@ function layerShifts(step: Position): Position[] {
 
 /**
  * The top-left corner for a new stack of `size`: the first slot, spiralling
- * out from the middle of `view` in card-sized steps, that is fully in view
- * and clear of other stacks. When the view has no such slot, the spiral
+ * out from the middle of `view` in card-sized steps (plus a gap), that is
+ * fully in view and doesn't overlap another stack. When the view has no such slot, the spiral
  * starts again shifted by a multiple of {@link LAYER_OFFSET} on each axis,
  * nearest shift first, so new cards sit offset from the ones below rather
  * than on top; a slot then only needs no stack already on that spot. Only
@@ -110,7 +110,7 @@ export function findFreeSpot(
 
       const taken =
         layer === 0
-          ? nearby.some((r) => overlaps(grow(r, GAP), rect))
+          ? nearby.some((r) => overlaps(r, rect))
           : nearby.some(
               (r) =>
                 Math.abs(r.x - spot.x) < LAYER_OFFSET / 2 &&
