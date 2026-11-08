@@ -17,7 +17,7 @@ function sampleLog() {
   log.record('fetched', { card: makeScryfallCard({ name: 'Old Ooze' }) });
   log.record('cast', { card: makeCard({ name: 'Old Ooze' }) });
   vi.setSystemTime(new Date(2026, 10, 7, 9, 0));
-  log.startNewGame('clearSession');
+  log.startNewGame('newGame');
   log.record('fetched', { card: makeScryfallCard({ name: 'Bear' }) });
   log.record('cast', { card: makeCard({ name: 'Bear' }) });
   log.record('fetched', { card: makeScryfallCard({ name: 'Skipped' }) });
@@ -147,9 +147,9 @@ describe('exportEntries', () => {
     const text = exportEntries(entries, 'text').split('\n');
     const csv = exportEntries(entries, 'csv').split('\n');
 
-    expect(text[0]).toBe('09:00  New game  cleared session');
+    expect(text[0]).toBe('09:00  New game  from the menu');
     expect(text.at(-2)).toBe('09:05  Attached  Aura to Host');
-    expect(csv[1]).toContain(',gameMarker,,cleared session,,');
+    expect(csv[1]).toContain(',gameMarker,,from the menu,,');
     expect(csv.at(-2)).toContain(',attached,Aura,Aura to Host,');
   });
 

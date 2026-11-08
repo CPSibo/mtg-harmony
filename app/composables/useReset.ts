@@ -5,9 +5,10 @@ import { useDiscordFetcherStore } from '~/features/discordFetcher';
 import { useEventLogStore, type GameMarkerReason } from '~/features/eventLog';
 
 /**
- * The menu's three levels of reset, each with one toast. Clear board and
- * clear session start a new game in the event log (one marker); reset all
- * data empties the log, back to a fresh install.
+ * The menu's three levels of reset, each with one toast. Clear board only
+ * clears the board (for board wipes), in the same game. New game also clears
+ * On-deck and starts a new game in the event log (one marker). Reset app
+ * empties the log too, back to a fresh install.
  */
 export function useReset() {
   const toast = useToast();
@@ -17,26 +18,17 @@ export function useReset() {
   const discordFetchStore = useDiscordFetcherStore();
   const log = useEventLogStore();
 
-  function finish(reason: GameMarkerReason, title: string) {
-    log.startNewGame(reason);
-    toast.add({ title, color: 'info' });
-  }
-
   function clearBoard() {
     battlefield.clearBoard();
-    finish('clearBoard', 'Board cleared');
+    toast.add({ title: 'Board cleared', color: 'info' });
   }
 
   /** Clears the board and On-deck. The idle prompt passes its own reason. */
-  function clearSession(
-    reason: Extract<
-      GameMarkerReason,
-      'clearSession' | 'idlePrompt'
-    > = 'clearSession',
-  ) {
+  function newGame(reason: GameMarkerReason = 'newGame') {
     battlefield.clearBoard();
     discordFetchStore.reset();
-    finish(reason, reason === 'idlePrompt' ? 'New game' : 'Session cleared');
+    log.startNewGame(reason);
+    toast.add({ title: 'New game', color: 'info' });
   }
 
   function resetAppData() {
@@ -44,12 +36,12 @@ export function useReset() {
     discordFetchStore.reset();
     settingsStore.reset();
     log.reset();
-    toast.add({ title: 'App data reset', color: 'info' });
+    toast.add({ title: 'App reset', color: 'info' });
   }
 
   return {
     clearBoard,
-    clearSession,
+    newGame,
     resetAppData,
   };
 }

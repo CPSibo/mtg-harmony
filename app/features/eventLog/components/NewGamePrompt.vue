@@ -9,8 +9,7 @@
     <template #body>
       <p>
         A new game clears the board and On-deck, like
-        <strong>Clear session</strong> in the menu. The event log keeps
-        everything.
+        <strong>New game</strong> in the menu. The event log keeps everything.
       </p>
     </template>
 
@@ -70,6 +69,6 @@ function dismiss() {
 
 function startNewGame() {
   open.value = false;
-  reset.clearSession('idlePrompt');
+  reset.newGame('idlePrompt');
 }
 </script>

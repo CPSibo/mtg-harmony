@@ -78,12 +78,12 @@ describe('event log store', () => {
     const log = useEventLogStore();
     const first = log.gameId;
 
-    const marker = log.startNewGame('clearSession');
+    const marker = log.startNewGame('newGame');
 
     expect(log.gameId).not.toBe(first);
     expect(marker).toMatchObject({
       type: 'gameMarker',
-      reason: 'clearSession',
+      reason: 'newGame',
       gameId: log.gameId,
     });
   });
@@ -108,7 +108,7 @@ describe('event log store', () => {
 
   it('survives a reload, game included', async () => {
     const log = useEventLogStore();
-    log.startNewGame('clearBoard');
+    log.startNewGame('newGame');
     log.record('cast', { card: makeCard({ name: 'Kept' }) });
     const gameId = log.gameId;
     await nextTick();

@@ -17,34 +17,35 @@ function markers() {
 }
 
 describe('useReset', () => {
-  // #39
-  it.each([
-    ['clearBoard', 'clearBoard'],
-    ['clearSession', 'clearSession'],
-  ] as const)('%s starts one new game, with one toast', (action, reason) => {
+  it('new game starts one new game, with one toast', () => {
     const log = useEventLogStore();
     const before = log.gameId;
     toastAdd.mockClear();
 
-    useReset()[action]();
+    useReset().newGame();
 
-    expect(markers()).toEqual([reason]);
+    expect(markers()).toEqual(['newGame']);
     expect(log.gameId).not.toBe(before);
     expect(toastAdd).toHaveBeenCalledOnce();
   });
 
-  it('clears the board and logs it before the marker', () => {
+  it('clear board clears the board and logs it, in the same game', () => {
     const board = useBattlefieldStore();
     board.castCard(makeScryfallCard());
+    const log = useEventLogStore();
+    const before = log.gameId;
+    toastAdd.mockClear();
 
     useReset().clearBoard();
 
     expect(board.stacks).toEqual([]);
-    const types = useEventLogStore().entries.map((e) => e.type);
-    expect(types.slice(-2)).toEqual(['boardCleared', 'gameMarker']);
+    expect(log.entries.at(-1)?.type).toBe('boardCleared');
+    expect(markers()).toEqual([]);
+    expect(log.gameId).toBe(before);
+    expect(toastAdd).toHaveBeenCalledOnce();
   });
 
-  it('reset all data resets settings and empties the log, with one toast', () => {
+  it('reset app resets settings and empties the log, with one toast', () => {
     const settings = useSettingsStore();
     settings.imagesEnabled = !settings.imagesEnabled;
     const changed = settings.imagesEnabled;
@@ -62,8 +63,8 @@ describe('useReset', () => {
     expect(toastAdd).toHaveBeenCalledOnce();
   });
 
-  it('a session cleared from the idle prompt says so', () => {
-    useReset().clearSession('idlePrompt');
+  it('a new game from the idle prompt says so', () => {
+    useReset().newGame('idlePrompt');
 
     expect(markers()).toEqual(['idlePrompt']);
   });

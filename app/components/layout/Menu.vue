@@ -71,13 +71,13 @@ const items = ref<DropdownMenuItem[][]>([
       onSelect: () => emit('clearBoardRequested'),
     },
     {
-      label: 'Clear session',
-      icon: 'i-lucide-rotate-ccw',
+      label: 'New game',
+      icon: 'i-lucide-flag',
       color: 'warning',
-      onSelect: () => emit('clearSessionRequested'),
+      onSelect: () => emit('newGameRequested'),
     },
     {
-      label: 'Reset all data',
+      label: 'Reset app',
       icon: 'i-lucide-trash',
       color: 'error',
       onSelect: () => emit('resetAllRequested'),
@@ -98,7 +98,7 @@ const items = ref<DropdownMenuItem[][]>([
 const emit = defineEmits<{
   openSettingsRequested: [];
   clearBoardRequested: [];
-  clearSessionRequested: [];
+  newGameRequested: [];
   resetAllRequested: [];
 }>();
 </script>

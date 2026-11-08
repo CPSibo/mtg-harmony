@@ -8,12 +8,12 @@
       <GlobalButtons
         @open-settings-requested="openSettings"
         @clear-board-requested="showConfirmClearBoard = true"
-        @clear-session-requested="showConfirmClearSession = true"
+        @new-game-requested="showConfirmNewGame = true"
         @reset-all-requested="showConfirmResetAppData = true"
       />
 
       <ClearBoardModal v-model:open="showConfirmClearBoard" />
-      <ClearSessionModal v-model:open="showConfirmClearSession" />
+      <NewGameModal v-model:open="showConfirmNewGame" />
       <ResetAppDataModal v-model:open="showConfirmResetAppData" />
 
       <AddCardWidgetComponent />
@@ -54,8 +54,8 @@ import { useInputModeStore } from '~/stores/inputMode';
 const ClearBoardModal = defineAsyncComponent(
   () => import('~/components/shared/ClearBoardModal.vue'),
 );
-const ClearSessionModal = defineAsyncComponent(
-  () => import('~/components/shared/ClearSessionModal.vue'),
+const NewGameModal = defineAsyncComponent(
+  () => import('~/components/shared/NewGameModal.vue'),
 );
 const ResetAppDataModal = defineAsyncComponent(
   () => import('~/components/shared/ResetAppDataModal.vue'),
@@ -92,7 +92,7 @@ function openSettings() {
 }
 
 const showConfirmClearBoard = ref(false);
-const showConfirmClearSession = ref(false);
+const showConfirmNewGame = ref(false);
 const showConfirmResetAppData = ref(false);
 
 // Load the store globally, so the values get set.
