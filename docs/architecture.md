@@ -28,6 +28,11 @@ confirmation dialogs. Settings and the confirmation dialogs are loaded lazily wi
 again when the page comes back into view (browsers drop it on hide). The Wake Lock API needs HTTPS; without it the
 switch is disabled.
 
+With **Show card images** off, cards render as text (`components/shared/CardText.vue`: name, mana cost as mana-font
+symbols via `utils/manaSymbols.ts`, type line, P/T) on the board, in On-deck and in card details. Add Card results
+and the event log drop their thumbnails, and the fetcher preloads no images. Cards cast again from the log have no
+mana cost or P/T to show: the log keeps only the name, image and links.
+
 ## Folder layout
 
 ```text

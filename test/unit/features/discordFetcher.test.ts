@@ -6,6 +6,7 @@ import { flushSaves } from '~/composables/useLocalStorage';
 import type { ScryfallCardResponse } from '~/composables/useScryfall';
 import { useDiscordFetcherStore } from '~/features/discordFetcher';
 import { useEventLogStore } from '~/features/eventLog';
+import { useSettingsStore } from '~/stores/settings';
 import { makeScryfallCard } from '../fixtures/cards';
 
 const STORAGE_KEY = 'mtg-harmony_discordFetcher';
@@ -306,6 +307,27 @@ describe('discord fetcher store', () => {
     await settle(store);
 
     expect(created.map((img) => img.src)).toContain(store.queue[0]!.image_uri);
+  });
+
+  // #42
+  it('preloads no images when card images are off', async () => {
+    const created: { src: string }[] = [];
+    vi.stubGlobal(
+      'Image',
+      class {
+        src = '';
+        constructor() {
+          created.push(this);
+        }
+      },
+    );
+    useSettingsStore().setImagesEnabled(false);
+    const store = useDiscordFetcherStore();
+
+    await store.next();
+    await settle(store);
+
+    expect(created.filter((img) => img.src)).toEqual([]);
   });
 
   it('reset empties the queue and starts previous afresh, keeping the log', async () => {

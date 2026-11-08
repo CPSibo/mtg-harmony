@@ -12,12 +12,22 @@
         class="card-image"
         role="img"
         :aria-label="card.name"
-        :style="{ backgroundImage: `url('${card.image_uri}')` }"
+        :style="
+          settings.imagesEnabled
+            ? { backgroundImage: `url('${card.image_uri}')` }
+            : undefined
+        "
         title="Double tap to open"
         @dblclick="emits('showCardDetails', card)"
         @click="tryAttach"
         @touchend="tryAttach"
       >
+        <SharedCardText
+          v-if="!settings.imagesEnabled"
+          :card="card.scryfallInfo"
+          class="size-full"
+        />
+
         <div
           v-if="!!card.faceNumber"
           class="face-number"
@@ -65,6 +75,8 @@
 // Nuxt UI's plain-Vue Icon; components/Icon.vue is the Nuxt-only variant.
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
 import { useElementHover } from '@vueuse/core';
+import SharedCardText from '~/components/shared/CardText.vue';
+import { useSettingsStore } from '~/stores/settings';
 import { computed, useTemplateRef } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import type { BoardCard } from '~/types/PlayArea';
@@ -81,6 +93,7 @@ const emits = defineEmits<{
 const stack = computed(() => props.card.stack);
 
 const battlefield = useBattlefieldStore();
+const settings = useSettingsStore();
 
 const isValidAttachmentTarget = computed(() => {
   return battlefield.isValidAttachmentTarget(props.card);

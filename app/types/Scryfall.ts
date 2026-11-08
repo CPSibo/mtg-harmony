@@ -4,6 +4,10 @@ export interface ScryfallCard {
   id: string;
   name: string;
   mana_cost: string;
+  /** Shown when card images are off. */
+  type_line?: string;
+  power?: string;
+  toughness?: string;
   image_status: ImageStatus;
   /** Absent when image_status is 'missing'. Individual URIs may be absent for some statuses. */
   image_uris?: {

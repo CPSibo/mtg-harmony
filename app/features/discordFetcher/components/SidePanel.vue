@@ -28,12 +28,25 @@
           class="mtg-card-display vertical"
         />
         <img
-          v-else-if="!!card?.image_uri"
+          v-else-if="!!card?.image_uri && settings.imagesEnabled"
           :src="card?.image_uri"
           :alt="card?.name ?? 'Missing card'"
           class="mtg-card-display vertical cursor-grab touch-none select-none"
           :class="{ 'opacity-40': ghost }"
           draggable="false"
+          title="Drag onto the board to cast"
+          @pointerdown="onPointerDown"
+          @pointermove="onPointerMove"
+          @pointerup="onPointerUp"
+          @pointercancel="cancelDrag"
+        />
+        <SharedCardText
+          v-else-if="!!card"
+          :card="card.scryfallInfo"
+          role="img"
+          :aria-label="card.name"
+          class="mtg-card-display vertical cursor-grab touch-none select-none text-lg"
+          :class="{ 'opacity-40': ghost }"
           title="Drag onto the board to cast"
           @pointerdown="onPointerDown"
           @pointermove="onPointerMove"
@@ -110,11 +123,22 @@
   <!-- What follows the pointer while dragging the card to the board. -->
   <Teleport to="body">
     <img
-      v-if="ghost && card?.image_uri"
+      v-if="ghost && card?.image_uri && settings.imagesEnabled"
       :src="card.image_uri"
       alt=""
       aria-hidden="true"
       class="drag-ghost"
+      :style="{
+        left: `${ghost.x}px`,
+        top: `${ghost.y}px`,
+        width: `${ghostWidth}px`,
+      }"
+    />
+    <SharedCardText
+      v-else-if="ghost && card"
+      :card="card.scryfallInfo"
+      aria-hidden="true"
+      class="drag-ghost mtg-card-display vertical"
       :style="{
         left: `${ghost.x}px`,
         top: `${ghost.y}px`,
@@ -130,7 +154,9 @@ import UButton from '@nuxt/ui/components/Button.vue';
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
 import USkeleton from '@nuxt/ui/components/Skeleton.vue';
 import USlideover from '@nuxt/ui/components/Slideover.vue';
+import SharedCardText from '~/components/shared/CardText.vue';
 import SharedPlaceholder from '~/components/shared/Placeholder.vue';
+import { useSettingsStore } from '~/stores/settings';
 import { useToast } from '@nuxt/ui/composables';
 import { storeToRefs } from 'pinia';
 import type { Position } from '@vueuse/core';
@@ -146,6 +172,7 @@ const discordFetchStore = useDiscordFetcherStore();
 const { card, canGoPrevious } = storeToRefs(discordFetchStore);
 
 const board = useBattlefieldStore();
+const settings = useSettingsStore();
 
 const loading = ref(false);
 
