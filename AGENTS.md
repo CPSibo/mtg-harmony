@@ -128,5 +128,6 @@ There are no auto-imports. Import every component, composable and Vue API explic
   `npm run icons:lucide`. A unit test fails until you do.
 - `app/assets/css/mana.css` and `app/assets/fonts/mana.woff2` are a mana-font subset. Run `npm run fonts:mana`
   after upgrading mana-font or naming a new `ms-ability-*`/`ms-counter-*` class. Don't edit them by hand.
-- The Add Card and Event log windows and the IndexedDB archive load on first use. Import them by path, not
-  through their feature barrels, or they land back in the startup bundle.
+- The Add Card and Event log windows and the IndexedDB archive load on first use. Import them with a dynamic
+  `import()` of the component file itself (e.g. `~/features/addCard/components/AddCardWindow.vue`), not through
+  the feature's `index.ts`, or they land back in the startup bundle.
