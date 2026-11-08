@@ -132,7 +132,10 @@ a session shows a toast.
 ## The board
 
 `components/playArea/Board.vue` renders a fixed 5000 × 5000 px canvas inside a full-screen wrapper. The canvas is
-moved and scaled with a single CSS `transform`.
+moved and scaled with a single CSS `transform`. The grid and vignette behind it are a viewport-sized CSS background
+(`.board-backdrop`) that follows the pan and zoom through CSS variables, so a pan or zoom never repaints a
+5000 px layer. While panning, the board is its own GPU layer (`will-change: transform`); not otherwise, because a
+layer kept through a zoom stays rastered at the old scale and blurs.
 
 ### Pan and zoom (`usePanAndZoom`)
 
@@ -149,7 +152,9 @@ moved and scaled with a single CSS `transform`.
 ### Dragging stacks (`useScaledDraggable`)
 
 Each stack (`BoardCardStack.vue`) wraps VueUse's `useDraggable`. The wrapper divides pointer movement by the
-board's scale, snaps to `snapScale` and clamps the stack inside the canvas. On drop it calls
+board's scale, snaps to `snapScale` and clamps the stack inside the canvas. Stacks are placed with
+`transform: translate()`, not `left`/`top`, so a move skips layout; the clamp bounds are measured once when a drag
+starts; and a dragged stack is its own GPU layer. On drop it calls
 `battlefield.setStackPosition()`. It reads the board's scale from the store (`boardScale()`) as the drag moves,
 so a zoom doesn't re-render every stack. While a stack is dragged, the board's own touch handling stands down
 (`anyCardIsDragging`).

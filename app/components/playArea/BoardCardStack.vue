@@ -2,7 +2,8 @@
   <div
     ref="stack"
     :style="style"
-    class="board-card-stack origin-top-left absolute"
+    class="board-card-stack origin-top-left absolute top-0 left-0"
+    :class="{ dragging: myIsDragging }"
   >
     <!-- Cards under the primary peek out above it, newest on top. -->
     <div
@@ -133,6 +134,11 @@ watch(myIsDragging, (value) => {
   );
 
   isolation: isolate;
+
+  /* Its own GPU layer while dragged, so moving it doesn't repaint the board. */
+  &.dragging {
+    will-change: transform;
+  }
 
   .primary-card-wrapper {
     position: relative;
