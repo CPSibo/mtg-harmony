@@ -19,7 +19,7 @@
           :card="card.scryfallInfo"
           role="img"
           :aria-label="card.name"
-          class="w-64 mtg-card-display vertical text-lg"
+          class="w-72"
         />
       </div>
 

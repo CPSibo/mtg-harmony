@@ -45,7 +45,7 @@
           :card="card.scryfallInfo"
           role="img"
           :aria-label="card.name"
-          class="mtg-card-display vertical cursor-grab touch-none select-none text-lg"
+          class="h-full cursor-grab touch-none select-none"
           :class="{ 'opacity-40': ghost }"
           title="Drag onto the board to cast"
           @pointerdown="onPointerDown"
@@ -138,7 +138,7 @@
       v-else-if="ghost && card"
       :card="card.scryfallInfo"
       aria-hidden="true"
-      class="drag-ghost mtg-card-display vertical"
+      class="drag-ghost"
       :style="{
         left: `${ghost.x}px`,
         top: `${ghost.y}px`,

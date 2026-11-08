@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { manaSymbols } from '~/utils/manaSymbols';
+import { manaSymbols, symbolize } from '~/utils/manaSymbols';
 
 describe('manaSymbols', () => {
   it('turns a mana cost into mana-font classes, one per symbol', () => {
@@ -36,5 +36,23 @@ describe('manaSymbols', () => {
   it('gives nothing for no cost', () => {
     expect(manaSymbols('')).toEqual([]);
     expect(manaSymbols(undefined)).toEqual([]);
+  });
+});
+
+describe('symbolize', () => {
+  it('keeps the text around symbols in rules text', () => {
+    expect(symbolize('{T}: Add {G}.')).toEqual([
+      { symbol: 'ms ms-tap ms-cost', label: 'T' },
+      { text: ': Add ' },
+      { symbol: 'ms ms-g ms-cost', label: 'G' },
+      { text: '.' },
+    ]);
+  });
+
+  it('knows untap and energy', () => {
+    expect(symbolize('{Q}{E}').map((p) => 'symbol' in p && p.symbol)).toEqual([
+      'ms ms-untap ms-cost',
+      'ms ms-e ms-cost',
+    ]);
   });
 });
