@@ -159,7 +159,8 @@ board's scale, snaps to `snapScale` and clamps the stack inside the canvas. Stac
 starts; and a dragged stack is its own GPU layer. On drop it calls
 `battlefield.setStackPosition()`. It reads the board's scale from the store (`boardScale()`) as the drag moves,
 so a zoom doesn't re-render every stack. Drags and pans follow the **Pointer smoothing** setting
-(`pointerSmoothing.ts`): off, predicted events, or easing towards each pointer update. While a stack is dragged, the board's own touch handling stands down
+(`pointerSmoothing.ts`): 0 jumps to each pointer update; otherwise they ease towards it with that time
+constant in ms. While a stack is dragged, the board's own touch handling stands down
 (`anyCardIsDragging`).
 
 ### Z-order

@@ -1,45 +1,28 @@
 import type { Position } from '@vueuse/core';
 
 /**
- * How drags and pans follow the pointer between its updates (#104). A mouse
- * reports ~125 times a second, so on a faster screen some frames get no new
- * position.
- * - `off`: jump to each reported position.
- * - `predict`: jump to where the browser predicts the pointer is now
- *   (`getPredictedEvents`). No lag; can overshoot a little at a quick stop.
- * - `ease`: glide towards each reported position every frame. Smooths gaps;
- *   trails the pointer by a frame or two.
+ * Easing for drags and pans (#104). A mouse reports ~125 times a second, so
+ * on a faster screen some frames get no new position. With easing, the
+ * dragged thing glides towards each reported position every frame instead
+ * of jumping to it. The value is the time constant in ms: 0 is off, and
+ * larger is smoother but trails the pointer more. (Predicted pointer events
+ * were tried and jittered badly around the cursor.)
  */
-export type PointerSmoothing = 'off' | 'predict' | 'ease';
+export const MAX_POINTER_EASE_MS = 60;
 
-export const POINTER_SMOOTHING_MODES: readonly PointerSmoothing[] = [
-  'off',
-  'predict',
-  'ease',
-];
-
-/** How quickly `ease` catches up: the time constant, in ms. */
-const EASE_MS = 30;
-
-/** The pointer's position for a move, predicted in `predict` mode. */
-export function pointerPosition(
-  e: MouseEvent,
-  mode: PointerSmoothing,
-): Position {
-  if (mode === 'predict' && 'getPredictedEvents' in e) {
-    const predicted = (e as PointerEvent).getPredictedEvents().at(-1);
-    if (predicted) return { x: predicted.clientX, y: predicted.clientY };
-  }
-  return { x: e.clientX, y: e.clientY };
+export function isPointerEase(value: unknown): value is number {
+  return (
+    typeof value === 'number' && value >= 0 && value <= MAX_POINTER_EASE_MS
+  );
 }
 
 /**
- * Moves something to target positions through `apply`: straight away, or in
- * `ease` mode a step per frame. Plain variables: only `apply` touches state.
+ * Moves something to target positions through `apply`: straight away, or
+ * with easing a step per frame. Plain variables: only `apply` touches state.
  */
 export function createFollower(
   apply: (position: Position) => void,
-  mode: () => PointerSmoothing,
+  easeMs: () => number,
 ) {
   let target: Position | null = null;
   let current: Position | null = null;
@@ -53,7 +36,8 @@ export function createFollower(
 
   function step(time: number) {
     if (!target || !current) return stop();
-    const k = 1 - Math.exp(-Math.max(0, time - last) / EASE_MS);
+    const ms = easeMs();
+    const k = ms > 0 ? 1 - Math.exp(-Math.max(0, time - last) / ms) : 1;
     last = time;
     current = {
       x: current.x + (target.x - current.x) * k,
@@ -78,7 +62,8 @@ export function createFollower(
     /** Heads for `position`. */
     to(position: Position) {
       target = position;
-      if (mode() !== 'ease' || !current) {
+      if (easeMs() <= 0 || !current) {
+        stop();
         current = position;
         apply(position);
         return;

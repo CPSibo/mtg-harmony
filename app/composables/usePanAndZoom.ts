@@ -2,17 +2,14 @@ import { useWindowSize } from '@vueuse/core';
 import { computed, ref, toValue, watch } from 'vue';
 import type { MaybeRefOrGetter } from 'vue';
 import type { ElementSize, Position } from '@vueuse/core';
-import {
-  createFollower,
-  pointerPosition,
-  type PointerSmoothing,
-} from './pointerSmoothing';
+import { createFollower } from './pointerSmoothing';
 
 export interface PanAndZoomSettings {
   size: ElementSize;
   onEnd?: (position: Position) => void;
   disabled?: MaybeRefOrGetter<boolean>;
-  smoothing?: MaybeRefOrGetter<PointerSmoothing>;
+  /** Pan easing in ms; 0 is off (#104). */
+  smoothing?: MaybeRefOrGetter<number>;
 }
 
 export function usePanAndZoom(settings: PanAndZoomSettings) {
@@ -40,7 +37,7 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     };
   });
 
-  const smoothing = () => toValue(settings.smoothing) ?? 'off';
+  const smoothing = () => toValue(settings.smoothing) ?? 0;
   // Pans go through this, so they can ease (#104). Zoom is immediate.
   const panFollower = createFollower((p) => {
     position.value = clampPosition(p.x, p.y);
@@ -135,7 +132,7 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
 
     if (!isDragging.value) return;
 
-    const pointer = pointerPosition(e, smoothing());
+    const pointer = { x: e.clientX, y: e.clientY };
     panFollower.to({
       x: positionAtDragStart.x + (pointer.x - dragStart.x),
       y: positionAtDragStart.y + (pointer.y - dragStart.y),

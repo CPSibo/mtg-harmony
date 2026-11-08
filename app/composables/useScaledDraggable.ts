@@ -7,11 +7,7 @@ import {
   watch,
   type MaybeRefOrGetter,
 } from 'vue';
-import {
-  createFollower,
-  pointerPosition,
-  type PointerSmoothing,
-} from './pointerSmoothing';
+import { createFollower } from './pointerSmoothing';
 
 export interface UseBoardDraggableOptions {
   initialValue?: Position;
@@ -22,7 +18,8 @@ export interface UseBoardDraggableOptions {
   /** Keeps the element inside this one. */
   containerElement?: MaybeRefOrGetter<HTMLElement | null | undefined>;
   disabled?: MaybeRefOrGetter<boolean>;
-  smoothing?: MaybeRefOrGetter<PointerSmoothing>;
+  /** Easing in ms; 0 is off (#104). */
+  smoothing?: MaybeRefOrGetter<number>;
   onEnd?: (position: Position, event: PointerEvent) => void;
 }
 
@@ -38,7 +35,7 @@ export function useBoardDraggable(
 ) {
   const scale = () => toValue(options.scale) || 1;
   const snap = () => toValue(options.snapScale) ?? 0;
-  const smoothing = () => toValue(options.smoothing) ?? 'off';
+  const smoothing = () => toValue(options.smoothing) ?? 0;
 
   const x = ref(options.initialValue?.x ?? 0);
   const y = ref(options.initialValue?.y ?? 0);
@@ -96,7 +93,7 @@ export function useBoardDraggable(
   function onMove(e: PointerEvent) {
     if (e.pointerId !== pointerId) return;
     e.preventDefault();
-    const p = pointerPosition(e, smoothing());
+    const p = { x: e.clientX, y: e.clientY };
     const s = scale();
     follower.to({
       x: clamp(snapTo(start.x + (p.x - startPointer.x) / s, snap()), max.x),

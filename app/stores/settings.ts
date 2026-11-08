@@ -1,10 +1,7 @@
 import { useLocalStorage } from '~/composables/useLocalStorage';
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
-import {
-  POINTER_SMOOTHING_MODES,
-  type PointerSmoothing,
-} from '~/composables/pointerSmoothing';
+import { isPointerEase } from '~/composables/pointerSmoothing';
 export interface AppSettings {
   /** Whether the Screen Wake Lock API is requested. */
   wakeLockEnabled: boolean;
@@ -15,8 +12,8 @@ export interface AppSettings {
   /** Whether board cards have an outline (and its hover colour). */
   cardOutlineEnabled: boolean;
 
-  /** How drags and pans follow the pointer between its updates (#104). */
-  pointerSmoothing: PointerSmoothing;
+  /** Easing for drags and pans, in ms; 0 is off (#104). */
+  pointerSmoothing: number;
 }
 
 const STORAGE_KEY = 'mtg-harmony_settings';
@@ -25,7 +22,7 @@ const defaults: AppSettings = {
   wakeLockEnabled: true,
   imagesEnabled: true,
   cardOutlineEnabled: true,
-  pointerSmoothing: 'off',
+  pointerSmoothing: 0,
 };
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -44,8 +41,8 @@ export const useSettingsStore = defineStore('settings', () => {
     cardOutlineEnabled.value = value;
   }
 
-  const pointerSmoothing = ref<PointerSmoothing>(defaults.pointerSmoothing);
-  function setPointerSmoothing(value: PointerSmoothing) {
+  const pointerSmoothing = ref<number>(defaults.pointerSmoothing);
+  function setPointerSmoothing(value: number) {
     pointerSmoothing.value = value;
   }
 
@@ -83,7 +80,7 @@ export const useSettingsStore = defineStore('settings', () => {
     if (typeof data.cardOutlineEnabled === 'boolean')
       cardOutlineEnabled.value = data.cardOutlineEnabled;
 
-    if (POINTER_SMOOTHING_MODES.includes(data.pointerSmoothing))
+    if (isPointerEase(data.pointerSmoothing))
       pointerSmoothing.value = data.pointerSmoothing;
 
     return true;

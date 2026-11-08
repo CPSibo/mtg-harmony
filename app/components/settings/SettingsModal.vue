@@ -98,13 +98,20 @@
 
           <UFormField
             label="Pointer smoothing"
-            description="How dragging and panning follow the mouse between its updates. Predict has no lag but can overshoot a little; Ease glides but trails slightly"
+            description="Dragging and panning glide after the pointer instead of jumping between its updates. Higher is smoother but floatier. 0 to disable"
           >
-            <URadioGroup
-              v-model="pointerSmoothing"
-              orientation="horizontal"
-              :items="smoothingItems"
-            />
+            <div class="flex items-center gap-3">
+              <USlider
+                v-model="pointerSmoothing"
+                :min="0"
+                :max="MAX_POINTER_EASE_MS"
+                :step="5"
+                class="flex-1"
+              />
+              <span class="w-12 text-right text-sm tabular-nums">
+                {{ pointerSmoothing ? `${pointerSmoothing} ms` : 'Off' }}
+              </span>
+            </div>
           </UFormField>
         </template>
       </UTabs>
@@ -118,7 +125,8 @@ import UFormField from '@nuxt/ui/components/FormField.vue';
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
 import UInputNumber from '@nuxt/ui/components/InputNumber.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
-import URadioGroup from '@nuxt/ui/components/RadioGroup.vue';
+import USlider from '@nuxt/ui/components/Slider.vue';
+import { MAX_POINTER_EASE_MS } from '~/composables/pointerSmoothing';
 import USwitch from '@nuxt/ui/components/Switch.vue';
 import UTabs from '@nuxt/ui/components/Tabs.vue';
 import { useSettingsStore } from '~/stores/settings';
@@ -132,12 +140,6 @@ const emit = defineEmits<{ close: [boolean] }>();
 const settingsStore = useSettingsStore();
 const { wakeLockEnabled, imagesEnabled, cardOutlineEnabled, pointerSmoothing } =
   storeToRefs(settingsStore);
-
-const smoothingItems = [
-  { label: 'Off', value: 'off' },
-  { label: 'Predict', value: 'predict' },
-  { label: 'Ease', value: 'ease' },
-];
 
 // The Wake Lock API needs a secure context (HTTPS or localhost).
 const wakeLockSupported = useSupported(
