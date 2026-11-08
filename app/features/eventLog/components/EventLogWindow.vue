@@ -54,7 +54,9 @@
           :class="{ 'bg-elevated/50': entry.type === 'gameMarker' }"
         >
           <img
-            v-if="'card' in entry && entry.card.imageUri"
+            v-if="
+              'card' in entry && entry.card.imageUri && settings.imagesEnabled
+            "
             :src="entry.card.imageUri"
             alt=""
             class="w-8 rounded-sm mtg-card-display"
@@ -111,6 +113,7 @@ import { refDebounced } from '@vueuse/core';
 import { computed, ref } from 'vue';
 import ExportLogModal from './ExportLogModal.vue';
 import { useBattlefieldStore } from '~/features/battlefield';
+import { useSettingsStore } from '~/stores/settings';
 import {
   EVENT_LABELS,
   EVENT_TYPES,
@@ -127,6 +130,7 @@ const MAX_SHOWN = 200;
 
 const log = useEventLogStore();
 const battlefield = useBattlefieldStore();
+const settings = useSettingsStore();
 const toast = useToast();
 
 const exportOpen = ref(false);

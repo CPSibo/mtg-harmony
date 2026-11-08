@@ -45,9 +45,11 @@ import { computed, ref } from 'vue';
 import type { CommandPaletteItem } from '@nuxt/ui';
 import { useAddCard } from '..';
 import { useBattlefieldStore } from '~/features/battlefield';
+import { useSettingsStore } from '~/stores/settings';
 import { useCardSearch } from '../useCardSearch';
 
 const addCardStore = useAddCard();
+const settings = useSettingsStore();
 
 const searchTerm = ref('');
 const searchTermDebounced = refDebounced(searchTerm, 500);
@@ -65,14 +67,16 @@ const mappedCards = computed(() => {
     cards.value?.map((card) => ({
       id: card.id,
       label: card.name,
-      avatar: {
-        src:
-          card.image_uris?.border_crop ||
-          card.image_uris?.normal ||
-          card.image_uris?.small ||
-          '',
-        loading: 'lazy' as const,
-      },
+      avatar: !settings.imagesEnabled
+        ? undefined
+        : {
+            src:
+              card.image_uris?.border_crop ||
+              card.image_uris?.normal ||
+              card.image_uris?.small ||
+              '',
+            loading: 'lazy' as const,
+          },
     })) || []
   );
 });

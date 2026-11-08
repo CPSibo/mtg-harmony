@@ -7,6 +7,7 @@ import { useScryfall } from '~/composables/useScryfall';
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { createBoardCard } from '~/features/battlefield';
+import { useSettingsStore } from '~/stores/settings';
 import type { BoardCard } from '~/types/PlayArea';
 
 export interface DiscordFetcherStore {
@@ -46,6 +47,7 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
 
   const scryfall = useScryfall();
   const log = useEventLogStore();
+  const settings = useSettingsStore();
 
   const fetchingCards = ref(false);
 
@@ -234,7 +236,9 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
   watch(
     () => queue.value[0]?.image_uri,
     (url) => {
-      if (preloadImagesEnabled.value && url) preloadImage(url);
+      // No images shown, so none to preload (#42).
+      if (preloadImagesEnabled.value && settings.imagesEnabled && url)
+        preloadImage(url);
     },
     { immediate: true },
   );

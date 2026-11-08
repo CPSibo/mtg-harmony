@@ -9,9 +9,17 @@
     <template #content>
       <div>
         <img
+          v-if="settings.imagesEnabled"
           :src="card.image_uri"
           :alt="card.name"
           class="max-h-[80svh] mtg-card-display"
+        />
+        <SharedCardText
+          v-else
+          :card="card.scryfallInfo"
+          role="img"
+          :aria-label="card.name"
+          class="w-72"
         />
       </div>
 
@@ -176,6 +184,8 @@ import UInputNumber from '@nuxt/ui/components/InputNumber.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
 import USeparator from '@nuxt/ui/components/Separator.vue';
 import PlayAreaRemoveCardModal from '~/components/playArea/RemoveCardModal.vue';
+import SharedCardText from '~/components/shared/CardText.vue';
+import { useSettingsStore } from '~/stores/settings';
 import { computed, ref } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import type { BoardCard } from '~/types/PlayArea';
@@ -191,6 +201,7 @@ const emit = defineEmits<{
 }>();
 
 const battlefield = useBattlefieldStore();
+const settings = useSettingsStore();
 
 const showConfirmRemove = ref(false);
 

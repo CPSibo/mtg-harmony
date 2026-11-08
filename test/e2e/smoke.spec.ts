@@ -8,6 +8,8 @@ const card = {
   name: 'Smoke Test Ooze',
   mana_cost: '{1}{G}',
   type_line: 'Creature — Ooze',
+  power: '2',
+  toughness: '2',
   scryfall_uri: 'https://scryfall.com/card/e2e/1/smoke-test-ooze',
   image_status: 'highres_scan',
   image_uris: { border_crop: IMAGE_URL, normal: IMAGE_URL, small: IMAGE_URL },
@@ -156,6 +158,40 @@ test.describe('dragging the On-deck card', () => {
     ).toBeVisible();
     await expect(page.locator('.board-card-stack')).toHaveCount(0);
   });
+});
+
+// #42
+test('with card images off, cards show as text and no image loads', async ({
+  page,
+}) => {
+  // Reload first, so pending saves land before the settings are replaced.
+  await page.reload();
+  await page.evaluate(() =>
+    // devalue's format for { imagesEnabled: false }
+    localStorage.setItem(
+      'mtg-harmony_settings',
+      JSON.stringify([{ imagesEnabled: 1 }, false]),
+    ),
+  );
+  const images: string[] = [];
+  page.on('request', (r) => {
+    if (r.url().startsWith('https://cards.scryfall.io/')) images.push(r.url());
+  });
+  await page.reload();
+
+  await page.getByRole('button', { name: 'On-deck' }).click();
+  await page.getByRole('button', { name: 'Next card' }).click();
+  await page.getByRole('button', { name: 'Cast to board' }).click();
+  await expect(page.getByRole('button', { name: 'Next card' })).toBeHidden();
+
+  const boardCard = page.locator('.board-card').getByRole('img', {
+    name: card.name,
+  });
+  await expect(boardCard).toContainText(card.name);
+  await expect(boardCard).toContainText('Creature — Ooze');
+  await expect(boardCard).toContainText('2/2');
+  await expect(boardCard.locator('.ms-g')).toBeVisible();
+  expect(images).toEqual([]);
 });
 
 // #25: saves are debounced, so leaving the page must write the last change.

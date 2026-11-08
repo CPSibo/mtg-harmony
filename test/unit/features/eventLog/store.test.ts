@@ -48,6 +48,7 @@ describe('event log store', () => {
       name: 'Fetched',
       imageUri: scryfall.image_uris!.border_crop,
       scryfallUri: scryfall.scryfall_uri,
+      text: { mana_cost: '{1}{R}' },
     });
   });
 
