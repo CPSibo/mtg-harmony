@@ -182,6 +182,10 @@ Rules the battlefield store enforces:
   The board reports what it shows
   (`setView`, in board pixels, minus a 64 px strip at the top for the corner buttons) and each stack reports its rendered size
   (`setStackSize`); neither is saved. Before the board reports a view, a cast card goes to `center`.
+- The On-deck card can also be dragged onto the board (pointer events, so mouse and touch). The board reports its
+  pan and zoom (`setTransform`); the drop point becomes a board point (`boardPointFromScreen`) and `castCard(card,
+'cast', at)` centres the card on it. A drop on the panel or off the board cancels. On a phone the panel covers the
+  board, so there the button is the way to cast.
 - `copyCard(card, mode)` puts a copy in a new stack, 40 px down and right of the source, in front. `card` copies
   the card fresh, `counters` keeps its counters, face number and tapped state, and `stack` copies its whole stack
   (primary, attachments and unders, each with its state). Every copied card gets a new ID.

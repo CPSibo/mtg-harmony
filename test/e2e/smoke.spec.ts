@@ -118,6 +118,46 @@ test('cards cast in a row sit side by side in view', async ({ page }) => {
   }
 });
 
+// #79
+test.describe('dragging the On-deck card', () => {
+  async function dragCard(page: Page, to: { x: number; y: number }) {
+    await page.getByRole('button', { name: 'On-deck' }).click();
+    await page.getByRole('button', { name: 'Next card' }).click();
+    const image = page
+      .getByRole('dialog', { name: 'On-deck' })
+      .getByRole('img', { name: card.name });
+    const box = (await image.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(to.x - 50, to.y, { steps: 5 });
+    await page.mouse.move(to.x, to.y, { steps: 5 });
+    await page.mouse.up();
+  }
+
+  test('casts it where it is dropped on the board', async ({ page }) => {
+    const drop = { x: 1000, y: 400 };
+
+    await dragCard(page, drop);
+
+    const placed = page.locator('.board-card-stack .primary-card');
+    await expect(placed).toHaveCount(1);
+    const box = (await placed.boundingBox())!;
+    expect(Math.abs(box.x + box.width / 2 - drop.x)).toBeLessThan(15);
+    expect(Math.abs(box.y + box.height / 2 - drop.y)).toBeLessThan(15);
+  });
+
+  test('cancels when dropped back on the panel', async ({ page }) => {
+    await dragCard(page, { x: 150, y: 600 });
+
+    await expect(
+      page.getByRole('dialog', { name: 'On-deck' }).getByRole('img', {
+        name: card.name,
+      }),
+    ).toBeVisible();
+    await expect(page.locator('.board-card-stack')).toHaveCount(0);
+  });
+});
+
 // #25: saves are debounced, so leaving the page must write the last change.
 test('a card cast just before a reload is still there', async ({ page }) => {
   await page.getByRole('button', { name: 'On-deck' }).click();

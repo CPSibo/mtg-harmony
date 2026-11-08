@@ -799,3 +799,38 @@ describe('casting into the view', () => {
     });
   });
 });
+
+// #79
+describe('casting at a drop point', () => {
+  it('centres the card on the given board point', () => {
+    const board = useBattlefieldStore();
+
+    const stack = board.castCard(makeScryfallCard(), 'cast', {
+      x: 1000,
+      y: 800,
+    });
+
+    const size = board.stackSize(stack);
+    // The card sits right of the action buttons column.
+    const cardLeft = stack.position.x + board.stackActionsWidth;
+    const cardWidth = size.width - board.stackActionsWidth;
+    expect(cardLeft + cardWidth / 2).toBe(1000);
+    expect(stack.position.y + size.height / 2).toBe(800);
+  });
+
+  it('turns a screen point into a board point with the pan and zoom', () => {
+    const board = useBattlefieldStore();
+    board.setTransform({ x: -2000, y: -1500, scale: 2 });
+
+    expect(board.boardPointFromScreen({ x: 100, y: 50 })).toEqual({
+      x: 1050,
+      y: 775,
+    });
+  });
+
+  it('has no board point before the board reports its transform', () => {
+    expect(
+      useBattlefieldStore().boardPointFromScreen({ x: 1, y: 1 }),
+    ).toBeNull();
+  });
+});

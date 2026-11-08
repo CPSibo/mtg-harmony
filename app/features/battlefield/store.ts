@@ -109,6 +109,19 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     view.value = value;
   }
 
+  /** The board's pan (screen px) and zoom. Set by the board; not saved. */
+  const transform = ref<(Position & { scale: number }) | null>(null);
+  function setTransform(value: Position & { scale: number }) {
+    transform.value = value;
+  }
+
+  /** The board point under a screen point, or null before the board is up. */
+  function boardPointFromScreen(point: Position): Position | null {
+    const t = transform.value;
+    if (!t) return null;
+    return { x: (point.x - t.x) / t.scale, y: (point.y - t.y) / t.scale };
+  }
+
   /** Each stack's rendered size, reported by the board. Not saved. */
   const stackSizes = ref(new Map<string, ElementSize>());
   function setStackSize(id: string, size: ElementSize) {
@@ -161,17 +174,25 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
 
   /**
    * Puts a new instance of a Scryfall card on the board in its own stack and
-   * logs it: `cast` from On-deck, `added` through Add Card. It goes in a
-   * free spot in view (#78).
+   * logs it: `cast` from On-deck, `added` through Add Card. With `at` (a
+   * board point, say where it was dropped, #79) the card is centred there;
+   * otherwise it goes in a free spot in view (#78).
    */
   function castCard(
     scryfallCard: ScryfallCard,
     how: 'cast' | 'added' = 'cast',
+    at?: Position,
   ) {
-    const stack = addStackByCard(
-      createBoardCard(scryfallCard),
-      newStackPosition(),
-    );
+    const position = at
+      ? {
+          x:
+            at.x -
+            STACK_ACTIONS_WIDTH -
+            (NEW_STACK_SIZE.width - STACK_ACTIONS_WIDTH) / 2,
+          y: at.y - NEW_STACK_SIZE.height / 2,
+        }
+      : newStackPosition();
+    const stack = addStackByCard(createBoardCard(scryfallCard), position);
     log.record(how, { card: stack.primary });
     return stack;
   }
@@ -531,6 +552,10 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     addStackByCard,
     castCard,
     setView,
+    setTransform,
+    boardPointFromScreen,
+    transform,
+    stackActionsWidth: STACK_ACTIONS_WIDTH,
     setStackSize,
     forgetStackSize,
     stackSize,

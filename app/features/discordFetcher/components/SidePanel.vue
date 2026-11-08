@@ -31,7 +31,14 @@
           v-else-if="!!card?.image_uri"
           :src="card?.image_uri"
           :alt="card?.name ?? 'Missing card'"
-          class="mtg-card-display vertical"
+          class="mtg-card-display vertical cursor-grab touch-none select-none"
+          :class="{ 'opacity-40': ghost }"
+          draggable="false"
+          title="Drag onto the board to cast"
+          @pointerdown="onPointerDown"
+          @pointermove="onPointerMove"
+          @pointerup="onPointerUp"
+          @pointercancel="cancelDrag"
         />
         <SharedPlaceholder
           v-else
@@ -79,7 +86,7 @@
           :disabled="!card?.id"
           size="xl"
           class="md:col-span-2"
-          @click="cast"
+          @click="cast()"
         >
           Cast to board
         </UButton>
@@ -99,6 +106,22 @@
       </div>
     </template>
   </USlideover>
+
+  <!-- What follows the pointer while dragging the card to the board. -->
+  <Teleport to="body">
+    <img
+      v-if="ghost && card?.image_uri"
+      :src="card.image_uri"
+      alt=""
+      aria-hidden="true"
+      class="drag-ghost"
+      :style="{
+        left: `${ghost.x}px`,
+        top: `${ghost.y}px`,
+        width: `${ghostWidth}px`,
+      }"
+    />
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -110,7 +133,8 @@ import USlideover from '@nuxt/ui/components/Slideover.vue';
 import SharedPlaceholder from '~/components/shared/Placeholder.vue';
 import { useToast } from '@nuxt/ui/composables';
 import { storeToRefs } from 'pinia';
-import { ref } from 'vue';
+import type { Position } from '@vueuse/core';
+import { computed, ref } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import { useDiscordFetcherStore } from '..';
 
@@ -143,19 +167,80 @@ const goNext = async () => {
   }
 };
 
-const cast = () => {
+/** Casts the card: to a free spot in view, or centred on a board point. */
+const cast = (at?: Position) => {
   if (!card.value) return;
 
   // A fresh copy, so casting the same card twice gives two cards (#23).
-  board.castCard(card.value.scryfallInfo);
+  board.castCard(card.value.scryfallInfo, 'cast', at);
 
   discordFetchStore.clearCard();
 
   drawerIsOpen.value = false;
 };
+
+// ─── Drag to the board (#79) ─────────────────────────────────────────────────
+
+/** How far the pointer moves before a press becomes a drag, in screen px. */
+const DRAG_THRESHOLD = 6;
+
+/** A card's width on the board, in board px (BoardCard at the stack's scale). */
+const BOARD_CARD_WIDTH = 172;
+
+let pressedAt: (Position & { id: number }) | null = null;
+
+/** Where the ghost's centre is, in screen px, while dragging. */
+const ghost = ref<Position | null>(null);
+
+// The size the card will land at, so the drop matches what's shown.
+const ghostWidth = computed(
+  () => BOARD_CARD_WIDTH * (board.transform?.scale ?? 1),
+);
+
+function onPointerDown(e: PointerEvent) {
+  if (e.button !== 0 || !card.value) return;
+  pressedAt = { x: e.clientX, y: e.clientY, id: e.pointerId };
+  (e.target as Element).setPointerCapture(e.pointerId);
+}
+
+function onPointerMove(e: PointerEvent) {
+  if (!pressedAt || e.pointerId !== pressedAt.id) return;
+  const moved = Math.hypot(e.clientX - pressedAt.x, e.clientY - pressedAt.y);
+  if (!ghost.value && moved < DRAG_THRESHOLD) return;
+  ghost.value = { x: e.clientX, y: e.clientY };
+}
+
+function onPointerUp(e: PointerEvent) {
+  if (!pressedAt || e.pointerId !== pressedAt.id) return;
+  const dropped = ghost.value;
+  cancelDrag();
+  if (!dropped) return; // A tap, not a drag.
+
+  // Back on the panel, or off the board, cancels.
+  const under = document.elementFromPoint(dropped.x, dropped.y);
+  if (!under?.closest('.board-wrapper')) return;
+
+  const at = board.boardPointFromScreen(dropped);
+  if (at) cast(at);
+}
+
+function cancelDrag() {
+  pressedAt = null;
+  ghost.value = null;
+}
 </script>
 
 <style lang="scss" scoped>
+.drag-ghost {
+  position: fixed;
+  z-index: 100;
+  transform: translate(-50%, -50%) rotate(-3deg);
+  pointer-events: none;
+  opacity: 0.85;
+  border-radius: 4%;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.5);
+}
+
 .on-deck-display {
   height: 50%;
   display: flex;
