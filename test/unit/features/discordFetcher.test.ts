@@ -238,6 +238,29 @@ describe('discord fetcher store', () => {
       expect(store.card?.name).toBe('Card 1');
     });
 
+    it('a previous card keeps its text, for text cards', async () => {
+      const text = {
+        mana_cost: '{2}{G}',
+        type_line: 'Creature — Ooze',
+        oracle_text: 'Trample',
+        power: '3',
+        toughness: '3',
+        card_faces: [{ name: 'Front', oracle_text: 'Front text' }],
+      };
+      produce = (n) =>
+        namedCards(n).map((r) =>
+          typeof r === 'string' ? r : { ...r, data: { ...r.data, ...text } },
+        );
+      const store = useDiscordFetcherStore();
+      await store.next();
+      await store.next();
+      await settle(store);
+
+      store.prev();
+
+      expect(store.card?.scryfallInfo).toMatchObject(text);
+    });
+
     it('a previous card can still be cast', async () => {
       const store = useDiscordFetcherStore();
       await store.next();

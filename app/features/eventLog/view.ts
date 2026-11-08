@@ -113,6 +113,7 @@ export function scryfallCardFromSnapshot(card: LoggedCard): ScryfallCard {
     id: card.scryfallId,
     name: card.name,
     mana_cost: '',
+    ...card.text,
     scryfall_uri: card.scryfallUri,
     image_uris: { border_crop: card.imageUri },
   } as ScryfallCard;

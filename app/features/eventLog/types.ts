@@ -10,7 +10,20 @@ export interface LoggedCard {
   name: string;
   imageUri: string;
   scryfallUri: string;
+  /** What a text card shows, for when card images are off. */
+  text?: LoggedCardText;
 }
+
+/** The parts of a card a text card shows, besides its name. */
+export type LoggedCardText = Pick<
+  ScryfallCard,
+  | 'mana_cost'
+  | 'type_line'
+  | 'oracle_text'
+  | 'power'
+  | 'toughness'
+  | 'card_faces'
+>;
 
 /** Why a new game started. */
 export type GameMarkerReason = 'clearBoard' | 'clearSession' | 'idlePrompt';

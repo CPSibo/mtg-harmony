@@ -1,7 +1,20 @@
 import { pickImageUri } from '~/composables/useScryfall';
 import type { BoardCard } from '~/types/PlayArea';
 import type { ScryfallCard } from '~/types/Scryfall';
-import type { LoggedCard } from './types';
+import type { LoggedCard, LoggedCardText } from './types';
+
+function textOf(card: ScryfallCard): LoggedCardText {
+  const { mana_cost, type_line, oracle_text, power, toughness, card_faces } =
+    card;
+  return {
+    mana_cost,
+    type_line,
+    oracle_text,
+    power,
+    toughness,
+    card_faces: card_faces?.map((face) => ({ ...face })),
+  };
+}
 
 function isBoardCard(card: BoardCard | ScryfallCard): card is BoardCard {
   return 'scryfallInfo' in card;
@@ -16,6 +29,7 @@ export function snapshotCard(card: BoardCard | ScryfallCard): LoggedCard {
       name: card.name,
       imageUri: card.image_uri,
       scryfallUri: card.scryfall_uri,
+      text: textOf(card.scryfallInfo),
     };
   }
   return {
@@ -23,5 +37,6 @@ export function snapshotCard(card: BoardCard | ScryfallCard): LoggedCard {
     name: card.name,
     imageUri: pickImageUri(card) ?? '',
     scryfallUri: card.scryfall_uri,
+    text: textOf(card),
   };
 }
