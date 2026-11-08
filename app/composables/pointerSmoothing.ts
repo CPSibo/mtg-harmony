@@ -73,14 +73,18 @@ export function createFollower(
         frame = requestAnimationFrame(step);
       }
     },
-    /** Lands on the last target now, and returns it. */
+    /**
+     * Ends the gesture: lands a glide still under way on its target, and
+     * returns the last target. Forgets it afterwards, so a later call (a
+     * wheel zoom, say) can't move things back to where the gesture ended.
+     */
     finish(): Position | null {
+      const gliding = frame !== 0;
       stop();
-      if (target) {
-        current = target;
-        apply(target);
-      }
-      return target;
+      const last = target;
+      if (gliding && last) apply(last);
+      target = current = null;
+      return last;
     },
   };
 }
