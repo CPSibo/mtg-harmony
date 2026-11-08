@@ -33,6 +33,25 @@ button:not(:disabled) {
   cursor: pointer;
 }
 
+/*
+ * Touch: no rubber-banding or pull-to-refresh, and no double-tap zoom.
+ * `manipulation` still allows pinch-zoom and scrolling, so dialogs and menus
+ * stay zoomable. The board blocks pinch-zoom itself (Board.vue).
+ */
+html,
+body {
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+/* Card images: a long press shouldn't open the browser's image menu. */
+.mtg-card-display,
+.add-card-avatar img {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 :root {
   --card-ratio-vertical: 12/17;
   --card-ratio-horizontal: 17/12;
