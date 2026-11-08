@@ -75,7 +75,7 @@ describe('describeEntry', () => {
     log.record('added', { card: makeCard({ name: 'D' }) });
     log.startNewGame('newGame');
 
-    expect(log.entries.map((e: EventEntry) => describeEntry(e))).toEqual([
+    expect(log.history.map((e: EventEntry) => describeEntry(e))).toEqual([
       'Fetched Smoke Ooze',
       'Cast Smoke Ooze',
       'Attached Smoke Ooze to Grizzly Host',
