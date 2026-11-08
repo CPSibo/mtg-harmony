@@ -1,3 +1,4 @@
+import { cardData } from '~/features/battlefield/boardCard';
 import type { BoardCard, BoardCardModifier } from '~/types/PlayArea';
 import type { ScryfallCard } from '~/types/Scryfall';
 
@@ -23,8 +24,9 @@ export function makeScryfallCard(
  * override names its Scryfall data too, as on a real card.
  */
 export function makeCard(overrides: Partial<BoardCard> = {}): BoardCard {
-  const scryfallInfo = makeScryfallCard(
-    overrides.name ? { name: overrides.name } : {},
+  // Trimmed and frozen, as createBoardCard does.
+  const scryfallInfo = cardData(
+    makeScryfallCard(overrides.name ? { name: overrides.name } : {}),
   );
   return {
     id: `card-${nextId}`,

@@ -1,7 +1,7 @@
 import { stringify } from 'devalue';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { nextTick } from 'vue';
+import { nextTick, isReactive } from 'vue';
 import { flushSaves } from '~/composables/useLocalStorage';
 import type { ScryfallCardResponse } from '~/composables/useScryfall';
 import { useDiscordFetcherStore } from '~/features/discordFetcher';
@@ -406,6 +406,19 @@ describe('discord fetcher store', () => {
       expect(reloaded.queue).toHaveLength(8);
       await reloaded.next();
       expect(reloaded.card?.name).toBe('Card 2');
+    });
+
+    it('keeps loaded Scryfall data out of Vue reactivity', async () => {
+      const store = useDiscordFetcherStore();
+      await store.next();
+      await settle(store);
+      flushSaves();
+
+      setActivePinia(createPinia());
+      const reloaded = useDiscordFetcherStore();
+
+      expect(isReactive(reloaded.card!.scryfallInfo)).toBe(false);
+      expect(isReactive(reloaded.queue[0]!.scryfallInfo)).toBe(false);
     });
 
     it('loads saved settings', () => {

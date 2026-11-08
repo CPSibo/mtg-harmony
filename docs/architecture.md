@@ -95,9 +95,12 @@ const STORAGE_KEY = 'mtg-harmony_<name>';
 function save() { useLocalStorage().save(STORAGE_KEY, { …state }); }
 function load(): boolean { const data = useLocalStorage().load(STORAGE_KEY); … validate each field … }
 
-load();                          // On creation
-watch([…state], save, { deep }); // On every change
+load();                 // On creation
+watch([…state], save);  // On every change; deep only where data changes in place
 ```
+
+- Only the battlefield's `stacks` and `zOrder` and On-deck's queue are deep-watched, because cards change in
+  place. The board centre is watched shallowly, so a pan doesn't walk every card.
 
 - `load()` checks every field's type before using it, so stale or hand-edited storage can't break the app.
 - Stores build their defaults from a `createDefaults()` factory where the defaults hold objects or arrays, so no
@@ -137,15 +140,18 @@ moved and scaled with a single CSS `transform`.
 - Touch: one finger pans, two fingers pinch-zoom around their midpoint. Lifting one finger mid-pinch resumes the
   pan with the other.
 - Position and scale are clamped so the canvas always fills the window. Scale is capped at 3.
-- When a pan ends, the visible centre is written to the battlefield store, and new stacks appear there. It isn't
-  written on every frame: that was too slow.
+- When a pan or zoom ends, the visible centre is written to the battlefield store, and new stacks appear there.
+  It isn't written on every frame: that was too slow.
+- The board's size, the gesture state and the speeds are plain variables; only `position`, `scale` and
+  `isDragging` are reactive, because the board renders them.
 - Pan and zoom are disabled while attaching, and so is stack dragging.
 
 ### Dragging stacks (`useScaledDraggable`)
 
 Each stack (`BoardCardStack.vue`) wraps VueUse's `useDraggable`. The wrapper divides pointer movement by the
 board's scale, snaps to `snapScale` and clamps the stack inside the canvas. On drop it calls
-`battlefield.setStackPosition()`. While a stack is dragged, the board's own touch handling stands down
+`battlefield.setStackPosition()`. It reads the board's scale from the store (`boardScale()`) as the drag moves,
+so a zoom doesn't re-render every stack. While a stack is dragged, the board's own touch handling stands down
 (`anyCardIsDragging`).
 
 ### Z-order
@@ -167,8 +173,12 @@ The model is in `types/PlayArea.ts`; the terms are defined in [domain.md](domain
 
 - `Battlefield` holds `stacks`, `zOrder`, `center` and `snapScale`.
 - A `BoardCardStack` has an `id`, a `position`, one `primary` card, and two `Set`s: `attachments` and `unders`.
-- A `BoardCard` holds its Scryfall data, `tapped`, `faceNumber` (a big number shown on the card; 0 hides it), a
+- A `BoardCard` holds its Scryfall data (`scryfallInfo`), `tapped`, `faceNumber` (a big number shown on the card; 0 hides it), a
   `Set` of `modifiers`, and a back-reference to its `stack`.
+- `scryfallInfo` keeps only the fields in `ScryfallCard` (`types/Scryfall.ts`), not the whole API response.
+  `cardData()` trims it, freezes it and marks it raw, so Vue never tracks it and deep watchers and saves skip it.
+  `createBoardCard` and the stores' `load()` run every card's data through it. To use another Scryfall field, add
+  it to `ScryfallCard` and `cardData()`.
 - A `BoardCardModifier` is one entry from `MODIFIERS` (`types/MtgConcepts.ts`) with a count.
 
 Rules the battlefield store enforces:
@@ -190,7 +200,7 @@ Rules the battlefield store enforces:
   touch the view count. Players rearrange cards anyway; this just keeps a few cast in a row from hiding each other.
   The board reports what it shows
   (`setView`, in board pixels, minus a 64 px strip at the top for the corner buttons) and each stack reports its rendered size
-  (`setStackSize`); neither is saved. Before the board reports a view, a cast card goes to `center`.
+  (`setStackSize`); neither is saved, and neither is reactive, since they're only read when placing a card. Before the board reports a view, a cast card goes to `center`.
 - The On-deck card can also be dragged onto the board (pointer events, so mouse and touch). The board reports its
   pan and zoom (`setTransform`); the drop point becomes a board point (`boardPointFromScreen`) and `castCard(card,
 'cast', at)` centres the card on it. A drop on the panel or off the board cancels. On a phone the panel covers the

@@ -21,7 +21,6 @@
           v-model:is-dragging="anyCardIsDragging"
           :stack="stack"
           :board="boardEl"
-          :scale="scale"
           @show-card-details="showCardDetails"
           @show-card-modifiers="showCardModifiers"
         />
@@ -50,14 +49,7 @@ import { useBlockBrowserZoom } from '~/composables/useBlockBrowserZoom';
 import { usePanAndZoom } from '~/composables/usePanAndZoom';
 import { storeToRefs } from 'pinia';
 import { useWindowSize } from '@vueuse/core';
-import {
-  onMounted,
-  onUnmounted,
-  ref,
-  useTemplateRef,
-  watch,
-  watchEffect,
-} from 'vue';
+import { onMounted, onUnmounted, ref, useTemplateRef, watchEffect } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import type { BoardCard } from '~/types/PlayArea';
 
@@ -119,13 +111,9 @@ watchEffect(() => {
   });
 });
 
-watch(
-  center,
-  (value) => {
-    battlefield.setCenter(value);
-  },
-  { immediate: true, deep: true },
-);
+// The centre goes to the store when a pan or zoom ends (`onEnd`), not on
+// every frame.
+battlefield.setCenter(center.value);
 
 // ─── Imperative touch listeners ───────────────────────────────────────────────
 //

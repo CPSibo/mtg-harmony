@@ -1,6 +1,6 @@
 import { stringify } from 'devalue';
 import { describe, expect, it, vi } from 'vitest';
-import { nextTick } from 'vue';
+import { isReactive, nextTick } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import { useEventLogStore, type EventEntry } from '~/features/eventLog';
 import type { BoardCardModifier, BoardCardStack } from '~/types/PlayArea';
@@ -396,6 +396,20 @@ describe('battlefield store', () => {
       // devalue keeps the card <-> stack cycle intact.
       expect(host.primary.stack).toBe(host);
       expect(board.center).toEqual({ x: 7, y: 8 });
+    });
+
+    it('keeps loaded Scryfall data out of Vue reactivity', async () => {
+      vi.useFakeTimers();
+      const board = boardWithAttachments(1);
+      await nextTick();
+      vi.runAllTimers();
+
+      board.clearStacks();
+      board.load();
+
+      const host = board.stacks[0]!;
+      for (const card of [host.primary, ...host.attachments])
+        expect(isReactive(card.scryfallInfo)).toBe(false);
     });
 
     it('rebuilds a saved z-order that lost or gained IDs', () => {

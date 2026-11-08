@@ -6,7 +6,7 @@ import { useLocalStorage } from '~/composables/useLocalStorage';
 import { useScryfall } from '~/composables/useScryfall';
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
-import { createBoardCard } from '~/features/battlefield';
+import { cardData, createBoardCard } from '~/features/battlefield';
 import { useSettingsStore } from '~/stores/settings';
 import type { BoardCard } from '~/types/PlayArea';
 
@@ -276,10 +276,16 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
 
     if (!data) return false;
 
-    if (Array.isArray(data.queue)) queue.value = data.queue;
+    if (Array.isArray(data.queue)) {
+      for (const card of data.queue)
+        card.scryfallInfo = cardData(card.scryfallInfo);
+      queue.value = data.queue;
+    }
 
-    if (data.current && typeof data.current === 'object')
+    if (data.current && typeof data.current === 'object') {
+      data.current.scryfallInfo = cardData(data.current.scryfallInfo);
       current.value = data.current;
+    }
 
     if (typeof data.stepsBack === 'number') stepsBack.value = data.stepsBack;
 
