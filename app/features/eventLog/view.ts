@@ -87,6 +87,25 @@ export function describeEntry(entry: EventEntry): string {
 }
 
 /**
+ * What an entry says beyond its label and card, or '' when the label and
+ * card name say it all.
+ */
+export function entryDetails(entry: EventEntry): string {
+  switch (entry.type) {
+    case 'attached':
+      return `${entry.card.name} to ${entry.target.name}`;
+    case 'putUnder':
+      return `${entry.card.name} under ${entry.target.name}`;
+    case 'copied':
+      return `${entry.source.name} (${COPY_MODE_LABELS[entry.mode]})`;
+    case 'gameMarker':
+      return REASON_LABELS[entry.reason];
+    default:
+      return '';
+  }
+}
+
+/**
  * Enough of a Scryfall card to cast a logged card again. The board only reads
  * a card's ID, name, image and Scryfall link.
  */

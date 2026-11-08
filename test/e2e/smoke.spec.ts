@@ -412,9 +412,16 @@ test.describe('exporting the log', () => {
       .getByRole('button', { name: 'Export' })
       .click();
     const dialog = page.getByRole('dialog', { name: 'Export log' });
-    await expect(dialog.getByText('1 card')).toBeVisible();
+    await expect(dialog.getByText('Matches 1 card')).toBeVisible();
+    await dialog.getByRole('button', { name: 'All events' }).click();
+    await expect(dialog.getByText(/^Matches \d+ events$/)).toBeVisible();
+    await dialog.getByRole('button', { name: 'Cards cast' }).click();
 
-    await dialog.getByRole('radio', { name: 'CSV' }).check();
+    await dialog.getByRole('button', { name: 'CSV' }).click();
+    await expect(dialog.getByRole('button', { name: 'CSV' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
     const downloading = page.waitForEvent('download');
     await dialog.getByRole('button', { name: 'Download' }).click();
     const download = await downloading;
@@ -423,11 +430,11 @@ test.describe('exporting the log', () => {
     );
     const { readFile } = await import('node:fs/promises');
     const csv = await readFile((await download.path())!, 'utf8');
-    expect(csv).toContain('time,event,card,scryfall_url,game');
-    expect(csv).toContain(`,cast,${card.name},${card.scryfall_uri},`);
+    expect(csv).toContain('time,event,card,details,scryfall_url,game');
+    expect(csv).toContain(`,cast,${card.name},,${card.scryfall_uri},`);
 
-    await dialog.getByRole('radio', { name: 'Plain text' }).check();
-    await dialog.getByRole('button', { name: 'Copy' }).click();
+    await dialog.getByRole('button', { name: 'Plain text' }).click();
+    await dialog.getByRole('button', { name: 'Copy', exact: true }).click();
     const copied = await page.evaluate('navigator.clipboard.readText()');
     // Windows' clipboard turns \n into \r\n.
     expect(copied).toMatch(/^\d\d:\d\d {2}Cast {2}Smoke Test Ooze\r?\n$/);

@@ -3,6 +3,7 @@ import {
   exportEntries,
   selectForExport,
   useEventLogStore,
+  type EventEntry,
 } from '~/features/eventLog';
 import { makeCard, makeScryfallCard } from '../../fixtures/cards';
 
@@ -26,8 +27,8 @@ function sampleLog() {
   return log;
 }
 
-const names = (entries: { card: { name: string } }[]) =>
-  entries.map((e) => e.card.name);
+const names = (entries: EventEntry[]) =>
+  entries.map((e) => ('card' in e ? e.card.name : e.type));
 
 describe('selectForExport', () => {
   it('cast lists cards cast or added, oldest first', () => {
@@ -52,6 +53,25 @@ describe('selectForExport', () => {
     });
 
     expect(names(picked)).toEqual(['Old Ooze', 'Bear', 'Skipped']);
+  });
+
+  it('all lists every event in the range', () => {
+    const log = sampleLog();
+
+    const picked = selectForExport(log.entries, {
+      range: 'game',
+      cards: 'all',
+      gameId: log.gameId,
+    });
+
+    expect(names(picked)).toEqual([
+      'gameMarker',
+      'Bear',
+      'Bear',
+      'Skipped',
+      'Added, "Quoted"',
+      'Bear',
+    ]);
   });
 
   it('limits to this game', () => {
@@ -105,16 +125,37 @@ describe('exportEntries', () => {
     const csv = exportEntries(entries, 'csv');
 
     const lines = csv.trimEnd().split('\n');
-    expect(lines[0]).toBe('time,event,card,scryfall_url,game');
+    expect(lines[0]).toBe('time,event,card,details,scryfall_url,game');
     expect(lines[1]).toBe(
-      `${new Date(2026, 10, 7, 9, 0).toISOString()},cast,Bear,${entries[0]!.card.scryfallUri},${entries[0]!.gameId}`,
+      `${new Date(2026, 10, 7, 9, 0).toISOString()},cast,Bear,,${'card' in entries[0]! ? entries[0].card.scryfallUri : ''},${entries[0]!.gameId}`,
     );
     expect(lines[2]).toContain(',added,"Added, ""Quoted""",');
   });
 
+  it('writes events without a single card with their details', () => {
+    const log = sampleLog();
+    log.record('attached', {
+      card: makeCard({ name: 'Aura' }),
+      target: makeCard({ name: 'Host' }),
+    });
+    const entries = selectForExport(log.entries, {
+      range: 'game',
+      cards: 'all',
+      gameId: log.gameId,
+    });
+
+    const text = exportEntries(entries, 'text').split('\n');
+    const csv = exportEntries(entries, 'csv').split('\n');
+
+    expect(text[0]).toBe('09:00  New game  cleared session');
+    expect(text.at(-2)).toBe('09:05  Attached  Aura to Host');
+    expect(csv[1]).toContain(',gameMarker,,cleared session,,');
+    expect(csv.at(-2)).toContain(',attached,Aura,Aura to Host,');
+  });
+
   it('writes just the header for nothing', () => {
     expect(exportEntries([], 'csv')).toBe(
-      'time,event,card,scryfall_url,game\n',
+      'time,event,card,details,scryfall_url,game\n',
     );
     expect(exportEntries([], 'text')).toBe('');
   });

@@ -1,13 +1,14 @@
-import type { EventEntryOf } from './types';
-import { EVENT_LABELS } from './view';
+import type { EventEntry } from './types';
+import { entryDetails, EVENT_LABELS } from './view';
 
 /** Which part of the log to export. */
 export type ExportRange = 'game' | 'today' | 'all';
-/** `cast`: cards cast or added to the board. `fetched`: every card shown. */
-export type ExportCards = 'cast' | 'fetched';
+/**
+ * `cast`: cards cast or added to the board. `fetched`: every card shown.
+ * `all`: every event.
+ */
+export type ExportCards = 'cast' | 'fetched' | 'all';
 export type ExportFormat = 'text' | 'csv';
-
-export type ExportedEntry = EventEntryOf<'cast' | 'added' | 'fetched'>;
 
 export interface ExportOptions {
   range: ExportRange;
@@ -17,7 +18,7 @@ export interface ExportOptions {
   now?: number;
 }
 
-const TYPES: Record<ExportCards, readonly string[]> = {
+const TYPES: Record<Exclude<ExportCards, 'all'>, readonly string[]> = {
   cast: ['cast', 'added'],
   fetched: ['fetched'],
 };
@@ -28,18 +29,18 @@ function startOfDay(at: number) {
   return date.getTime();
 }
 
-/** The card entries to export, oldest first. */
+/** The entries to export, oldest first. */
 export function selectForExport(
-  entries: readonly { type: string; at: number; gameId: string }[],
+  entries: readonly EventEntry[],
   { range, cards, gameId, now = Date.now() }: ExportOptions,
-): ExportedEntry[] {
+): EventEntry[] {
   const since = range === 'today' ? startOfDay(now) : -Infinity;
   return entries.filter(
     (e) =>
-      TYPES[cards].includes(e.type) &&
+      (cards === 'all' || TYPES[cards].includes(e.type)) &&
       e.at >= since &&
       (range !== 'game' || e.gameId === gameId),
-  ) as ExportedEntry[];
+  );
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -47,7 +48,7 @@ const time = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 const day = (d: Date) =>
   `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
-function toText(entries: readonly ExportedEntry[]) {
+function toText(entries: readonly EventEntry[]) {
   const dates = entries.map((e) => new Date(e.at));
   const manyDays = new Set(dates.map(day)).size > 1;
   const labels = entries.map((e) => EVENT_LABELS[e.type].label);
@@ -57,7 +58,8 @@ function toText(entries: readonly ExportedEntry[]) {
     .map((e, i) => {
       const d = dates[i]!;
       const when = manyDays ? `${day(d)} ${time(d)}` : time(d);
-      return `${when}  ${labels[i]!.padEnd(width)}${e.card.name}\n`;
+      const what = entryDetails(e) || ('card' in e ? e.card.name : '');
+      return `${when}  ${labels[i]!.padEnd(width)}${what}`.trimEnd() + '\n';
     })
     .join('');
 }
@@ -67,24 +69,28 @@ function csvField(value: string) {
   return /[",\n\r]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
 }
 
-function toCsv(entries: readonly ExportedEntry[]) {
-  const rows = entries.map((e) =>
-    [
+function toCsv(entries: readonly EventEntry[]) {
+  const rows = entries.map((e) => {
+    const card = 'card' in e ? e.card : undefined;
+    return [
       new Date(e.at).toISOString(),
       e.type,
-      e.card.name,
-      e.card.scryfallUri,
+      card?.name ?? '',
+      entryDetails(e),
+      card?.scryfallUri ?? '',
       e.gameId,
     ]
       .map(csvField)
-      .join(','),
+      .join(',');
+  });
+  return (
+    ['time,event,card,details,scryfall_url,game', ...rows].join('\n') + '\n'
   );
-  return ['time,event,card,scryfall_url,game', ...rows].join('\n') + '\n';
 }
 
 /** The entries as a plain list (local times) or CSV (UTC ISO times). */
 export function exportEntries(
-  entries: readonly ExportedEntry[],
+  entries: readonly EventEntry[],
   format: ExportFormat,
 ): string {
   return format === 'csv' ? toCsv(entries) : toText(entries);

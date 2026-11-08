@@ -2,55 +2,53 @@
   <UModal
     v-model:open="open"
     title="Export log"
-    description="Copy or download the cards from the event log"
+    description="Copy or download events from the log"
     :ui="{ body: 'flex flex-col gap-4', footer: 'flex justify-end gap-2' }"
   >
     <template #body>
-      <URadioGroup
-        v-model="range"
-        legend="Range"
-        orientation="horizontal"
-        :items="[
-          { label: 'This game', value: 'game' },
-          { label: 'Today', value: 'today' },
-          { label: 'Everything', value: 'all' },
-        ]"
-      />
-      <URadioGroup
-        v-model="cards"
-        legend="Cards"
-        orientation="horizontal"
-        :items="[
-          { label: 'Cards cast', value: 'cast' },
-          { label: 'All cards fetched', value: 'fetched' },
-        ]"
-      />
-      <URadioGroup
-        v-model="format"
-        legend="Format"
-        orientation="horizontal"
-        :items="[
-          { label: 'Plain text', value: 'text' },
-          { label: 'CSV', value: 'csv' },
-        ]"
-      />
-      <p class="text-sm text-muted">
-        {{ entries.length }} {{ entries.length === 1 ? 'card' : 'cards' }}
-      </p>
+      <div
+        v-for="group in groups"
+        :key="group.legend"
+        role="group"
+        :aria-label="group.legend"
+        class="flex flex-col gap-1.5"
+      >
+        <span class="text-sm font-medium">{{ group.legend }}</span>
+        <div class="flex flex-wrap items-center gap-2">
+          <UFieldGroup>
+            <UButton
+              v-for="option in group.options"
+              :key="option.value"
+              :label="option.label"
+              :aria-pressed="group.model.value === option.value"
+              :color="
+                group.model.value === option.value ? 'primary' : 'neutral'
+              "
+              :variant="
+                group.model.value === option.value ? 'solid' : 'outline'
+              "
+              @click="group.model.value = option.value"
+            />
+          </UFieldGroup>
+          <UButton
+            v-if="group.legend === 'Format'"
+            icon="i-lucide-clipboard-copy"
+            label="Copy"
+            variant="soft"
+            :disabled="!entries.length"
+            :title="disabledReason"
+            @click="copy"
+          />
+        </div>
+      </div>
+      <p class="text-sm text-muted">Matches {{ count }} {{ noun }}</p>
     </template>
 
     <template #footer>
       <UButton
-        icon="i-lucide-clipboard-copy"
-        variant="soft"
-        :disabled="!entries.length"
-        @click="copy"
-      >
-        Copy
-      </UButton>
-      <UButton
         icon="i-lucide-download"
         :disabled="!entries.length"
+        :title="disabledReason"
         @click="download"
       >
         Download
@@ -61,10 +59,10 @@
 
 <script setup lang="ts">
 import UButton from '@nuxt/ui/components/Button.vue';
+import UFieldGroup from '@nuxt/ui/components/FieldGroup.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
-import URadioGroup from '@nuxt/ui/components/RadioGroup.vue';
 import { useToast } from '@nuxt/ui/composables';
-import { computed, ref } from 'vue';
+import { computed, ref, type Ref } from 'vue';
 import {
   exportEntries,
   selectForExport,
@@ -83,6 +81,41 @@ const range = ref<ExportRange>('game');
 const cards = ref<ExportCards>('cast');
 const format = ref<ExportFormat>('text');
 
+interface Group {
+  legend: string;
+  model: Ref<string>;
+  options: { label: string; value: string }[];
+}
+
+const groups: Group[] = [
+  {
+    legend: 'Range',
+    model: range,
+    options: [
+      { label: 'This game', value: 'game' },
+      { label: 'Today', value: 'today' },
+      { label: 'Everything', value: 'all' },
+    ],
+  },
+  {
+    legend: 'Events',
+    model: cards,
+    options: [
+      { label: 'Cards cast', value: 'cast' },
+      { label: 'All cards fetched', value: 'fetched' },
+      { label: 'All events', value: 'all' },
+    ],
+  },
+  {
+    legend: 'Format',
+    model: format,
+    options: [
+      { label: 'Plain text', value: 'text' },
+      { label: 'CSV', value: 'csv' },
+    ],
+  },
+];
+
 const entries = computed(() =>
   selectForExport(log.entries, {
     range: range.value,
@@ -91,6 +124,18 @@ const entries = computed(() =>
   }),
 );
 const content = computed(() => exportEntries(entries.value, format.value));
+
+const count = computed(() => entries.value.length.toLocaleString());
+const noun = computed(() => {
+  const one = entries.value.length === 1;
+  if (cards.value === 'all') return one ? 'event' : 'events';
+  return one ? 'card' : 'cards';
+});
+
+/** Why Copy and Download are disabled, shown on hover. */
+const disabledReason = computed(() =>
+  entries.value.length ? undefined : `No ${noun.value} match these options`,
+);
 
 async function copy() {
   try {
