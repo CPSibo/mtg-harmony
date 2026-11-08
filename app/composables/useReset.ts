@@ -5,8 +5,9 @@ import { useDiscordFetcherStore } from '~/features/discordFetcher';
 import { useEventLogStore, type GameMarkerReason } from '~/features/eventLog';
 
 /**
- * The menu's three levels of reset. Each one starts a new game in the event
- * log (one marker) and shows one toast. The log itself is kept.
+ * The menu's three levels of reset, each with one toast. Clear board and
+ * clear session start a new game in the event log (one marker); reset all
+ * data empties the log, back to a fresh install.
  */
 export function useReset() {
   const toast = useToast();
@@ -42,7 +43,8 @@ export function useReset() {
     battlefield.clearBoard();
     discordFetchStore.reset();
     settingsStore.reset();
-    finish('resetAll', 'App data reset');
+    log.reset();
+    toast.add({ title: 'App data reset', color: 'info' });
   }
 
   return {
