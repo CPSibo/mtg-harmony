@@ -1,5 +1,7 @@
 <template>
-  <div class="fixed left-3 right-3 top-3 flex gap-6 justify-end">
+  <div
+    class="fixed left-[calc(0.75rem+env(safe-area-inset-left))] right-[calc(0.75rem+env(safe-area-inset-right))] top-[calc(0.75rem+env(safe-area-inset-top))] flex gap-6 justify-end"
+  >
     <DiscordFetch />
 
     <div class="grow" />

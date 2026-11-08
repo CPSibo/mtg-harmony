@@ -163,3 +163,34 @@ test('Add Card prompts before searching and says when nothing matches', async ({
   await expect(addCard.getByText('No cards found.')).toBeVisible();
   expect(searches).toEqual(['nonexistent']);
 });
+
+// #59: installable from the home screen, so iOS edge swipes can't navigate away.
+test('the app is installable with its icons', async ({ page, request }) => {
+  const href = await page.locator('link[rel="manifest"]').getAttribute('href');
+  expect(href).toBeTruthy();
+  const manifest = await (await request.get(href!)).json();
+  expect(manifest).toMatchObject({
+    name: 'MTG Harmony',
+    display: 'standalone',
+    start_url: '/',
+  });
+  const icons: { src: string; sizes: string; purpose?: string }[] =
+    manifest.icons;
+  expect(icons.map((i) => i.sizes)).toEqual(
+    expect.arrayContaining(['192x192', '512x512']),
+  );
+  expect(icons.some((i) => i.purpose === 'maskable')).toBe(true);
+
+  const touchIcon = await page
+    .locator('link[rel="apple-touch-icon"]')
+    .getAttribute('href');
+  for (const src of [...icons.map((i) => i.src), touchIcon!]) {
+    const response = await request.get(src);
+    expect(response.ok(), src).toBe(true);
+    expect(response.headers()['content-type']).toBe('image/png');
+  }
+  await expect(page.locator('meta[name="viewport"]')).toHaveAttribute(
+    'content',
+    /viewport-fit=cover/,
+  );
+});

@@ -38,8 +38,9 @@ app/
   composables/     useScryfall, useLocalStorage, usePanAndZoom, useScaledDraggable, useReset
   stores/          App-wide stores: settings, inputMode
   types/           PlayArea (the board model), Scryfall, MtgConcepts (the modifier list)
-public/            Served as-is: favicon, og-image.png (the social preview)
+public/            Served as-is: favicon, og-image.png (the social preview), manifest.webmanifest, icons/
 scripts/og-image/  Source of og-image.png. Edit og-image.html, then `npm run og-image`
+scripts/icons/     Source of public/icons/. Edit icon.html, then `npm run icons`
 ```
 
 A feature exports its public surface from its `index.ts`. Import from the feature (`~/features/battlefield`), not
@@ -198,8 +199,11 @@ All calls go straight from the browser to `api.scryfall.com`. There is no proxy 
   listeners itself, so it can `preventDefault()` without stopping propagation. `touchend` stays passive and isn't
   prevented, so the browser still turns taps into clicks on buttons.
 - **The board wrapper is `touch-action: none`** (Tailwind's `touch-none`), so the browser doesn't pan or zoom the
-  page under it. iOS Safari still misbehaves in places (#58), and its edge-swipe navigation can't be blocked from
-  a page (#59).
+  page under it. Safari's own pinch events are cancelled on the board (`useBlockBrowserZoom`). Its edge-swipe
+  navigation can't be blocked from a page; installed to the home screen (`manifest.webmanifest`, standalone), the
+  app has no browser navigation.
+- **Installed, the page runs under the notch** (`viewport-fit=cover`, status bar `black-translucent`). Anything
+  fixed to a screen edge adds `env(safe-area-inset-*)` to its offset, as the corner buttons do.
 - **The mount element keeps `class="isolate"`** (`index.html`). Nuxt UI's overlays rely on it for stacking.
 - **Board card sizes are CSS variables** (`--card-short-side`, `--card-long-side` in `main.css`), scaled per
   stack. Layout maths for attachments lives in `BoardCardStack.vue`'s styles.
