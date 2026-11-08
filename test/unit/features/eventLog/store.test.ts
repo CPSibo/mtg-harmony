@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { nextTick } from 'vue';
+import { computed, isProxy, nextTick } from 'vue';
 import { flushSaves } from '~/composables/useLocalStorage';
 import {
   MAX_ENTRIES,
@@ -141,6 +141,41 @@ describe('event log store', () => {
     expect(cast && 'card' in cast && cast.card).toBe(
       attached && 'card' in attached && attached.card,
     );
+  });
+
+  it("doesn't wrap entries in Vue's reactivity, which costs on every event (#81)", () => {
+    const log = useEventLogStore();
+    log.record('cast', { card: makeCard() });
+
+    expect(isProxy(log.entries[0])).toBe(false);
+  });
+
+  it('still updates anything that reads the entries', () => {
+    const log = useEventLogStore();
+    const count = computed(() => log.entries.length);
+    expect(count.value).toBe(0);
+
+    log.record('cast', { card: makeCard() });
+    expect(count.value).toBe(1);
+
+    log.reset();
+    expect(count.value).toBe(0);
+  });
+
+  it('saves after a trim on load drops old entries', async () => {
+    vi.useFakeTimers({ now: new Date('2026-11-07T12:00:00Z') });
+    useEventLogStore().record('cast', { card: makeCard() });
+    await nextTick();
+    flushSaves();
+
+    vi.setSystemTime(Date.now() + MAX_AGE_MS + 1);
+    setActivePinia(createPinia());
+    expect(useEventLogStore().entries).toEqual([]);
+    await nextTick();
+    vi.runAllTimers();
+
+    setActivePinia(createPinia());
+    expect(localStorage.getItem('mtg-harmony_eventLog')).not.toContain('cast');
   });
 
   it('keeps cards that are still on the board apart from new instances', () => {
