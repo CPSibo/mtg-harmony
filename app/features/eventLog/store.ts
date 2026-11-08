@@ -48,6 +48,12 @@ export const useEventLogStore = defineStore('eventLog', () => {
   const entries = ref<EventEntry[]>([]);
   const gameId = ref(randomUUID());
 
+  /** When the idle new-game offer was last dismissed (ms), or null. */
+  const newGameOfferDismissedAt = ref<number | null>(null);
+  function dismissNewGameOffer() {
+    newGameOfferDismissedAt.value = Date.now();
+  }
+
   const windowIsOpen = ref(false);
   function openWindow() {
     windowIsOpen.value = true;
@@ -124,6 +130,7 @@ export const useEventLogStore = defineStore('eventLog', () => {
 
   function reset() {
     entries.value = [];
+    newGameOfferDismissedAt.value = null;
     snapshots.clear();
     gameId.value = randomUUID();
   }
@@ -132,6 +139,7 @@ export const useEventLogStore = defineStore('eventLog', () => {
     useLocalStorage().save(STORAGE_KEY, {
       entries: entries.value,
       gameId: gameId.value,
+      newGameOfferDismissedAt: newGameOfferDismissedAt.value,
     });
   }
 
@@ -139,19 +147,22 @@ export const useEventLogStore = defineStore('eventLog', () => {
     const data = useLocalStorage().load<{
       entries?: unknown;
       gameId?: unknown;
+      newGameOfferDismissedAt?: unknown;
     }>(STORAGE_KEY);
     if (!data) return false;
 
     if (Array.isArray(data.entries))
       entries.value = data.entries.filter(isEntry);
     if (typeof data.gameId === 'string') gameId.value = data.gameId;
+    if (typeof data.newGameOfferDismissedAt === 'number')
+      newGameOfferDismissedAt.value = data.newGameOfferDismissedAt;
     reindexSnapshots();
     trim();
     return true;
   }
 
   load();
-  watch([entries, gameId], save, { deep: true });
+  watch([entries, gameId, newGameOfferDismissedAt], save, { deep: true });
 
   return {
     entries,
@@ -161,6 +172,8 @@ export const useEventLogStore = defineStore('eventLog', () => {
     reset,
     save,
     load,
+    newGameOfferDismissedAt,
+    dismissNewGameOffer,
     windowIsOpen,
     openWindow,
     closeWindow,
