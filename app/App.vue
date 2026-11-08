@@ -41,6 +41,7 @@ import {
   onSaveError,
   removeRetiredStorage,
 } from '~/composables/useLocalStorage';
+import { useKeepScreenAwake } from '~/composables/useKeepScreenAwake';
 import { AddCardWidgetComponent, AddCardWindow } from '~/features/addCard';
 import {
   EventLogWidgetComponent,
@@ -96,4 +97,6 @@ const showConfirmResetAppData = ref(false);
 
 // Load the store globally, so the values get set.
 useInputModeStore();
+
+useKeepScreenAwake();
 </script>
