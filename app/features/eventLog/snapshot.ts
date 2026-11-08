@@ -12,7 +12,8 @@ function textOf(card: ScryfallCard): LoggedCardText {
     oracle_text,
     power,
     toughness,
-    card_faces: card_faces?.map((face) => ({ ...face })),
+    // Text only: the log keeps the shown image once, as `imageUri`.
+    card_faces: card_faces?.map(({ image_uris: _, ...text }) => text),
   };
 }
 

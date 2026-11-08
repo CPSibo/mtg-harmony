@@ -126,15 +126,12 @@ export function useScryfall() {
 
 /**
  * Returns the best available image URI for a card, preferring border_crop, then normal, then small.
+ * Double-faced cards have their images on each face, so they show the front.
  * Returns null when no usable image exists.
  */
 export function pickImageUri(card: ScryfallCard): string | null {
-  return (
-    card.image_uris?.border_crop ??
-    card.image_uris?.normal ??
-    card.image_uris?.small ??
-    null
-  );
+  const images = card.image_uris ?? card.card_faces?.[0]?.image_uris;
+  return images?.border_crop ?? images?.normal ?? images?.small ?? null;
 }
 
 /** Returns true when the card has at least one usable image URI. */

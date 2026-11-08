@@ -12,6 +12,9 @@ export default defineConfig({
       // Everything is imported explicitly; no generated auto-import files.
       autoImport: false,
       components: false,
+      // Theme CSS only for the components the app imports, not all ~125:
+      // about 100 kB less CSS.
+      experimental: { componentDetection: true },
       ui: {
         colors: {
           primary: 'fuchsia',
