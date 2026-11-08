@@ -32,13 +32,22 @@ describe('findFreeSpot', () => {
     }
   });
 
-  it('lets a card hang off the view while a third of it shows', () => {
-    const left: Rect = { x: 0, y: 0, width: 920, height: 600 };
+  it('fills a full view from the middle out, on screen, before hanging cards off it', () => {
+    // A desktop view at the default zoom, filled about twice over.
+    const desktop: Rect = { x: 0, y: 0, width: 1280, height: 677 };
+    const card = { width: 200, height: 250 };
+    const placed: Rect[] = [];
 
-    const spot = findFreeSpot(view, [left], size)!;
+    for (let i = 0; i < 30; i++) {
+      const spot = findFreeSpot(desktop, placed, card)!;
+      placed.push({ ...spot, ...card });
+    }
 
-    expect(spot.x + size.width).toBeGreaterThan(view.x + view.width);
-    expect(visibleShare(at(spot.x, spot.y))).toBeGreaterThanOrEqual(1 / 3);
+    for (const r of placed) {
+      expect(visibleShare(r, desktop)).toBeGreaterThan(0.95);
+    }
+    const spots = new Set(placed.map((r) => `${r.x},${r.y}`));
+    expect(spots.size).toBe(placed.length);
   });
 
   it('keeps clear of stacks of any size', () => {
