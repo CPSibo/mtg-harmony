@@ -210,3 +210,40 @@ test('copying a card puts a second one on the board', async ({ page }) => {
 
   await expect(boardCards).toHaveCount(2);
 });
+
+// #34: unders had no UI.
+test('a card can be put under another and taken out again', async ({
+  page,
+}) => {
+  for (let i = 0; i < 2; i++) {
+    await page.getByRole('button', { name: 'On-deck' }).click();
+    await page.getByRole('button', { name: 'Next card' }).click();
+    await page.getByRole('button', { name: 'Cast to board' }).click();
+  }
+  const stacks = page.locator('.board-card-stack');
+  const unders = page.locator('.under');
+  const details = page.getByRole('dialog', { name: 'Card details' });
+  // Both cast to the board centre: move the front one aside first.
+  await expect(stacks).toHaveCount(2);
+  const front = stacks.nth(1).locator('.primary-card').getByRole('img');
+  const box = (await front.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 3, box.y + box.height / 2, {
+    steps: 5,
+  });
+  await page.mouse.up();
+
+  await stacks.nth(1).locator('.primary-card').getByRole('img').dblclick();
+  await details.getByRole('button', { name: 'Put under...' }).click();
+  await stacks.nth(0).locator('.primary-card').getByRole('img').click();
+
+  await expect(stacks).toHaveCount(1);
+  await expect(unders).toHaveCount(1);
+
+  await unders.getByRole('img').dblclick({ position: { x: 10, y: 5 } });
+  await details.getByRole('button', { name: 'Take out' }).click();
+
+  await expect(stacks).toHaveCount(2);
+  await expect(unders).toHaveCount(0);
+});

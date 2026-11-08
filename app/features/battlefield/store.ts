@@ -15,6 +15,12 @@ import { copyBoardCard, createBoardCard } from './boardCard';
 /** How much of a card `copyCard` copies. */
 export type CopyMode = 'card' | 'counters' | 'stack';
 
+/** Whether a card being placed goes on a stack as an attachment or under. */
+export type AttachMode = 'attach' | 'under';
+
+/** How far below its old stack a taken-out under lands, in board pixels. */
+const UNDER_TAKE_OUT_OFFSET = 240;
+
 /** How far a copy sits from its source, in board pixels. */
 const COPY_OFFSET = 40;
 
@@ -289,12 +295,22 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
   }
 
   const cardToAttach = ref<BoardCard | null>(null);
-  function startAttaching(card: BoardCard) {
+  /** Whether the card being placed goes on as an attachment or under. */
+  const attachMode = ref<AttachMode>('attach');
+
+  /** Starts placing `card` on a stack: attached to it, or under it. */
+  function startAttaching(card: BoardCard, mode: AttachMode = 'attach') {
     cardToAttach.value = card;
+    attachMode.value = mode;
   }
 
   function cancelAttaching() {
     cardToAttach.value = null;
+  }
+
+  /** The set the card being placed would join on `stack`. */
+  function targetSet(stack: BoardCardStack) {
+    return attachMode.value === 'under' ? stack.unders : stack.attachments;
   }
 
   function finishAttaching(stack: BoardCardStack) {
@@ -305,19 +321,16 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     if (sourceCard == stack.primary)
       throw new Error('Cannot attach a card to itself.');
 
-    if (stack.attachments.has(sourceCard))
+    if (targetSet(stack).has(sourceCard))
       throw new Error(
-        'Source card already belongs to target stack as attachment.',
-      );
-
-    if (stack.unders.has(sourceCard))
-      throw new Error(
-        'Source card already belongs to target stack as an under.',
+        `Source card already belongs to target stack as ${
+          attachMode.value === 'under' ? 'an under' : 'attachment'
+        }.`,
       );
 
     removeCardFromStack(sourceCard);
 
-    stack.attachments.add(sourceCard);
+    targetSet(stack).add(sourceCard);
     sourceCard.stack = stack;
 
     cardToAttach.value = null;
@@ -328,27 +341,37 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
   function isValidAttachmentTarget(targetCard: BoardCard) {
     if (!isAttaching.value) return false;
 
+    const stack = targetCard.stack;
+    if (!stack || stack.primary !== targetCard) return false;
+
     if (cardToAttach.value === targetCard) return false;
 
-    if (targetCard.stack?.primary === cardToAttach.value) return false;
-
-    if (targetCard.stack?.attachments?.has(cardToAttach.value!)) return false;
-
-    if (targetCard.stack?.primary !== targetCard) return false;
-
-    if (targetCard.stack?.unders?.has(cardToAttach.value!)) return false;
+    // Moving between attachments and unders of the same stack is fine.
+    if (targetSet(stack).has(cardToAttach.value!)) return false;
 
     return true;
   }
 
+  /**
+   * Takes an attachment or under off its stack into a stack of its own. An
+   * under lands just below its old stack; an attachment at the board centre.
+   */
   function detach(card: BoardCard) {
-    if (card.stack?.primary === card) return;
+    const stack = card.stack;
+    if (!stack || stack.primary === card) return;
 
-    if (!card.stack?.attachments.has(card)) return;
-
-    card.stack.attachments.delete(card);
-    card.stack = undefined;
-    addStackByCard(card);
+    if (stack.attachments.delete(card)) {
+      card.stack = undefined;
+      addStackByCard(card);
+    } else if (stack.unders.delete(card)) {
+      card.stack = undefined;
+      addStackByCard(card);
+      // Through the store, so the position change is reactive.
+      stacks.value.at(-1)!.position = {
+        x: stack.position.x,
+        y: stack.position.y + UNDER_TAKE_OUT_OFFSET,
+      };
+    }
   }
 
   function clearStacks() {
@@ -443,6 +466,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     cancelAttaching,
     finishAttaching,
     isAttaching,
+    attachMode,
     isValidAttachmentTarget,
     detach,
   };

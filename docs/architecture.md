@@ -165,6 +165,9 @@ Rules the battlefield store enforces:
   left without its primary explodes, and each remaining card becomes its own stack.
 - A card can't be attached to itself, or to a stack it's already in.
 - Only a stack's primary card is a valid attachment target.
+- Attaching and putting under share one flow: `startAttaching(card, 'attach' | 'under')`, then tapping the target
+  stack's primary calls `finishAttaching`. A card can move between a stack's attachments and its unders.
+  `detach` takes either out into its own stack; a taken-out under lands below its old stack.
 - Every card is its own instance. `createBoardCard` builds one from Scryfall data with a fresh ID, and the
   Scryfall ID stays on `scryfallInfo.id`. Casting from On-deck or Add Card goes through `castCard`, which puts a
   new instance on the board, so casting the same card twice gives two independent cards. The On-deck history card

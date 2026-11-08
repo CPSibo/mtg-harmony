@@ -10,6 +10,19 @@
         @show-card-details="emits('showCardDetails', $event)"
       />
 
+      <!-- Cards under the primary peek out above it, newest on top. -->
+      <div class="unders">
+        <PlayAreaBoardCard
+          v-for="(card, index) in stack.unders"
+          :key="card.id"
+          :card="card"
+          class="under"
+          :style="`--index: ${index}`"
+          @show-card-details="emits('showCardDetails', card)"
+          @show-card-modifiers="emits('showCardModifiers', card)"
+        />
+      </div>
+
       <PlayAreaBoardCard
         class="primary-card"
         :card="stack.primary"
@@ -113,6 +126,23 @@ watch(myIsDragging, (value) => {
 .primary-card {
   position: relative;
   z-index: 1;
+}
+
+.unders {
+  position: absolute;
+  top: 0;
+  left: var(--actions-total-width);
+  z-index: 0;
+
+  > .board-card {
+    position: absolute;
+    top: calc(var(--h) * -0.12 * (var(--index) + 1));
+    z-index: calc(var(--index) * -1);
+  }
+
+  :deep(.modifiers) {
+    display: none;
+  }
 }
 
 .attachments {
