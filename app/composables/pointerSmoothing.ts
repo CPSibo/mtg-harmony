@@ -8,7 +8,7 @@ import type { Position } from '@vueuse/core';
  * larger is smoother but trails the pointer more. (Predicted pointer events
  * were tried and jittered badly around the cursor.)
  */
-export const MAX_POINTER_EASE_MS = 60;
+export const MAX_POINTER_EASE_MS = 30;
 
 export function isPointerEase(value: unknown): value is number {
   return (

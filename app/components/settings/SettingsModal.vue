@@ -98,7 +98,7 @@
 
           <UFormField
             label="Pointer smoothing"
-            description="Dragging and panning glide after the pointer instead of jumping between its updates. Higher is smoother but floatier. 0 to disable"
+            description="Eases dragging and panning. May make the app feel better if you have a high refresh rate screen. Probably feels worse for touch devices. 0 to disable."
           >
             <div class="flex items-center gap-3">
               <USlider
