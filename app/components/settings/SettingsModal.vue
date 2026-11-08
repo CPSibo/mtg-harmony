@@ -27,9 +27,16 @@
         <template #general>
           <UFormField
             label="Keep screen awake"
-            description="Turn off to allow the device to sleep as normal"
+            :description="
+              wakeLockSupported
+                ? 'Turn off to allow the device to sleep as normal'
+                : 'Not available in this browser'
+            "
           >
-            <USwitch v-model="wakeLockEnabled" />
+            <USwitch
+              v-model="wakeLockEnabled"
+              :disabled="!wakeLockSupported"
+            />
           </UFormField>
 
           <UFormField
@@ -108,6 +115,7 @@ import USelect from '@nuxt/ui/components/Select.vue';
 import USwitch from '@nuxt/ui/components/Switch.vue';
 import UTabs from '@nuxt/ui/components/Tabs.vue';
 import { useSettingsStore } from '~/stores/settings';
+import { useSupported } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
 import { ref } from 'vue';
 import type { SelectItem } from '@nuxt/ui';
@@ -118,6 +126,11 @@ const emit = defineEmits<{ close: [boolean] }>();
 
 const settingsStore = useSettingsStore();
 const { wakeLockEnabled, imagesEnabled } = storeToRefs(settingsStore);
+
+// The Wake Lock API needs a secure context (HTTPS or localhost).
+const wakeLockSupported = useSupported(
+  () => typeof navigator !== 'undefined' && 'wakeLock' in navigator,
+);
 
 const discordFetchStore = useDiscordFetcherStore();
 const { fetchCardCount, minQueuedCardCount, preloadImagesEnabled } =

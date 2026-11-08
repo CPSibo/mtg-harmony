@@ -24,6 +24,10 @@ import gotchas (`UIcon`, `$fetch`).
 `App.vue` is the whole page: the board, the corner buttons, the command palette, the Add Card window, and the
 confirmation dialogs. Settings and the confirmation dialogs are loaded lazily with `defineAsyncComponent`.
 
+`App.vue` also runs `useKeepScreenAwake`, which holds a screen wake lock while **Keep screen awake** is on and asks
+again when the page comes back into view (browsers drop it on hide). The Wake Lock API needs HTTPS; without it the
+switch is disabled.
+
 ## Folder layout
 
 ```text
