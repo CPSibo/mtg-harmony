@@ -83,6 +83,41 @@ test('the same card cast twice gives two separate cards', async ({ page }) => {
   await expect(boardCards).toHaveCount(2);
 });
 
+// #78: every cast card used to land on the same spot.
+test('cards cast in a row sit side by side in view', async ({ page }) => {
+  for (let i = 0; i < 3; i++) {
+    await page.getByRole('button', { name: 'On-deck' }).click();
+    await page.getByRole('button', { name: 'Next card' }).click();
+    await page.getByRole('button', { name: 'Cast to board' }).click();
+    await expect(page.locator('.board-card-stack')).toHaveCount(i + 1);
+  }
+  await expect(page.getByRole('button', { name: 'Next card' })).toBeHidden();
+
+  const viewport = page.viewportSize()!;
+  const boxes = await page
+    .locator('.board-card-stack .primary-card')
+    .evaluateAll((els) =>
+      els.map((el) => {
+        const r = el.getBoundingClientRect();
+        return { x: r.x, y: r.y, width: r.width, height: r.height };
+      }),
+    );
+  for (const [i, a] of boxes.entries()) {
+    expect(a.x).toBeGreaterThanOrEqual(0);
+    expect(a.y).toBeGreaterThanOrEqual(0);
+    expect(a.x + a.width).toBeLessThanOrEqual(viewport.width);
+    expect(a.y + a.height).toBeLessThanOrEqual(viewport.height);
+    for (const b of boxes.slice(i + 1)) {
+      const apart =
+        a.x + a.width <= b.x ||
+        b.x + b.width <= a.x ||
+        a.y + a.height <= b.y ||
+        b.y + b.height <= a.y;
+      expect(apart).toBe(true);
+    }
+  }
+});
+
 // #25: saves are debounced, so leaving the page must write the last change.
 test('a card cast just before a reload is still there', async ({ page }) => {
   await page.getByRole('button', { name: 'On-deck' }).click();

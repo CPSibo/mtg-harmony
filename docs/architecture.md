@@ -175,6 +175,10 @@ Rules the battlefield store enforces:
   Scryfall ID stays on `scryfallInfo.id`. Casting from On-deck or Add Card goes through `castCard`, which puts a
   new instance on the board, so casting the same card twice gives two independent cards. The On-deck card never
   goes on the board itself.
+- A cast card goes in a free spot in view (`findFreeSpot`, `placement.ts`): nearest the middle of the view, clear
+  of every stack by 16 px. With no free spot it goes in the middle of the view, on top. The board reports what it
+  shows (`setView`, in board pixels, minus a strip for the corner buttons) and each stack reports its rendered size
+  (`setStackSize`); neither is saved. Before the board reports a view, a cast card goes to `center`.
 - `copyCard(card, mode)` puts a copy in a new stack, 40 px down and right of the source, in front. `card` copies
   the card fresh, `counters` keeps its counters, face number and tapped state, and `stack` copies its whole stack
   (primary, attachments and unders, each with its state). Every copied card gets a new ID.

@@ -58,7 +58,8 @@ import PlayAreaBoardCard from '~/components/playArea/BoardCard.vue';
 import PlayAreaBoardCardStackActions from '~/components/playArea/BoardCardStackActions.vue';
 import { useBoardDraggable } from '~/composables/useScaledDraggable';
 import { storeToRefs } from 'pinia';
-import { useTemplateRef, watch } from 'vue';
+import { useResizeObserver } from '@vueuse/core';
+import { onUnmounted, useTemplateRef, watch } from 'vue';
 import type { Position } from '@vueuse/core';
 import { useBattlefieldStore } from '~/features/battlefield';
 import type { BoardCard, BoardCardStack } from '~/types/PlayArea';
@@ -97,6 +98,18 @@ const { style, isDragging: myIsDragging } = useBoardDraggable(stackEl, {
     battlefield.setStackPosition(props.stack, position);
   },
 });
+
+// Layout size, unaffected by the board's zoom, so in board pixels. New cards
+// are placed clear of it (#78).
+useResizeObserver(stackEl, () => {
+  const el = stackEl.value;
+  if (!el) return;
+  battlefield.setStackSize(props.stack.id, {
+    width: el.offsetWidth,
+    height: el.offsetHeight,
+  });
+});
+onUnmounted(() => battlefield.forgetStackSize(props.stack.id));
 
 watch(myIsDragging, (value) => {
   isDragging.value = value;

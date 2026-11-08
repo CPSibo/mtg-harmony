@@ -9,9 +9,10 @@ import type {
 } from '~/types/PlayArea';
 import type { ScryfallCard } from '~/types/Scryfall';
 import { randomUUID } from '~/utils/randomUUID';
-import type { Position } from '@vueuse/core';
+import type { ElementSize, Position } from '@vueuse/core';
 import { useEventLogStore } from '~/features/eventLog';
 import { copyBoardCard, createBoardCard } from './boardCard';
+import { findFreeSpot, type Rect } from './placement';
 
 /** How much of a card `copyCard` copies. */
 export type CopyMode = 'card' | 'counters' | 'stack';
@@ -26,6 +27,12 @@ const UNDER_TAKE_OUT_OFFSET = 240;
 const COPY_OFFSET = 40;
 
 const STORAGE_KEY = 'mtg-harmony_battlefield';
+
+/**
+ * A lone untapped card's stack, actions column included, in board pixels.
+ * Used for a stack the board hasn't measured yet.
+ */
+const NEW_STACK_SIZE: ElementSize = { width: 200, height: 250 };
 
 /** Fresh default state. A factory, so no store shares (and mutates) it. */
 function createDefaults(): Battlefield {
@@ -89,18 +96,56 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     center.value = value;
   }
 
+  /** What the board shows, in board pixels. Set by the board; not saved. */
+  const view = ref<Rect | null>(null);
+  function setView(value: Rect) {
+    view.value = value;
+  }
+
+  /** Each stack's rendered size, reported by the board. Not saved. */
+  const stackSizes = ref(new Map<string, ElementSize>());
+  function setStackSize(id: string, size: ElementSize) {
+    stackSizes.value.set(id, size);
+  }
+  function forgetStackSize(id: string) {
+    stackSizes.value.delete(id);
+  }
+  function stackSize(stack: BoardCardStack): ElementSize {
+    return stackSizes.value.get(stack.id) ?? NEW_STACK_SIZE;
+  }
+
+  /**
+   * Where a new stack goes: a free spot in view, else the middle of the view
+   * (on top of whatever is there), else the saved centre.
+   */
+  function newStackPosition(): Position {
+    const shown = view.value;
+    if (!shown) return { ...center.value };
+
+    const occupied = stacks.value.map((s) => ({
+      ...s.position,
+      ...stackSize(s),
+    }));
+    return (
+      findFreeSpot(shown, occupied, NEW_STACK_SIZE) ?? {
+        x: shown.x + (shown.width - NEW_STACK_SIZE.width) / 2,
+        y: shown.y + (shown.height - NEW_STACK_SIZE.height) / 2,
+      }
+    );
+  }
+
   const snapScale = ref<number>(defaults.snapScale);
   function setSnapScale(value: number) {
     snapScale.value = value;
   }
 
-  function addStackByCard(card: BoardCard) {
+  function addStackByCard(card: BoardCard, position = center.value) {
     const newStack: BoardCardStack = {
       id: randomUUID(),
       primary: card,
       attachments: new Set<BoardCard>(),
       unders: new Set<BoardCard>(),
-      position: { ...center.value },
+      position: { ...position },
     };
 
     card.stack = newStack;
@@ -113,13 +158,17 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
 
   /**
    * Puts a new instance of a Scryfall card on the board in its own stack and
-   * logs it: `cast` from On-deck, `added` through Add Card.
+   * logs it: `cast` from On-deck, `added` through Add Card. It goes in a
+   * free spot in view (#78).
    */
   function castCard(
     scryfallCard: ScryfallCard,
     how: 'cast' | 'added' = 'cast',
   ) {
-    const stack = addStackByCard(createBoardCard(scryfallCard));
+    const stack = addStackByCard(
+      createBoardCard(scryfallCard),
+      newStackPosition(),
+    );
     log.record(how, { card: stack.primary });
     return stack;
   }
@@ -478,6 +527,10 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     setStacks,
     addStackByCard,
     castCard,
+    setView,
+    setStackSize,
+    forgetStackSize,
+    stackSize,
     removeCard,
     clearBoard,
     copyCard,
