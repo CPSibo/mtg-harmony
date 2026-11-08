@@ -9,12 +9,23 @@
     @mouseup="onMouseUp"
     @mouseleave="onMouseLeave"
   >
+    <!-- The grid, outside the board's transform: a viewport-sized background
+         that follows the pan and zoom, so they never repaint a 5000 px layer. -->
+    <div
+      class="board-backdrop"
+      aria-hidden="true"
+      :style="backdropStyle"
+    />
     <div
       ref="board"
       class="board"
+      :class="{ moving: isDragging }"
       :style="style"
     >
-      <SharedGrid v-if="!!boardEl">
+      <div
+        v-if="!!boardEl"
+        class="relative size-full"
+      >
         <PlayAreaBoardCardStack
           v-for="stack in orderedStacks"
           :key="stack.id"
@@ -24,7 +35,7 @@
           @show-card-details="showCardDetails"
           @show-card-modifiers="showCardModifiers"
         />
-      </SharedGrid>
+      </div>
     </div>
   </div>
 
@@ -44,12 +55,18 @@
 import PlayAreaBoardCardStack from '~/components/playArea/BoardCardStack.vue';
 import PlayAreaCardDetails from '~/components/playArea/CardDetails.vue';
 import PlayAreaModifiersMenu from '~/components/playArea/ModifiersMenu.vue';
-import SharedGrid from '~/components/shared/Grid.vue';
 import { useBlockBrowserZoom } from '~/composables/useBlockBrowserZoom';
 import { usePanAndZoom } from '~/composables/usePanAndZoom';
 import { storeToRefs } from 'pinia';
 import { useWindowSize } from '@vueuse/core';
-import { onMounted, onUnmounted, ref, useTemplateRef, watchEffect } from 'vue';
+import {
+  computed,
+  onMounted,
+  onUnmounted,
+  ref,
+  useTemplateRef,
+  watchEffect,
+} from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import type { BoardCard } from '~/types/PlayArea';
 
@@ -85,6 +102,12 @@ const {
 });
 
 const anyCardIsDragging = ref(false);
+
+// CSS variables only: the backdrop's gradients scale and move in CSS.
+const backdropStyle = computed(
+  () =>
+    `--x: ${position.value.x}px; --y: ${position.value.y}px; --s: ${scale.value}`,
+);
 
 // Screen pixels at the view's edges that don't count as in view when placing
 // a new card: the top, for the corner buttons.
@@ -198,6 +221,39 @@ const showCardModifiers = (card: BoardCard) => {
   contain: strict; /* Disable CLS hints for children. */
 }
 
+.board-backdrop {
+  --cell: calc(40px * var(--s));
+  --line: color-mix(in oklab, var(--ui-border-inverted) 8%, transparent);
+  --stroke: calc(0.5px * var(--s));
+
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    /* Vignette over the whole board, darkest at its edges. */
+    radial-gradient(
+      circle calc(3500px * var(--s)) at center,
+      transparent,
+      rgb(0 0 0 / 0.65)
+    ),
+    /* A dot in the middle of each cell. */
+    radial-gradient(
+        circle calc(1.25px * var(--s)) at center,
+        var(--line) 99%,
+        transparent
+      ),
+    /* Cell lines along the top and left of each cell. */
+    linear-gradient(to right, var(--line) var(--stroke), transparent 0),
+    linear-gradient(to bottom, var(--line) var(--stroke), transparent 0);
+  background-size:
+    calc(5000px * var(--s)) calc(5000px * var(--s)),
+    var(--cell) var(--cell),
+    var(--cell) var(--cell),
+    var(--cell) var(--cell);
+  background-repeat: no-repeat, repeat, repeat, repeat;
+  background-position: var(--x) var(--y);
+}
+
 .board {
   position: absolute;
   transform-origin: 0 0;
@@ -205,5 +261,12 @@ const showCardModifiers = (card: BoardCard) => {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
+
+  /* Its own GPU layer while panning, so the compositor moves it without
+     repainting. Only then: a layer kept through a zoom would stay rastered
+     at the old scale and blur. */
+  &.moving {
+    will-change: transform;
+  }
 }
 </style>

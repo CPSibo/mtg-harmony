@@ -26,6 +26,10 @@ export function useBoardDraggable(
   let startPointerY = 0;
   let startX = 0;
   let startY = 0;
+  // How far the stack can go, in board pixels. Measured when a drag starts,
+  // not on every move: reading layout each move forces a layout per event.
+  let maxX = Infinity;
+  let maxY = Infinity;
 
   function clamp(val: number, min: number, max: number) {
     return Math.min(Math.max(val, min), max);
@@ -35,26 +39,18 @@ export function useBoardDraggable(
     return grid > 0 ? Math.round(val / grid) * grid : val;
   }
 
-  function getClampedPosition(rawX: number, rawY: number) {
+  function measureBounds() {
     const containerEl = toValue(containerElement);
     const dragEl = toValue(el) as HTMLElement | null | undefined;
-
-    if (!containerEl || !dragEl) return { x: rawX, y: rawY };
-
+    if (!containerEl || !dragEl) {
+      maxX = maxY = Infinity;
+      return;
+    }
     const containerRect = containerEl.getBoundingClientRect();
     const dragRect = dragEl.getBoundingClientRect();
-
     const sc = s();
-    const maxX = (containerRect.width - dragRect.width) / sc;
-    const maxY = (containerRect.height - dragRect.height) / sc;
-
-    const finalX = clamp(rawX, 0, Math.max(0, maxX));
-    const finalY = clamp(rawY, 0, Math.max(0, maxY));
-
-    return {
-      x: finalX,
-      y: finalY,
-    };
+    maxX = Math.max(0, (containerRect.width - dragRect.width) / sc);
+    maxY = Math.max(0, (containerRect.height - dragRect.height) / sc);
   }
 
   const drag = useDraggable(el, {
@@ -66,6 +62,7 @@ export function useBoardDraggable(
       startPointerY = event.clientY;
       startX = x.value;
       startY = y.value;
+      measureBounds();
       return rest.onStart?.(pos, event);
     },
 
@@ -79,9 +76,8 @@ export function useBoardDraggable(
         snap(),
       );
 
-      const clamped = getClampedPosition(rawX, rawY);
-      x.value = clamped.x;
-      y.value = clamped.y;
+      x.value = clamp(rawX, 0, maxX);
+      y.value = clamp(rawY, 0, maxY);
 
       rest.onMove?.(pos, event);
     },
@@ -92,7 +88,10 @@ export function useBoardDraggable(
     },
   });
 
-  const style = computed(() => `left: ${x.value}px; top: ${y.value}px;`);
+  // A transform, not left/top, so a move skips layout.
+  const style = computed(
+    () => `transform: translate(${x.value}px, ${y.value}px);`,
+  );
 
   return {
     ...drag,
