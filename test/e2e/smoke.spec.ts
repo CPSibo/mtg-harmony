@@ -299,3 +299,23 @@ test('the event log lists what happened and can cast a fetched card again', asyn
     page.locator('.board-card').getByRole('img', { name: card.name }),
   ).toHaveCount(2);
 });
+
+// #38: On-deck history now comes from the event log.
+test('Prev card goes back to a card On-deck showed, which can still be cast', async ({
+  page,
+}) => {
+  await page.getByRole('button', { name: 'On-deck' }).click();
+  const prev = page.getByRole('button', { name: 'Prev card' });
+  await page.getByRole('button', { name: 'Next card' }).click();
+  await expect(prev).toBeDisabled();
+  await page.getByRole('button', { name: 'Next card' }).click();
+  await expect(prev).toBeEnabled();
+
+  await prev.click();
+  await expect(prev).toBeDisabled();
+  await page.getByRole('button', { name: 'Cast to board' }).click();
+
+  await expect(
+    page.locator('.board-card').getByRole('img', { name: card.name }),
+  ).toBeVisible();
+});

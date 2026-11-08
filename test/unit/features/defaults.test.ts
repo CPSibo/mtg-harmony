@@ -24,12 +24,12 @@ describe('store defaults are not shared between instances', () => {
 
   it('discord fetcher', () => {
     const first = useDiscordFetcherStore();
-    first.cards.push(makeCard());
+    first.queue.push(makeCard());
 
     localStorage.clear();
     setActivePinia(createPinia());
     const second = useDiscordFetcherStore();
 
-    expect(second.cards).toEqual([]);
+    expect(second.queue).toEqual([]);
   });
 });

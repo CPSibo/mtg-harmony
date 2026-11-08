@@ -2,10 +2,11 @@ import { stringify } from 'devalue';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick } from 'vue';
+import { flushSaves } from '~/composables/useLocalStorage';
 import type { ScryfallCardResponse } from '~/composables/useScryfall';
 import { useDiscordFetcherStore } from '~/features/discordFetcher';
 import { useEventLogStore } from '~/features/eventLog';
-import { makeCard, makeScryfallCard } from '../fixtures/cards';
+import { makeScryfallCard } from '../fixtures/cards';
 
 const STORAGE_KEY = 'mtg-harmony_discordFetcher';
 
@@ -13,7 +14,8 @@ type FetchManyResult = ScryfallCardResponse | string;
 
 /**
  * What the mocked Scryfall yields. By default every call yields `n` new
- * cards; a test can replace this to return errors or throw.
+ * cards named "Card 1", "Card 2", … in fetch order; a test can replace this
+ * to return errors or throw.
  */
 let produce: (n: number) => FetchManyResult[];
 
@@ -31,9 +33,11 @@ vi.mock('~/composables/useScryfall', async (importOriginal) => ({
   useScryfall: () => ({ fetch: vi.fn(), fetchMany }),
 }));
 
-function cards(n: number): FetchManyResult[] {
+let fetchedSoFar = 0;
+
+function namedCards(n: number): FetchManyResult[] {
   return Array.from({ length: n }, () => ({
-    data: makeScryfallCard(),
+    data: makeScryfallCard({ name: `Card ${++fetchedSoFar}` }),
     date: new Date(),
   }));
 }
@@ -43,9 +47,17 @@ async function settle(store: ReturnType<typeof useDiscordFetcherStore>) {
   await vi.waitFor(() => expect(store.fetchingCards).toBe(false));
 }
 
+/** Names of the cards On-deck has shown, oldest first, from the log. */
+function shownNames() {
+  return useEventLogStore()
+    .entries.filter((e) => e.type === 'fetched')
+    .map((e) => ('card' in e ? e.card.name : ''));
+}
+
 describe('discord fetcher store', () => {
   beforeEach(() => {
-    produce = cards;
+    fetchedSoFar = 0;
+    produce = namedCards;
     fetchMany.mockClear();
     // Stop the image preloader from touching the network.
     vi.stubGlobal(
@@ -56,27 +68,8 @@ describe('discord fetcher store', () => {
     );
   });
 
-  // #36
-  describe('event log', () => {
-    it('logs each card once when it is first shown, not when prefetched', async () => {
-      const store = useDiscordFetcherStore();
-      const log = useEventLogStore();
-
-      await store.next();
-      await store.next();
-      store.prev();
-      await store.next();
-      await settle(store);
-
-      expect(log.entries.map((e) => e.type)).toEqual(['fetched', 'fetched']);
-      expect(
-        log.entries.map((e) => ('card' in e ? e.card.instanceId : '')),
-      ).toEqual([store.cards[0]!.id, store.cards[1]!.id]);
-    });
-  });
-
   describe('next', () => {
-    it('fetches a batch and shows its first card', async () => {
+    it('fetches a batch, shows its first card and queues the rest', async () => {
       const store = useDiscordFetcherStore();
 
       const result = await store.next();
@@ -84,9 +77,10 @@ describe('discord fetcher store', () => {
 
       expect(result).toEqual({ success: true });
       expect(fetchMany).toHaveBeenCalledExactlyOnceWith(10);
-      expect(store.cards).toHaveLength(10);
-      expect(store.activeIndex).toBe(0);
-      expect(store.card?.id).toBe(store.cards[0]!.id);
+      expect(store.card?.name).toBe('Card 1');
+      expect(store.queue.map((c) => c.name)).toEqual(
+        Array.from({ length: 9 }, (_, i) => `Card ${i + 2}`),
+      );
     });
 
     it('maps Scryfall cards to untapped board cards', async () => {
@@ -104,11 +98,11 @@ describe('discord fetcher store', () => {
         faceNumber: 0,
       });
       expect(store.card?.modifiers.size).toBe(0);
-      // #23: history cards get instance IDs, not the Scryfall ID.
+      // #23: On-deck cards get instance IDs, not the Scryfall ID.
       expect(store.card?.id).not.toBe(scryfallCard.id);
     });
 
-    it('moves through cards already fetched without fetching again', async () => {
+    it('takes queued cards without fetching again', async () => {
       const store = useDiscordFetcherStore();
       await store.next();
       await settle(store);
@@ -116,24 +110,25 @@ describe('discord fetcher store', () => {
       await store.next();
       await store.next();
 
-      expect(store.activeIndex).toBe(2);
+      expect(store.card?.name).toBe('Card 3');
+      expect(store.queue).toHaveLength(7);
       expect(fetchMany).toHaveBeenCalledOnce();
     });
 
-    it('tops up in the background when fewer than 3 cards are left ahead', async () => {
+    it('tops up in the background when fewer than 3 cards are queued', async () => {
       const store = useDiscordFetcherStore();
-      await store.next(); // Index 0 of 10: 9 ahead.
+      await store.next(); // 9 queued.
       await settle(store);
 
-      for (let i = 0; i < 6; i++) await store.next(); // Index 6: 3 ahead.
+      for (let i = 0; i < 6; i++) await store.next(); // 3 queued.
       expect(fetchMany).toHaveBeenCalledOnce();
 
-      await store.next(); // Index 7: 2 ahead.
+      await store.next(); // 2 queued.
       await settle(store);
 
       expect(fetchMany).toHaveBeenCalledTimes(2);
-      expect(store.cards).toHaveLength(20);
-      expect(store.activeIndex).toBe(7);
+      expect(store.queue).toHaveLength(12);
+      expect(store.card?.name).toBe('Card 8');
     });
 
     it('reports an error and stays put when no card arrives', async () => {
@@ -146,8 +141,8 @@ describe('discord fetcher store', () => {
         success: false,
         error: 'Could not fetch any cards: Scryfall is down; Scryfall is down',
       });
-      expect(store.activeIndex).toBe(-1);
       expect(store.card).toBeNull();
+      expect(shownNames()).toEqual([]);
     });
 
     it('reports a generic error when the fetch throws', async () => {
@@ -165,13 +160,13 @@ describe('discord fetcher store', () => {
 
   describe('fetchCards', () => {
     it('keeps the cards that arrived and reports the errors', async () => {
-      produce = () => [...cards(1), 'Card had no image', ...cards(1)];
+      produce = () => [...namedCards(1), 'Card had no image', ...namedCards(1)];
       const store = useDiscordFetcherStore();
 
       const result = await store.fetchCards(3);
 
       expect(result).toEqual({ success: true, error: 'Card had no image' });
-      expect(store.cards).toHaveLength(2);
+      expect(store.queue).toHaveLength(2);
     });
 
     it('shares one request between overlapping calls', async () => {
@@ -184,7 +179,7 @@ describe('discord fetcher store', () => {
 
       expect(fetchMany).toHaveBeenCalledExactlyOnceWith(2);
       expect(a).toEqual(b);
-      expect(store.cards).toHaveLength(2);
+      expect(store.queue).toHaveLength(2);
     });
 
     it('uses the batch size when no count is given', async () => {
@@ -196,20 +191,77 @@ describe('discord fetcher store', () => {
     });
   });
 
-  describe('prev and clear', () => {
-    it('steps back through history, stopping at the first card', async () => {
+  // #36, #38: what was shown lives in the event log.
+  describe('event log', () => {
+    it('logs a card when it is shown, not when it is queued', async () => {
       const store = useDiscordFetcherStore();
+
+      await store.next();
+      await store.next();
+      await settle(store);
+
+      expect(shownNames()).toEqual(['Card 1', 'Card 2']);
+      const entry = useEventLogStore().entries[0];
+      expect(entry && 'card' in entry && entry.card.instanceId).toBeTruthy();
+    });
+
+    it('does not log again when stepping back and forward', async () => {
+      const store = useDiscordFetcherStore();
+      await store.next();
+      await store.next();
+      await settle(store);
+
+      store.prev();
+      await store.next();
+
+      expect(shownNames()).toEqual(['Card 1', 'Card 2']);
+    });
+  });
+
+  describe('prev and clear', () => {
+    it('steps back through shown cards, stopping at the first', async () => {
+      const store = useDiscordFetcherStore();
+      await store.next();
       await store.next();
       await store.next();
       await settle(store);
       expect(store.canGoPrevious).toBe(true);
 
       store.prev();
-      expect(store.activeIndex).toBe(0);
+      expect(store.card?.name).toBe('Card 2');
+      store.prev();
+      expect(store.card?.name).toBe('Card 1');
       expect(store.canGoPrevious).toBe(false);
 
       store.prev();
-      expect(store.activeIndex).toBe(0);
+      expect(store.card?.name).toBe('Card 1');
+    });
+
+    it('a previous card can still be cast', async () => {
+      const store = useDiscordFetcherStore();
+      await store.next();
+      const first = store.card!;
+      await store.next();
+      await settle(store);
+
+      store.prev();
+
+      expect(store.card?.scryfallInfo.id).toBe(first.scryfallInfo.id);
+      expect(store.card?.image_uri).toBe(first.image_uri);
+    });
+
+    it('next after prev re-shows cards before taking a new one', async () => {
+      const store = useDiscordFetcherStore();
+      await store.next();
+      await store.next();
+      await settle(store);
+      store.prev();
+
+      await store.next();
+      expect(store.card?.name).toBe('Card 2');
+      await store.next();
+      expect(store.card?.name).toBe('Card 3');
+      expect(store.queue).toHaveLength(7);
     });
 
     it('hides the card on clear, and next shows the following unseen card', async () => {
@@ -219,10 +271,9 @@ describe('discord fetcher store', () => {
 
       store.clearCard();
       expect(store.card).toBeNull();
-      expect(store.activeIndex).toBe(0);
 
       await store.next();
-      expect(store.card?.id).toBe(store.cards[1]!.id);
+      expect(store.card?.name).toBe('Card 2');
     });
 
     it('prev after clear shows the previous card again', async () => {
@@ -234,11 +285,11 @@ describe('discord fetcher store', () => {
 
       store.prev();
 
-      expect(store.card?.id).toBe(store.cards[0]!.id);
+      expect(store.card?.name).toBe('Card 1');
     });
   });
 
-  it('preloads the image of the card after the current one', async () => {
+  it('preloads the image of the next queued card', async () => {
     const created: { src: string }[] = [];
     vi.stubGlobal(
       'Image',
@@ -254,25 +305,29 @@ describe('discord fetcher store', () => {
     await store.next();
     await settle(store);
 
-    expect(created.map((img) => img.src)).toContain(store.cards[1]!.image_uri);
+    expect(created.map((img) => img.src)).toContain(store.queue[0]!.image_uri);
   });
 
-  it('reset empties the history', async () => {
+  it('reset empties the queue and starts previous afresh, keeping the log', async () => {
     const store = useDiscordFetcherStore();
     await store.next();
+    await store.next();
     await settle(store);
-    store.clearCard();
 
     store.reset();
 
-    expect(store.cards).toEqual([]);
-    expect(store.activeIndex).toBe(-1);
+    expect(store.queue).toEqual([]);
     expect(store.card).toBeNull();
+    expect(store.canGoPrevious).toBe(false);
+    expect(shownNames()).toEqual(['Card 1', 'Card 2']);
+
+    await store.next();
+    await settle(store);
+    expect(store.canGoPrevious).toBe(false);
   });
 
   describe('persistence', () => {
-    // #24: only the history, position and cleared flag were watched, so a
-    // settings change on its own was never saved.
+    // #24: settings changes on their own must be saved.
     it.each([
       ['fetchCardCount', 4],
       ['minQueuedCardCount', 1],
@@ -290,14 +345,28 @@ describe('discord fetcher store', () => {
       expect(useDiscordFetcherStore()[name]).toBe(value);
     });
 
-    it('loads saved history and settings', () => {
-      const saved = [makeCard({ name: 'A' }), makeCard({ name: 'B' })];
+    it('keeps the shown card, the queue and the place in history over a reload', async () => {
+      const store = useDiscordFetcherStore();
+      await store.next();
+      await store.next();
+      await settle(store);
+      store.prev();
+      await nextTick();
+      flushSaves();
+
+      setActivePinia(createPinia());
+      const reloaded = useDiscordFetcherStore();
+
+      expect(reloaded.card?.name).toBe('Card 1');
+      expect(reloaded.queue).toHaveLength(8);
+      await reloaded.next();
+      expect(reloaded.card?.name).toBe('Card 2');
+    });
+
+    it('loads saved settings', () => {
       localStorage.setItem(
         STORAGE_KEY,
         stringify({
-          cards: saved,
-          activeIndex: 1,
-          cardCleared: false,
           fetchCardCount: 5,
           minQueuedCardCount: 2,
           preloadImagesEnabled: false,
@@ -306,7 +375,6 @@ describe('discord fetcher store', () => {
 
       const store = useDiscordFetcherStore();
 
-      expect(store.card?.name).toBe('B');
       expect(store.fetchCardCount).toBe(5);
       expect(store.minQueuedCardCount).toBe(2);
       expect(store.preloadImagesEnabled).toBe(false);

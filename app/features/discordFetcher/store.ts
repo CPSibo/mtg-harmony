@@ -1,4 +1,7 @@
-import { useEventLogStore } from '~/features/eventLog';
+import {
+  scryfallCardFromSnapshot,
+  useEventLogStore,
+} from '~/features/eventLog';
 import { useLocalStorage } from '~/composables/useLocalStorage';
 import { useScryfall } from '~/composables/useScryfall';
 import { defineStore } from 'pinia';
@@ -7,8 +10,10 @@ import { createBoardCard } from '~/features/battlefield';
 import type { BoardCard } from '~/types/PlayArea';
 
 export interface DiscordFetcherStore {
-  cards: BoardCard[];
-  activeIndex: number;
+  queue: BoardCard[];
+  current: BoardCard | null;
+  stepsBack: number;
+  historyStart: number;
   cardCleared: boolean;
   fetchCardCount: number;
   minQueuedCardCount: number;
@@ -20,8 +25,10 @@ const STORAGE_KEY = 'mtg-harmony_discordFetcher';
 /** Fresh default state. A factory, so no store shares (and mutates) it. */
 function createDefaults(): DiscordFetcherStore {
   return {
-    cards: [],
-    activeIndex: -1,
+    queue: [],
+    current: null,
+    stepsBack: 0,
+    historyStart: 0,
     cardCleared: false,
     fetchCardCount: 10,
     minQueuedCardCount: 3,
@@ -29,25 +36,33 @@ function createDefaults(): DiscordFetcherStore {
   };
 }
 
+/**
+ * On-deck's cards. Keeps only a queue of cards fetched ahead and the newest
+ * card shown. What was shown before lives in the event log (`fetched`
+ * entries), and "previous" steps back through those.
+ */
 export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
   const defaults = createDefaults();
 
   const scryfall = useScryfall();
+  const log = useEventLogStore();
 
   const fetchingCards = ref(false);
 
-  // Full history of every card ever fetched, in fetch order. Cards are only
-  // ever appended, never removed - "next"/"prev" just move activeIndex
-  // around within it.
-  const cards = ref<BoardCard[]>(defaults.cards);
+  /** Cards fetched ahead and not shown yet, next first. */
+  const queue = ref<BoardCard[]>(defaults.queue);
 
-  // Index of the currently displayed card within `cards`. -1 means nothing
-  // has ever been shown yet.
-  const activeIndex = ref(defaults.activeIndex);
+  /** The newest card On-deck has shown. */
+  const current = ref<BoardCard | null>(defaults.current);
 
-  // Masks the active card without losing our place in the history, so that
-  // clearCard() -> next() reveals the next *unseen* card rather than
-  // replaying something already seen. See `card` computed below.
+  /** How many cards back from `current` "previous" has gone. 0 is current. */
+  const stepsBack = ref(defaults.stepsBack);
+
+  /** "Previous" doesn't go back past this time (the last reset). */
+  const historyStart = ref(defaults.historyStart);
+
+  // Hides the card without losing our place, so clearCard() -> next() reveals
+  // the next *unseen* card rather than replaying one already seen.
   const cardCleared = ref(defaults.cardCleared);
 
   const fetchCardCount = ref(defaults.fetchCardCount);
@@ -56,12 +71,27 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
 
   const preloadImagesEnabled = ref(defaults.preloadImagesEnabled);
 
+  /** The cards shown since the last reset, oldest first, from the log. */
+  const shownHistory = computed(() =>
+    log.entries.flatMap((e) =>
+      e.type === 'fetched' && e.at >= historyStart.value ? [e.card] : [],
+    ),
+  );
+
   const card = computed<BoardCard | null>(() => {
     if (cardCleared.value) return null;
-    return cards.value[activeIndex.value] ?? null;
+    if (stepsBack.value === 0) return current.value;
+
+    const snapshot =
+      shownHistory.value[shownHistory.value.length - 1 - stepsBack.value];
+    return snapshot
+      ? createBoardCard(scryfallCardFromSnapshot(snapshot))
+      : null;
   });
 
-  const canGoPrevious = computed(() => activeIndex.value > 0);
+  const canGoPrevious = computed(
+    () => stepsBack.value + 1 < shownHistory.value.length,
+  );
 
   type FetchResult = { success: boolean; error?: string };
 
@@ -96,10 +126,10 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
           continue;
         }
 
-        cards.value.push(createBoardCard(result.data));
+        queue.value.push(createBoardCard(result.data));
       }
 
-      if (cards.value.length === 0) {
+      if (queue.value.length === 0) {
         return {
           success: false,
           error: errors.length
@@ -123,25 +153,21 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
   }
 
   /**
-   * Ensures there's a card available immediately after the active index. If
-   * one is already in the history, resolves immediately. Otherwise starts a
-   * fetch and resolves as soon as a card past activeIndex arrives, rather
-   * than waiting for the whole batch - the fetch keeps running in the
-   * background to fill the rest of the lookahead. Only resolves with a
-   * failure if the fetch ends without ever producing a usable card.
+   * Ensures the queue has a card. If it's empty, starts a fetch and resolves
+   * as soon as the first card arrives, rather than waiting for the whole
+   * batch - the fetch keeps running in the background to fill the queue.
+   * Only resolves with a failure if the fetch ends without a usable card.
    */
-  async function ensureNextCardAvailable(): Promise<FetchResult> {
-    if (activeIndex.value + 1 < cards.value.length) {
-      return { success: true };
-    }
+  async function ensureQueuedCard(): Promise<FetchResult> {
+    if (queue.value.length) return { success: true };
 
     const fetchPromise = fetchCards(fetchCardCount.value);
 
     return new Promise<FetchResult>((resolve) => {
       const stop = watch(
-        () => cards.value.length,
+        () => queue.value.length,
         (len) => {
-          if (activeIndex.value + 1 < len) {
+          if (len) {
             stop();
             resolve({ success: true });
           }
@@ -150,52 +176,34 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
 
       fetchPromise.then((result) => {
         stop();
-        // If we get here and there's still nothing past activeIndex, the
-        // fetch produced nothing usable - surface its error. Otherwise the
-        // watcher above already resolved this promise and this is a no-op.
-        if (activeIndex.value + 1 >= cards.value.length) {
-          resolve(result);
-        }
+        if (!queue.value.length) resolve(result);
       });
     });
   }
 
   /**
-   * Advances to the next card. If one is already in the history (either
-   * pre-fetched lookahead, or a card we've been to before via prev()), moves
-   * to it immediately. Otherwise awaits a fetch for just the first new card,
-   * same as before. If that drops the remaining lookahead below
-   * `minQueuedCardCount`, kicks off a background top-up fetch
-   * (fire-and-forget; `fetchCards` handles its own errors and re-entrancy,
-   * so nothing here needs to await or catch it).
+   * Shows the next card. After "previous", steps forward through cards
+   * already shown first. Otherwise takes the next queued card (awaiting a
+   * fetch if the queue is empty) and logs it. If that leaves fewer than
+   * `minQueuedCardCount` queued, tops up in the background (fire-and-forget;
+   * `fetchCards` handles its own errors and re-entrancy).
    */
-  /**
-   * Logs a card the first time On-deck shows it. Prefetched cards aren't
-   * logged, and stepping back and forth doesn't log again.
-   */
-  function logIfFirstShown(shown: BoardCard | undefined) {
-    if (!shown) return;
-    const log = useEventLogStore();
-    const seen = log.entries.some(
-      (e) => e.type === 'fetched' && e.card.instanceId === shown.id,
-    );
-    if (!seen) log.record('fetched', { card: shown });
-  }
-
   async function next(): Promise<FetchResult> {
-    const hasNextCard = activeIndex.value + 1 < cards.value.length;
-
-    if (!hasNextCard) {
-      const result = await ensureNextCardAvailable();
-      if (!result.success) return result;
+    if (stepsBack.value > 0) {
+      stepsBack.value--;
+      cardCleared.value = false;
+      return { success: true };
     }
 
-    cardCleared.value = false;
-    activeIndex.value++;
-    logIfFirstShown(cards.value[activeIndex.value]);
+    const result = await ensureQueuedCard();
+    if (!result.success) return result;
 
-    const remainingAhead = cards.value.length - 1 - activeIndex.value;
-    if (remainingAhead < minQueuedCardCount.value) {
+    const shown = queue.value.shift()!;
+    current.value = shown;
+    cardCleared.value = false;
+    log.record('fetched', { card: shown });
+
+    if (queue.value.length < minQueuedCardCount.value) {
       fetchCards(fetchCardCount.value);
     }
 
@@ -203,14 +211,15 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
   }
 
   /**
-   * Steps back to the previously shown card. No-ops once activeIndex is
-   * already 0 - callers should disable the "previous" control in that case
-   * (see `canGoPrevious`).
+   * Steps back to the card shown before. No-ops at the first card since the
+   * last reset - callers should disable the "previous" control then (see
+   * `canGoPrevious`).
    */
   function prev() {
-    if (activeIndex.value <= 0) return;
+    if (!canGoPrevious.value) return;
+    // From a cleared card, "previous" means the one before it.
+    stepsBack.value++;
     cardCleared.value = false;
-    activeIndex.value--;
   }
 
   const preloadedImageUrls = new Set<string>();
@@ -223,31 +232,33 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
   }
 
   watch(
-    [cards, activeIndex],
-    ([list, idx]) => {
-      if (!preloadImagesEnabled.value) return;
-
-      const next = list[idx + 1];
-      if (next?.image_uri) preloadImage(next.image_uri);
+    () => queue.value[0]?.image_uri,
+    (url) => {
+      if (preloadImagesEnabled.value && url) preloadImage(url);
     },
-    { deep: true, immediate: true },
+    { immediate: true },
   );
 
   function clearCard() {
     cardCleared.value = true;
   }
 
+  /** Empties the queue and the shown card. The log keeps what was shown. */
   function reset() {
+    queue.value = [];
+    current.value = null;
+    stepsBack.value = 0;
     cardCleared.value = false;
-    cards.value = [];
-    activeIndex.value = -1;
+    historyStart.value = Date.now();
   }
 
   function save() {
     const { save: persist } = useLocalStorage();
     persist(STORAGE_KEY, {
-      cards: cards.value,
-      activeIndex: activeIndex.value,
+      queue: queue.value,
+      current: current.value,
+      stepsBack: stepsBack.value,
+      historyStart: historyStart.value,
       cardCleared: cardCleared.value,
       fetchCardCount: fetchCardCount.value,
       minQueuedCardCount: minQueuedCardCount.value,
@@ -257,25 +268,30 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
 
   function load(): boolean {
     const { load: retrieve } = useLocalStorage();
-    const data = retrieve<DiscordFetcherStore>(STORAGE_KEY);
+    const data = retrieve<Partial<DiscordFetcherStore>>(STORAGE_KEY);
 
     if (!data) return false;
 
-    if (Array.isArray(data?.cards)) cards.value = data.cards;
+    if (Array.isArray(data.queue)) queue.value = data.queue;
 
-    if (typeof data?.activeIndex === 'number')
-      activeIndex.value = data.activeIndex;
+    if (data.current && typeof data.current === 'object')
+      current.value = data.current;
 
-    if (typeof data?.cardCleared === 'boolean')
+    if (typeof data.stepsBack === 'number') stepsBack.value = data.stepsBack;
+
+    if (typeof data.historyStart === 'number')
+      historyStart.value = data.historyStart;
+
+    if (typeof data.cardCleared === 'boolean')
       cardCleared.value = data.cardCleared;
 
-    if (typeof data?.fetchCardCount === 'number')
+    if (typeof data.fetchCardCount === 'number')
       fetchCardCount.value = data.fetchCardCount;
 
-    if (typeof data?.minQueuedCardCount === 'number')
+    if (typeof data.minQueuedCardCount === 'number')
       minQueuedCardCount.value = data.minQueuedCardCount;
 
-    if (typeof data?.preloadImagesEnabled === 'boolean')
+    if (typeof data.preloadImagesEnabled === 'boolean')
       preloadImagesEnabled.value = data.preloadImagesEnabled;
 
     return true;
@@ -285,8 +301,10 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
 
   watch(
     [
-      cards,
-      activeIndex,
+      queue,
+      current,
+      stepsBack,
+      historyStart,
       cardCleared,
       fetchCardCount,
       minQueuedCardCount,
@@ -304,8 +322,7 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
     reset,
 
     card,
-    cards,
-    activeIndex,
+    queue,
     canGoPrevious,
     fetchingCards,
     fetchCardCount,
