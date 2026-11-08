@@ -159,6 +159,7 @@ const rules = computed(() => symbolize(face.value.oracle_text));
 
 .rules .ms {
   font-size: 0.9em;
+  margin: 0 0.12em;
 }
 
 .pt {
