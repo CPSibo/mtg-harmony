@@ -7,24 +7,9 @@ export interface WidgetCommand {
   execute: () => void;
 }
 
-export interface WidgetSetting<T> {
-  id: string;
-  label: string;
-  description?: string;
-  type: 'boolean' | 'select' | 'number';
-  options?: { label: string; value: T }[];
-  value: () => T;
-  set: (v: T) => void;
-}
-
-/** A setting of any supported value type. */
-export type AnyWidgetSetting =
-  WidgetSetting<boolean> | WidgetSetting<number> | WidgetSetting<string>;
-
 export interface WidgetDefinition {
   id: string;
   label: string;
   icon: string;
   commands: WidgetCommand[];
-  settings?: AnyWidgetSetting[];
 }

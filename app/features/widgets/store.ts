@@ -58,11 +58,5 @@ export const useWidgetRegistry = defineStore('widgetRegistry', () => {
     })),
   );
 
-  const allSettings = computed(() =>
-    widgetObjects.value
-      .filter((w) => w.settings?.length)
-      .map((w) => ({ widget: w, settings: w.settings! })),
-  );
-
-  return { register, unregister, allCommands, paletteGroups, allSettings };
+  return { register, unregister, allCommands, paletteGroups };
 });

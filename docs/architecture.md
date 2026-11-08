@@ -82,8 +82,8 @@ The flow:
 4. The registry's `paletteGroups` turns every widget into a group of `UCommandPalette` items. The palette
    (`features/palette/components/FloatingBar.vue`) opens with `/` or the search button at the top of the screen.
 
-Add Card and the event log register widgets. The registry also exposes `allSettings`, but the settings dialog doesn't
-read it yet: it binds to the settings store directly.
+Add Card and the event log register widgets. Widgets have no settings of their own: the settings dialog binds to the
+stores directly.
 
 ## Stores and persistence
 

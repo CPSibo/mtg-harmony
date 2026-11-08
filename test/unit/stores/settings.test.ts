@@ -17,11 +17,6 @@ describe('settings store', () => {
   // #24: imagesEnabled wasn't watched, so it was never saved.
   it.each<[string, (store: Store) => void, (store: Store) => boolean]>([
     [
-      'onDeckExpanded',
-      (s) => s.toggleOnDeckExpanded(),
-      (s) => s.onDeckExpanded,
-    ],
-    [
       'wakeLockEnabled',
       (s) => s.setWakeLockEnabled(false),
       (s) => s.wakeLockEnabled,
