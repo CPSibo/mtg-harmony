@@ -217,6 +217,10 @@ copied, removed, board cleared and game markers. Moving, tapping and counters ar
   entries newest first (`filterEntries`), filtered by event type and part of a card name, and shows the newest 200
   matches. A fetched entry has **Cast**, which casts the card again from its snapshot
   (`scryfallCardFromSnapshot`), for example after an accidental refetch.
+- **Export** (in the log window, `ExportLogModal.vue`) copies or downloads cards from the log: **cards cast**
+  (`cast` and `added`) or **all cards fetched**, for this game, today or everything (`selectForExport`). Plain text
+  is one line per card with local times; CSV has `time,event,card,scryfall_url,game` with UTC ISO times
+  (`exportEntries`).
 - The log keeps 30 days and at most 5000 entries (`MAX_AGE_MS`, `MAX_ENTRIES`), trimmed on load and on each
   record.
 

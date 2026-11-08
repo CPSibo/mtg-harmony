@@ -13,3 +13,10 @@ export { default as EventLogWidgetComponent } from './components/EventLogWidgetC
 export { default as EventLogWindow } from './components/EventLogWindow.vue';
 export { IDLE_PROMPT_AFTER_MS, shouldOfferNewGame } from './idle';
 export { default as NewGamePrompt } from './components/NewGamePrompt.vue';
+export {
+  exportEntries,
+  selectForExport,
+  type ExportCards,
+  type ExportFormat,
+  type ExportRange,
+} from './export';
