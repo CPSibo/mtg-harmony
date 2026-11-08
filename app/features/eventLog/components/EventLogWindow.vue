@@ -23,7 +23,17 @@
           aria-label="Filter by event"
           class="min-w-44"
         />
+        <UButton
+          icon="i-lucide-share"
+          color="neutral"
+          variant="outline"
+          @click="exportOpen = true"
+        >
+          Export
+        </UButton>
       </div>
+
+      <ExportLogModal v-model:open="exportOpen" />
 
       <p
         v-if="!shown.length"
@@ -99,6 +109,7 @@ import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
 import { useToast } from '@nuxt/ui/composables';
 import { refDebounced } from '@vueuse/core';
 import { computed, ref } from 'vue';
+import ExportLogModal from './ExportLogModal.vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import {
   EVENT_LABELS,
@@ -118,6 +129,7 @@ const log = useEventLogStore();
 const battlefield = useBattlefieldStore();
 const toast = useToast();
 
+const exportOpen = ref(false);
 const name = ref('');
 const nameDebounced = refDebounced(name, 200);
 const types = ref<EventType[]>([]);

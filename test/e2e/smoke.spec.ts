@@ -391,3 +391,45 @@ test.describe('after 2 hours idle', () => {
     });
   });
 });
+
+// #40
+test.describe('exporting the log', () => {
+  test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
+
+  test('downloads CSV and copies a plain list of the cards cast', async ({
+    page,
+  }) => {
+    await page.getByRole('button', { name: 'On-deck' }).click();
+    await page.getByRole('button', { name: 'Next card' }).click();
+    await page.getByRole('button', { name: 'Cast to board' }).click();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('button', { name: 'Next card' })).toBeHidden();
+
+    await page.getByRole('button', { name: 'Open menu' }).click();
+    await page.getByRole('menuitem', { name: 'Event log' }).click();
+    await page
+      .getByRole('dialog', { name: 'Event log' })
+      .getByRole('button', { name: 'Export' })
+      .click();
+    const dialog = page.getByRole('dialog', { name: 'Export log' });
+    await expect(dialog.getByText('1 card')).toBeVisible();
+
+    await dialog.getByRole('radio', { name: 'CSV' }).check();
+    const downloading = page.waitForEvent('download');
+    await dialog.getByRole('button', { name: 'Download' }).click();
+    const download = await downloading;
+    expect(download.suggestedFilename()).toMatch(
+      /^mtg-harmony-cast-game-.*\.csv$/,
+    );
+    const { readFile } = await import('node:fs/promises');
+    const csv = await readFile((await download.path())!, 'utf8');
+    expect(csv).toContain('time,event,card,scryfall_url,game');
+    expect(csv).toContain(`,cast,${card.name},${card.scryfall_uri},`);
+
+    await dialog.getByRole('radio', { name: 'Plain text' }).check();
+    await dialog.getByRole('button', { name: 'Copy' }).click();
+    const copied = await page.evaluate('navigator.clipboard.readText()');
+    // Windows' clipboard turns \n into \r\n.
+    expect(copied).toMatch(/^\d\d:\d\d {2}Cast {2}Smoke Test Ooze\r?\n$/);
+  });
+});
