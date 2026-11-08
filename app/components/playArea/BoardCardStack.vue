@@ -4,6 +4,22 @@
     :style="style"
     class="board-card-stack origin-top-left absolute"
   >
+    <!-- Cards under the primary peek out above it, newest on top. -->
+    <div
+      class="unders"
+      :class="{ 'primary-tapped': stack.primary.tapped }"
+    >
+      <PlayAreaBoardCard
+        v-for="(card, index) in stack.unders"
+        :key="card.id"
+        :card="card"
+        class="under"
+        :style="`--index: ${index}`"
+        @show-card-details="emits('showCardDetails', card)"
+        @show-card-modifiers="emits('showCardModifiers', card)"
+      />
+    </div>
+
     <div class="primary-card-wrapper flex flex-row">
       <PlayAreaBoardCardStackActions
         :stack="stack"
@@ -104,6 +120,8 @@ watch(myIsDragging, (value) => {
     var(--actions-width) + var(--actions-padding-right)
   );
 
+  isolation: isolate;
+
   .primary-card-wrapper {
     position: relative;
     z-index: 1;
@@ -113,6 +131,31 @@ watch(myIsDragging, (value) => {
 .primary-card {
   position: relative;
   z-index: 1;
+}
+
+/* Behind the primary and the attachments, centred on the primary's width. */
+.unders {
+  position: absolute;
+  top: 0;
+  left: var(--actions-total-width);
+  width: var(--w);
+  z-index: -1;
+
+  &.primary-tapped {
+    width: var(--h);
+  }
+
+  > .board-card {
+    position: absolute;
+    left: 50%;
+    translate: -50% 0;
+    top: calc(var(--h) * -0.12 * (var(--index) + 1));
+    z-index: calc(var(--index) * -1);
+  }
+
+  :deep(.modifiers) {
+    display: none;
+  }
 }
 
 .attachments {

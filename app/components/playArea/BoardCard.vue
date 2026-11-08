@@ -30,7 +30,11 @@
           class="attach-overlay text-5xl"
         >
           <UIcon
-            name="i-lucide-link"
+            :name="
+              battlefield.attachMode === 'under'
+                ? 'i-lucide-layers'
+                : 'i-lucide-link'
+            "
             class="text-primary"
           />
         </div>

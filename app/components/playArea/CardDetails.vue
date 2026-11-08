@@ -60,7 +60,7 @@
           Detach all
         </UButton>
         <UButton
-          v-else-if="!isAttached"
+          v-else-if="!isAttached && !isUnder"
           icon="i-lucide-link"
           color="neutral"
           variant="ghost"
@@ -70,7 +70,7 @@
           Attach to...
         </UButton>
         <UButton
-          v-else
+          v-else-if="isAttached"
           icon="i-lucide-unlink"
           color="neutral"
           variant="ghost"
@@ -78,6 +78,26 @@
           @click="tryDetach"
         >
           Detach
+        </UButton>
+        <UButton
+          v-if="isUnder"
+          icon="i-lucide-arrow-up-from-line"
+          color="neutral"
+          variant="ghost"
+          size="xl"
+          @click="tryDetach"
+        >
+          Take out
+        </UButton>
+        <UButton
+          v-else
+          icon="i-lucide-layers"
+          color="neutral"
+          variant="ghost"
+          size="xl"
+          @click="startPuttingUnder"
+        >
+          Put under...
         </UButton>
 
         <UDropdownMenu
@@ -192,7 +212,8 @@ const hasAttachments = computed(() => {
 
   if (props.card.stack.primary !== props.card) return false;
 
-  if (!props.card.stack.attachments?.size) return false;
+  if (!props.card.stack.attachments.size && !props.card.stack.unders.size)
+    return false;
 
   return true;
 });
@@ -202,6 +223,13 @@ const isAttached = computed(() => {
 
   return props.card.stack.attachments.has(props.card);
 });
+
+const isUnder = computed(() => !!props.card?.stack?.unders.has(props.card));
+
+const startPuttingUnder = () => {
+  battlefield.startAttaching(props.card!, 'under');
+  open.value = false;
+};
 
 const startAttaching = () => {
   battlefield.startAttaching(props.card!);

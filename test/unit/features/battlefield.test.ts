@@ -551,3 +551,75 @@ describe('copying cards', () => {
     expect(board.stacks).toHaveLength(2);
   });
 });
+
+// #34
+describe('unders', () => {
+  it('puts a board card under another stack', () => {
+    const board = useBattlefieldStore();
+    const host = board.addStackByCard(makeCard({ name: 'Host' }));
+    const exiled = makeCard({ name: 'Exiled' });
+    board.addStackByCard(exiled);
+
+    board.startAttaching(exiled, 'under');
+    expect(board.attachMode).toBe('under');
+    board.finishAttaching(board.stacks[0]!);
+
+    expect(names(board.stacks)).toEqual(['Host']);
+    expect([...board.stacks[0]!.unders].map((c) => c.name)).toEqual(['Exiled']);
+    expect(board.stacks[0]!.attachments.size).toBe(0);
+    expect(exiled.stack).toStrictEqual(host);
+    expect(board.isAttaching).toBe(false);
+  });
+
+  it('attaches by default', () => {
+    const board = boardWithAttachments(1);
+
+    expect(board.stacks[0]!.attachments.size).toBe(1);
+    expect(board.stacks[0]!.unders.size).toBe(0);
+  });
+
+  it('can move an attachment under its own stack', () => {
+    const board = boardWithAttachments(1);
+    const aura = [...board.stacks[0]!.attachments][0]!;
+
+    board.startAttaching(aura, 'under');
+    expect(board.isValidAttachmentTarget(board.stacks[0]!.primary)).toBe(true);
+    board.finishAttaching(board.stacks[0]!);
+
+    expect(board.stacks[0]!.attachments.size).toBe(0);
+    expect(board.stacks[0]!.unders.size).toBe(1);
+  });
+
+  it('does not put a card under a stack it is already under', () => {
+    const board = boardWithUnders(1);
+    const under = [...board.stacks[0]!.unders][0]!;
+
+    board.startAttaching(under, 'under');
+
+    expect(board.isValidAttachmentTarget(board.stacks[0]!.primary)).toBe(false);
+  });
+
+  it('takes an under out to its own stack below the host', () => {
+    const board = boardWithUnders(2);
+    const host = board.stacks[0]!;
+    host.position = { x: 300, y: 300 };
+    const under = [...host.unders][0]!;
+
+    board.detach(under);
+
+    expect(host.unders.size).toBe(1);
+    expect(names(board.stacks)).toEqual(['Host', 'Under 0']);
+    expect(under.stack).toStrictEqual(board.stacks[1]);
+    expect(board.stacks[1]!.position.y).toBeGreaterThan(300);
+  });
+
+  it('removes an under from the board', () => {
+    const board = boardWithUnders(1);
+    const under = [...board.stacks[0]!.unders][0]!;
+
+    board.removeCardFromStack(under);
+
+    expect(board.stacks[0]!.unders.size).toBe(0);
+    expect(board.stacks).toHaveLength(1);
+  });
+});
