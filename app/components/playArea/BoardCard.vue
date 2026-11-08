@@ -5,7 +5,12 @@
     :class="{ tapped: card.tapped }"
   >
     <div
-      class="card-image-wrapper cursor-pointer border-slate-600 rounded-lg hover:border-primary-800"
+      class="card-image-wrapper cursor-pointer rounded-lg"
+      :class="
+        settings.cardOutlineEnabled
+          ? 'border-slate-600 hover:border-primary-800'
+          : 'border-transparent'
+      "
     >
       <div
         ref="cardImageSection"

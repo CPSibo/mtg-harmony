@@ -91,13 +91,9 @@
 
           <UFormField
             label="Card outline"
-            description="Show an outline around cards to help visibility. Selected cards always have an outline"
+            description="Show an outline around cards on the board, which lights up on hover"
           >
-            <USelect
-              v-model="cardOutline"
-              :items="cardOutlines"
-              class="w-1/2 max-w-full"
-            />
+            <USwitch v-model="cardOutlineEnabled" />
           </UFormField>
         </template>
       </UTabs>
@@ -111,21 +107,19 @@ import UFormField from '@nuxt/ui/components/FormField.vue';
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
 import UInputNumber from '@nuxt/ui/components/InputNumber.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
-import USelect from '@nuxt/ui/components/Select.vue';
 import USwitch from '@nuxt/ui/components/Switch.vue';
 import UTabs from '@nuxt/ui/components/Tabs.vue';
 import { useSettingsStore } from '~/stores/settings';
 import { useSupported } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
-import { ref } from 'vue';
-import type { SelectItem } from '@nuxt/ui';
 import { useBattlefieldStore } from '~/features/battlefield';
 import { useDiscordFetcherStore } from '~/features/discordFetcher';
 
 const emit = defineEmits<{ close: [boolean] }>();
 
 const settingsStore = useSettingsStore();
-const { wakeLockEnabled, imagesEnabled } = storeToRefs(settingsStore);
+const { wakeLockEnabled, imagesEnabled, cardOutlineEnabled } =
+  storeToRefs(settingsStore);
 
 // The Wake Lock API needs a secure context (HTTPS or localhost).
 const wakeLockSupported = useSupported(
@@ -138,22 +132,6 @@ const { fetchCardCount, minQueuedCardCount, preloadImagesEnabled } =
 
 const battlefieldStore = useBattlefieldStore();
 const { snapScale } = storeToRefs(battlefieldStore);
-
-const cardOutline = ref('never');
-const cardOutlines = ref<SelectItem[]>([
-  {
-    label: 'Never',
-    value: 'never',
-  },
-  {
-    label: 'Hover',
-    value: 'hover',
-  },
-  {
-    label: 'Always',
-    value: 'always',
-  },
-]);
 
 const items = [
   {
