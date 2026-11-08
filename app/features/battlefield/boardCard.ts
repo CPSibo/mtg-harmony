@@ -1,6 +1,6 @@
 import { pickImageUri } from '~/composables/useScryfall';
 import type { BoardCard, BoardCardModifier } from '~/types/PlayArea';
-import type { ScryfallCard } from '~/types/Scryfall';
+import type { ScryfallCard, ScryfallImageUris } from '~/types/Scryfall';
 import { randomUUID } from '~/utils/randomUUID';
 import { markRaw } from 'vue';
 
@@ -21,9 +21,9 @@ export function cardData(card: ScryfallCard): ScryfallCard {
         oracle_text: face.oracle_text,
         power: face.power,
         toughness: face.toughness,
+        image_uris: images(face.image_uris),
       }),
     );
-  const images = card.image_uris;
   const data = pick({
     id: card.id,
     name: card.name,
@@ -34,18 +34,24 @@ export function cardData(card: ScryfallCard): ScryfallCard {
     toughness: card.toughness,
     card_faces: card.card_faces && Object.freeze(card.card_faces.map(front)),
     image_status: card.image_status,
-    image_uris:
-      images &&
-      Object.freeze(
-        pick({
-          border_crop: images.border_crop,
-          normal: images.normal,
-          small: images.small,
-        }),
-      ),
+    image_uris: images(card.image_uris),
     scryfall_uri: card.scryfall_uri,
   }) as ScryfallCard;
   return Object.freeze(markRaw(data));
+}
+
+/** The image sizes the app uses, frozen. */
+function images(uris: ScryfallImageUris | undefined) {
+  return (
+    uris &&
+    Object.freeze(
+      pick({
+        border_crop: uris.border_crop,
+        normal: uris.normal,
+        small: uris.small,
+      }),
+    )
+  );
 }
 
 /** `value` without its undefined fields, so absent stays absent. */

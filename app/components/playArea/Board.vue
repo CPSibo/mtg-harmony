@@ -53,14 +53,13 @@
 
 <script setup lang="ts">
 import PlayAreaBoardCardStack from '~/components/playArea/BoardCardStack.vue';
-import PlayAreaCardDetails from '~/components/playArea/CardDetails.vue';
-import PlayAreaModifiersMenu from '~/components/playArea/ModifiersMenu.vue';
 import { useBlockBrowserZoom } from '~/composables/useBlockBrowserZoom';
 import { usePanAndZoom } from '~/composables/usePanAndZoom';
 import { storeToRefs } from 'pinia';
 import { useWindowSize } from '@vueuse/core';
 import {
   computed,
+  defineAsyncComponent,
   onMounted,
   onUnmounted,
   ref,
@@ -70,6 +69,18 @@ import {
 import { useBattlefieldStore } from '~/features/battlefield';
 import { useSettingsStore } from '~/stores/settings';
 import type { BoardCard } from '~/types/PlayArea';
+
+// Card details and modifiers (with the number input) load when the browser is
+// idle or on first use, so they stay out of the startup bundle.
+const loadCardDetails = () => import('~/components/playArea/CardDetails.vue');
+const loadModifiersMenu = () =>
+  import('~/components/playArea/ModifiersMenu.vue');
+const PlayAreaCardDetails = defineAsyncComponent(loadCardDetails);
+const PlayAreaModifiersMenu = defineAsyncComponent(loadModifiersMenu);
+window.requestIdleCallback?.(() => {
+  void loadCardDetails();
+  void loadModifiersMenu();
+});
 
 const battlefield = useBattlefieldStore();
 const settings = useSettingsStore();

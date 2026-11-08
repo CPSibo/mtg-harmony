@@ -67,6 +67,32 @@ describe('createBoardCard', () => {
     expect(Object.isFrozen(card.scryfallInfo)).toBe(true);
   });
 
+  it("keeps each face's images and shows the front of a double-faced card", () => {
+    const scryfallCard = makeScryfallCard({
+      image_uris: undefined,
+      card_faces: [
+        {
+          name: 'Front',
+          image_uris: { border_crop: 'fb', normal: 'fn', small: 'fs' },
+        },
+        { name: 'Back', image_uris: { border_crop: 'bb' } },
+      ],
+    });
+    (scryfallCard.card_faces![0]!.image_uris as Record<string, string>).png =
+      'p';
+
+    const card = createBoardCard(scryfallCard);
+
+    expect(card.image_uri).toBe('fb');
+    expect(card.scryfallInfo.card_faces).toEqual([
+      {
+        name: 'Front',
+        image_uris: { border_crop: 'fb', normal: 'fn', small: 'fs' },
+      },
+      { name: 'Back', image_uris: { border_crop: 'bb' } },
+    ]);
+  });
+
   it('leaves image_uri empty when the card has no image', () => {
     const card = createBoardCard(makeScryfallCard({ image_uris: undefined }));
 

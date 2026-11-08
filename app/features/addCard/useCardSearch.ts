@@ -1,4 +1,5 @@
-import { ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import { ref, shallowRef, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import { cardData } from '~/features/battlefield';
 import type { ScryfallCardSearchResponse } from '~/composables/useScryfall';
 import type { ScryfallCard } from '~/types/Scryfall';
 
@@ -13,7 +14,9 @@ export type CardSearchStatus = 'idle' | 'pending' | 'success' | 'error';
  * Debouncing is left to the caller.
  */
 export function useCardSearch(term: MaybeRefOrGetter<string>) {
-  const cards = ref<ScryfallCard[]>([]);
+  // Shallow and trimmed: up to 175 full Scryfall cards per page, replaced
+  // whole and never changed in place.
+  const cards = shallowRef<readonly ScryfallCard[]>([]);
   const status = ref<CardSearchStatus>('idle');
   let inFlight: AbortController | undefined;
 
@@ -49,7 +52,7 @@ export function useCardSearch(term: MaybeRefOrGetter<string>) {
 
         const body = (await response.json()) as ScryfallCardSearchResponse;
         if (abort.signal.aborted) return;
-        cards.value = body.data ?? [];
+        cards.value = (body.data ?? []).map(cardData);
         status.value = 'success';
       } catch (ex) {
         if (abort.signal.aborted) return;

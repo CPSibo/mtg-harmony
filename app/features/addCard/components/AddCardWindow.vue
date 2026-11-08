@@ -44,6 +44,7 @@ import { refDebounced } from '@vueuse/core';
 import { computed, ref } from 'vue';
 import type { CommandPaletteItem } from '@nuxt/ui';
 import { useAddCard } from '..';
+import { pickImageUri } from '~/composables/useScryfall';
 import { useBattlefieldStore } from '~/features/battlefield';
 import { useSettingsStore } from '~/stores/settings';
 import { useCardSearch } from '../useCardSearch';
@@ -70,11 +71,7 @@ const mappedCards = computed(() => {
       avatar: !settings.imagesEnabled
         ? undefined
         : {
-            src:
-              card.image_uris?.border_crop ||
-              card.image_uris?.normal ||
-              card.image_uris?.small ||
-              '',
+            src: pickImageUri(card) ?? '',
             loading: 'lazy' as const,
           },
     })) || []

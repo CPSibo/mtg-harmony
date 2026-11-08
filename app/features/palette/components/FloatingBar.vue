@@ -38,12 +38,17 @@
 
 <script setup lang="ts">
 import UButton from '@nuxt/ui/components/Button.vue';
-import UCommandPalette from '@nuxt/ui/components/CommandPalette.vue';
 import UKbd from '@nuxt/ui/components/Kbd.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
 import { defineShortcuts } from '@nuxt/ui/composables';
-import { computed, ref } from 'vue';
+import { computed, defineAsyncComponent, ref } from 'vue';
 import { useWidgetRegistry } from '~/features/widgets';
+
+// The palette (with fuse.js and a virtualizer) loads when the browser is
+// idle or on first open, so it stays out of the startup bundle.
+const loadPalette = () => import('@nuxt/ui/components/CommandPalette.vue');
+const UCommandPalette = defineAsyncComponent(loadPalette);
+window.requestIdleCallback?.(() => void loadPalette());
 
 const open = defineModel<boolean>('open');
 
