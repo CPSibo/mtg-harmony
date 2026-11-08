@@ -93,8 +93,9 @@ watch([…state], save, { deep }); // On every change
 - `load()` checks every field's type before using it, so stale or hand-edited storage can't break the app.
 - Stores build their defaults from a `createDefaults()` factory where the defaults hold objects or arrays, so no
   two store instances share them.
-- `reset()` returns a store to its defaults. `useReset()` chains these into the menu's three levels: **clear
-  board** (battlefield), **clear session** (plus On-deck's queue and shown card) and **reset all data** (plus settings).
+- `reset()` returns a store to its defaults. `useReset()` builds the menu's three levels from these: **clear
+  board** (battlefield), **clear session** (plus On-deck's queue and shown card) and **reset all data** (plus
+  settings). Each shows one toast and starts a new game in the event log.
 
 | Key                          | Store                    | Holds                                     |
 | ---------------------------- | ------------------------ | ----------------------------------------- |
@@ -206,6 +207,11 @@ copied, removed, board cleared and game markers. Moving, tapping and counters ar
   Internal moves (`removeCardFromStack`, `explodeStack`, `detach`) aren't logged.
 
 - `startNewGame(reason)` switches to a new game ID and records a `gameMarker`. A refresh never ends a game.
+- The menu's **Clear board**, **Clear session** and **Reset all data** (`useReset`) each start a new game, so one
+  marker per action. None of them clears the log.
+- After 2 hours without events (`IDLE_PROMPT_AFTER_MS`), `NewGamePrompt` offers a new game when the app opens or
+  its tab comes back into view (`shouldOfferNewGame`). **New game** does what Clear session does, with the reason
+  `idlePrompt`. Closing it any other way dismisses the offer until there's new activity; the dismissal is saved.
 - The **Event log** window (`EventLogWindow.vue`) opens from the palette (`e`, then `l`) or the menu. It lists
   entries newest first (`filterEntries`), filtered by event type and part of a card name, and shows the newest 200
   matches. A fetched entry has **Cast**, which casts the card again from its snapshot

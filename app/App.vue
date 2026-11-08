@@ -21,6 +21,7 @@
 
       <EventLogWidgetComponent />
       <EventLogWindow />
+      <NewGamePrompt />
 
       <FloatingBar />
     </UMain>
@@ -41,7 +42,11 @@ import {
   removeRetiredStorage,
 } from '~/composables/useLocalStorage';
 import { AddCardWidgetComponent, AddCardWindow } from '~/features/addCard';
-import { EventLogWidgetComponent, EventLogWindow } from '~/features/eventLog';
+import {
+  EventLogWidgetComponent,
+  EventLogWindow,
+  NewGamePrompt,
+} from '~/features/eventLog';
 import { FloatingBar } from '~/features/palette';
 import { useInputModeStore } from '~/stores/inputMode';
 

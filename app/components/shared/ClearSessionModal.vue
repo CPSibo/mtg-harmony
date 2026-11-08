@@ -22,9 +22,10 @@
     <template #body>
       <p>This will remove:</p>
       <ul>
-        <li>All cards</li>
-        <li>All history</li>
+        <li>All cards on the board</li>
+        <li>The On-deck card and the cards fetched ahead</li>
       </ul>
+      <p>The event log keeps everything and marks a new game.</p>
     </template>
 
     <template #footer>

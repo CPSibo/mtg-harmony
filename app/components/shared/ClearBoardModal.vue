@@ -22,8 +22,9 @@
     <template #body>
       <p>This will remove:</p>
       <ul>
-        <li>All cards</li>
+        <li>All cards on the board</li>
       </ul>
+      <p>The event log keeps everything and marks a new game.</p>
     </template>
 
     <template #footer>

@@ -23,9 +23,10 @@
       <p>This will remove:</p>
       <ul>
         <li>All cards on the board</li>
-        <li>All history</li>
+        <li>The On-deck card and the cards fetched ahead</li>
         <li>All settings</li>
       </ul>
+      <p>The event log keeps everything and marks a new game.</p>
     </template>
 
     <template #footer>

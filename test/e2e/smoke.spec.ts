@@ -319,3 +319,54 @@ test('Prev card goes back to a card On-deck showed, which can still be cast', as
     page.locator('.board-card').getByRole('img', { name: card.name }),
   ).toBeVisible();
 });
+
+// #39
+test.describe('after 2 hours idle', () => {
+  test.beforeEach(async ({ page }) => {
+    // A log whose last event is 3 hours old, then reload so the app sees it.
+    await page.evaluate(() => {
+      const at = Date.now() - 3 * 60 * 60 * 1000;
+      const entry = {
+        id: 'e1',
+        at,
+        type: 'boardCleared',
+        gameId: 'g1',
+      };
+      // devalue's format for { entries: [entry], gameId: 'g1' }
+      localStorage.setItem(
+        'mtg-harmony_eventLog',
+        JSON.stringify([
+          { entries: 1, gameId: 6 },
+          [2],
+          { id: 3, at: 4, type: 5, gameId: 6 },
+          entry.id,
+          entry.at,
+          entry.type,
+          entry.gameId,
+        ]),
+      );
+    });
+    await page.reload();
+  });
+
+  test('offers a new game that clears the session', async ({ page }) => {
+    const prompt = page.getByRole('dialog', { name: 'Start a new game?' });
+    await expect(prompt).toBeVisible();
+
+    await prompt.getByRole('button', { name: 'New game' }).click();
+
+    await expect(prompt).toBeHidden();
+    await page.reload();
+    await expect(prompt).toBeHidden();
+  });
+
+  test('can be dismissed and stays dismissed', async ({ page }) => {
+    const prompt = page.getByRole('dialog', { name: 'Start a new game?' });
+    await prompt.getByRole('button', { name: 'Keep playing' }).click();
+    await expect(prompt).toBeHidden();
+
+    await page.reload();
+    await expect(page.getByRole('button', { name: 'On-deck' })).toBeVisible();
+    await expect(prompt).toBeHidden();
+  });
+});
