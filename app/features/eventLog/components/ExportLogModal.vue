@@ -36,6 +36,7 @@
             label="Copy"
             variant="soft"
             :disabled="!entries.length"
+            :title="disabledReason"
             @click="copy"
           />
         </div>
@@ -47,6 +48,7 @@
       <UButton
         icon="i-lucide-download"
         :disabled="!entries.length"
+        :title="disabledReason"
         @click="download"
       >
         Download
@@ -101,7 +103,7 @@ const groups: Group[] = [
     options: [
       { label: 'Cards cast', value: 'cast' },
       { label: 'All cards fetched', value: 'fetched' },
-      { label: 'All', value: 'all' },
+      { label: 'All events', value: 'all' },
     ],
   },
   {
@@ -129,6 +131,11 @@ const noun = computed(() => {
   if (cards.value === 'all') return one ? 'event' : 'events';
   return one ? 'card' : 'cards';
 });
+
+/** Why Copy and Download are disabled, shown on hover. */
+const disabledReason = computed(() =>
+  entries.value.length ? undefined : `No ${noun.value} match these options`,
+);
 
 async function copy() {
   try {

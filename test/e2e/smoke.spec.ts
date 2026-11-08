@@ -413,7 +413,7 @@ test.describe('exporting the log', () => {
       .click();
     const dialog = page.getByRole('dialog', { name: 'Export log' });
     await expect(dialog.getByText('Matches 1 card')).toBeVisible();
-    await dialog.getByRole('button', { name: 'All', exact: true }).click();
+    await dialog.getByRole('button', { name: 'All events' }).click();
     await expect(dialog.getByText(/^Matches \d+ events$/)).toBeVisible();
     await dialog.getByRole('button', { name: 'Cards cast' }).click();
 
