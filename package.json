@@ -24,7 +24,7 @@
     "@iconify-json/lucide": "^1.2.98",
     "@nuxt/ui": "^4.5.1",
     "@vueuse/core": "^15.0.0",
-    "devalue": "^5.8.1",
+    "devalue": "^6.0.3",
     "mana-font": "^1.18.0",
     "pinia": "^3.0.4",
     "tailwindcss": "^4.2.1",
