@@ -20,6 +20,7 @@
 </template>
 
 <script setup lang="ts">
+import { useEventLogStore } from '~/features/eventLog';
 import UButton from '@nuxt/ui/components/Button.vue';
 import UDropdownMenu from '@nuxt/ui/components/DropdownMenu.vue';
 import { useFullscreen } from '@vueuse/core';
@@ -28,6 +29,7 @@ import type { DropdownMenuItem } from '@nuxt/ui';
 
 const isMenuOpen = ref(false);
 
+const eventLog = useEventLogStore();
 const fullscreen = useFullscreen();
 const fullscreenIcon = computed(() =>
   fullscreen.isFullscreen.value ? 'i-lucide-shrink' : 'i-lucide-expand',
@@ -47,6 +49,12 @@ const items = ref<DropdownMenuItem[][]>([
       icon: 'i-lucide-settings',
       color: 'primary',
       onSelect: () => emit('openSettingsRequested'),
+    },
+    {
+      label: 'Event log',
+      icon: 'i-lucide-scroll-text',
+      color: 'neutral',
+      onSelect: () => eventLog.openWindow(),
     },
     {
       label: 'Fullscreen',

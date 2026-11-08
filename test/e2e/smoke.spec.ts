@@ -258,3 +258,44 @@ test('a card can be put under another and taken out again', async ({
   await expect(stacks).toHaveCount(2);
   await expect(unders).toHaveCount(0);
 });
+
+// #37
+test('the event log lists what happened and can cast a fetched card again', async ({
+  page,
+}) => {
+  await page.getByRole('button', { name: 'On-deck' }).click();
+  await page.getByRole('button', { name: 'Next card' }).click();
+  await page.getByRole('button', { name: 'Cast to board' }).click();
+  await page.keyboard.press('Escape');
+  // The palette closes again if the panel is still handing back focus.
+  await expect(page.getByRole('button', { name: 'Next card' })).toBeHidden();
+
+  await page.keyboard.press('/');
+  await page.getByRole('option', { name: /Open event log/i }).click();
+  const log = page.getByRole('dialog', { name: 'Event log' });
+  const events = log
+    .getByRole('list', { name: 'Events' })
+    .getByRole('listitem');
+
+  await expect(events).toHaveText([
+    new RegExp(`Cast ${card.name}`),
+    new RegExp(`Fetched ${card.name}`),
+  ]);
+
+  await log
+    .getByRole('textbox', { name: 'Filter by card name' })
+    .fill('nothing like it');
+  await expect(log.getByText('No events match.')).toBeVisible();
+  await log.getByRole('textbox', { name: 'Filter by card name' }).fill('');
+
+  await log.getByRole('button', { name: `Cast ${card.name}` }).click();
+  await expect(events).toHaveCount(3);
+  await expect(events.first()).toHaveText(new RegExp(`Cast ${card.name}`));
+
+  // The open dialog hides the board from the accessibility tree.
+  await page.keyboard.press('Escape');
+  await expect(log).toBeHidden();
+  await expect(
+    page.locator('.board-card').getByRole('img', { name: card.name }),
+  ).toHaveCount(2);
+});
