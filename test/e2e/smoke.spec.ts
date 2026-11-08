@@ -241,6 +241,17 @@ test('a card can be put under another and taken out again', async ({
   await expect(stacks).toHaveCount(1);
   await expect(unders).toHaveCount(1);
 
+  // A tapped primary is wider; the under stays centred on it.
+  const primary = stacks.first().locator('.primary-card');
+  await primary.getByRole('img').dblclick();
+  await details.getByRole('button', { name: 'Tap' }).click();
+  await expect(primary).toHaveClass(/tapped/);
+  const centre = async (locator: typeof primary) => {
+    const b = (await locator.boundingBox())!;
+    return b.x + b.width / 2;
+  };
+  expect(await centre(unders.first())).toBeCloseTo(await centre(primary), 0);
+
   await unders.getByRole('img').dblclick({ position: { x: 10, y: 5 } });
   await details.getByRole('button', { name: 'Take out' }).click();
 
