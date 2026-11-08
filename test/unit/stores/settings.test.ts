@@ -27,6 +27,11 @@ describe('settings store', () => {
       (s) => s.wakeLockEnabled,
     ],
     ['imagesEnabled', (s) => s.setImagesEnabled(false), (s) => s.imagesEnabled],
+    [
+      'cardOutlineEnabled',
+      (s) => s.setCardOutlineEnabled(false),
+      (s) => s.cardOutlineEnabled,
+    ],
   ])('saves %s', async (_name, change, read) => {
     vi.useFakeTimers();
     const store = useSettingsStore();

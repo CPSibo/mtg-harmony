@@ -10,6 +10,9 @@ export interface AppSettings {
 
   /** Whether to show card images. */
   imagesEnabled: boolean;
+
+  /** Whether board cards have an outline (and its hover colour). */
+  cardOutlineEnabled: boolean;
 }
 
 const STORAGE_KEY = 'mtg-harmony_settings';
@@ -18,6 +21,7 @@ const defaults: AppSettings = {
   onDeckExpanded: true,
   wakeLockEnabled: true,
   imagesEnabled: true,
+  cardOutlineEnabled: true,
 };
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -36,10 +40,16 @@ export const useSettingsStore = defineStore('settings', () => {
     imagesEnabled.value = value;
   }
 
+  const cardOutlineEnabled = ref<boolean>(defaults.cardOutlineEnabled);
+  function setCardOutlineEnabled(value: boolean) {
+    cardOutlineEnabled.value = value;
+  }
+
   function reset() {
     onDeckExpanded.value = defaults.onDeckExpanded;
     wakeLockEnabled.value = defaults.wakeLockEnabled;
     imagesEnabled.value = defaults.imagesEnabled;
+    cardOutlineEnabled.value = defaults.cardOutlineEnabled;
   }
 
   function save() {
@@ -48,6 +58,7 @@ export const useSettingsStore = defineStore('settings', () => {
       onDeckExpanded: onDeckExpanded.value,
       wakeLockEnabled: wakeLockEnabled.value,
       imagesEnabled: imagesEnabled.value,
+      cardOutlineEnabled: cardOutlineEnabled.value,
     });
   }
 
@@ -68,14 +79,20 @@ export const useSettingsStore = defineStore('settings', () => {
     if (typeof data.imagesEnabled === 'boolean')
       imagesEnabled.value = data.imagesEnabled;
 
+    if (typeof data.cardOutlineEnabled === 'boolean')
+      cardOutlineEnabled.value = data.cardOutlineEnabled;
+
     return true;
   }
 
   load();
 
-  watch([onDeckExpanded, wakeLockEnabled, imagesEnabled], () => {
-    save();
-  });
+  watch(
+    [onDeckExpanded, wakeLockEnabled, imagesEnabled, cardOutlineEnabled],
+    () => {
+      save();
+    },
+  );
 
   return {
     save,
@@ -90,5 +107,8 @@ export const useSettingsStore = defineStore('settings', () => {
 
     imagesEnabled,
     setImagesEnabled,
+
+    cardOutlineEnabled,
+    setCardOutlineEnabled,
   };
 });

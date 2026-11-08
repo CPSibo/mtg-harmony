@@ -551,3 +551,25 @@ test.describe('exporting the log', () => {
     expect(copied).toMatch(/^\d\d:\d\d {2}Cast {2}Smoke Test Ooze\r?\n$/);
   });
 });
+
+test('with card outlines off, board cards have no visible border', async ({
+  page,
+}) => {
+  await page.reload();
+  await page.evaluate(() =>
+    // devalue's format for { cardOutlineEnabled: false }
+    localStorage.setItem(
+      'mtg-harmony_settings',
+      JSON.stringify([{ cardOutlineEnabled: 1 }, false]),
+    ),
+  );
+  await page.reload();
+
+  await page.getByRole('button', { name: 'On-deck' }).click();
+  await page.getByRole('button', { name: 'Next card' }).click();
+  await page.getByRole('button', { name: 'Cast to board' }).click();
+
+  const wrapper = page.locator('.board-card .card-image-wrapper');
+  await wrapper.hover();
+  await expect(wrapper).toHaveCSS('border-top-color', 'rgba(0, 0, 0, 0)');
+});
