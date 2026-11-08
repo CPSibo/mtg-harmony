@@ -3,11 +3,25 @@
     v-model:open="open"
     title="Start a new game?"
     description="It's been over 2 hours since anything happened."
-    :ui="{ footer: 'flex flex-row justify-between' }"
+    :ui="
+      log.nearlyFull
+        ? {
+            header: 'bg-warning',
+            title: 'text-inverted',
+            description: 'text-inverted',
+            footer: 'flex flex-row justify-between',
+          }
+        : { footer: 'flex flex-row justify-between' }
+    "
     @update:open="(value) => !value && dismiss()"
   >
     <template #body>
-      <p>
+      <p v-if="log.nearlyFull">
+        This game's event log is filling up the space it has on this device.
+        Once full, it drops older entries. Start a <strong>New game</strong>
+        from the menu at the start of each game to keep its history.
+      </p>
+      <p v-else>
         A new game clears the board and On-deck, like
         <strong>New game</strong> in the menu. The event log keeps everything.
       </p>

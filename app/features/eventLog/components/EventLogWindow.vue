@@ -36,10 +36,17 @@
       <ExportLogModal v-model:open="exportOpen" />
 
       <p
+        v-if="log.archiveAvailable === false"
+        class="text-xs text-muted"
+      >
+        This browser can't keep past games, so the log shows this game only.
+      </p>
+
+      <p
         v-if="!shown.length"
         class="py-6 text-center text-sm text-muted"
       >
-        {{ log.entries.length ? 'No events match.' : 'Nothing logged yet.' }}
+        {{ emptyMessage }}
       </p>
 
       <ul
@@ -98,6 +105,25 @@
         to find older events.
       </p>
     </template>
+
+    <template
+      v-if="log.archiveAvailable !== false"
+      #footer
+    >
+      <UButton
+        icon="i-lucide-trash"
+        :color="confirmingClear ? 'error' : 'neutral'"
+        :variant="confirmingClear ? 'solid' : 'ghost'"
+        size="sm"
+        @click="clearHistory"
+      >
+        {{
+          confirmingClear
+            ? 'Click again to clear past games'
+            : 'Clear past games'
+        }}
+      </UButton>
+    </template>
   </UModal>
 </template>
 
@@ -110,7 +136,7 @@ import USelectMenu from '@nuxt/ui/components/SelectMenu.vue';
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
 import { useToast } from '@nuxt/ui/composables';
 import { refDebounced } from '@vueuse/core';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import ExportLogModal from './ExportLogModal.vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import { useSettingsStore } from '~/stores/settings';
@@ -144,8 +170,38 @@ const typeItems = EVENT_TYPES.map((value) => ({
   icon: EVENT_LABELS[value].icon,
 }));
 
+// Past games live in IndexedDB; read them when the window opens.
+watch(
+  () => log.windowIsOpen,
+  (open) => {
+    if (open) void log.loadHistory();
+    else confirmingClear.value = false;
+  },
+  { immediate: true },
+);
+
+const emptyMessage = computed(() => {
+  if (log.historyLoading) return 'Loading past games…';
+  return log.history.length ? 'No events match.' : 'Nothing logged yet.';
+});
+
+/** Clear past games asks for a second click, within a few seconds. */
+const confirmingClear = ref(false);
+let confirmTimer: ReturnType<typeof setTimeout> | undefined;
+function clearHistory() {
+  clearTimeout(confirmTimer);
+  if (!confirmingClear.value) {
+    confirmingClear.value = true;
+    confirmTimer = setTimeout(() => (confirmingClear.value = false), 4000);
+    return;
+  }
+  confirmingClear.value = false;
+  log.clearHistory();
+  toast.add({ title: 'Past games cleared', color: 'info' });
+}
+
 const matching = computed(() =>
-  filterEntries(log.entries, {
+  filterEntries(log.history, {
     types: types.value,
     name: nameDebounced.value,
   }),

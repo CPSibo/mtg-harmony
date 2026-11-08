@@ -104,12 +104,24 @@ export const useEventLogStore = defineStore('eventLog', () => {
     });
   }
 
-  /** Loads the archive into `history`. */
+  /** Whether `loadHistory()` is reading the archive. */
+  const historyLoading = ref(false);
+
+  /**
+   * Loads the archive into `history`, once: after that, archiving and
+   * clearing keep it up to date.
+   */
   function loadHistory() {
+    if (archived.value) return settled();
+    historyLoading.value = true;
     return enqueue(async () => {
-      const loaded = await loadArchive();
-      archiveAvailable.value = loaded !== null;
-      archived.value = loaded ?? [];
+      try {
+        const loaded = await loadArchive();
+        archiveAvailable.value = loaded !== null;
+        archived.value = loaded ?? [];
+      } finally {
+        historyLoading.value = false;
+      }
     });
   }
 
@@ -275,6 +287,7 @@ export const useEventLogStore = defineStore('eventLog', () => {
     reset,
     nearlyFull,
     history,
+    historyLoading,
     loadHistory,
     clearHistory,
     archiveAvailable,

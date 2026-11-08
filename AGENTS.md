@@ -48,8 +48,9 @@ npm run build         # production build into dist/
 ## Unit tests
 
 - Vitest, in `test/unit/` mirroring `app/`. The config reuses `vite.config.ts`, so imports resolve as in the app.
-- Tests run in happy-dom. `test/unit/setup.ts` gives each test empty `localStorage`, real timers and a fresh
-  Pinia, so a store created in a test starts from its defaults.
+- Tests run in happy-dom. `test/unit/setup.ts` gives each test empty `localStorage`, an empty IndexedDB
+  (`fake-indexeddb`; happy-dom has none), real timers and a fresh Pinia, so a store created in a test starts from
+  its defaults. Await the event log's `settled()` before checking its archive.
 - Mock Scryfall at the module boundary (`vi.mock('~/composables/useScryfall', …)`). Tests never hit the network.
 - Build cards with `test/unit/fixtures/cards.ts`. To watch or break storage writes, use `stubStorage()` from
   `test/unit/fixtures/storage.ts`; spying on `Storage.prototype` leaks between tests under happy-dom.
