@@ -127,7 +127,7 @@ const paragraphs = computed(() => {
 // Long rules text shrinks only as far as it needs to fit: first the gaps
 // between paragraphs give way (in CSS), then the type, a step at a time.
 const FIT_STEP = 0.04;
-const MIN_FIT = 0.6;
+const MIN_FIT = 0.5;
 const rulesEl = useTemplateRef<HTMLElement>('rulesEl');
 
 function fit() {
@@ -197,7 +197,7 @@ document.fonts?.ready.then(fit);
 }
 
 .type {
-  font-size: 5cqw;
+  font-size: 6.5cqw;
 }
 
 .rules {
@@ -206,7 +206,7 @@ document.fonts?.ready.then(fit);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  font-size: calc(5.2cqw * var(--fit, 1));
+  font-size: calc(7cqw * var(--fit, 1));
 }
 
 .rules p {
