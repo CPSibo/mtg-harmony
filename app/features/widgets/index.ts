@@ -1,2 +1,2 @@
 export { useWidgetRegistry } from './store';
-export type { WidgetDefinition, WidgetCommand, WidgetSetting } from './types';
+export type { WidgetDefinition, WidgetCommand } from './types';

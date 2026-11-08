@@ -2,9 +2,6 @@ import { useLocalStorage } from '~/composables/useLocalStorage';
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 export interface AppSettings {
-  /** Whether the On-Deck slot is expanded. */
-  onDeckExpanded: boolean;
-
   /** Whether the Screen Wake Lock API is requested. */
   wakeLockEnabled: boolean;
 
@@ -18,18 +15,12 @@ export interface AppSettings {
 const STORAGE_KEY = 'mtg-harmony_settings';
 
 const defaults: AppSettings = {
-  onDeckExpanded: true,
   wakeLockEnabled: true,
   imagesEnabled: true,
   cardOutlineEnabled: true,
 };
 
 export const useSettingsStore = defineStore('settings', () => {
-  const onDeckExpanded = ref<boolean>(defaults.onDeckExpanded);
-  function toggleOnDeckExpanded() {
-    onDeckExpanded.value = !onDeckExpanded.value;
-  }
-
   const wakeLockEnabled = ref<boolean>(defaults.wakeLockEnabled);
   function setWakeLockEnabled(value: boolean) {
     wakeLockEnabled.value = value;
@@ -46,7 +37,6 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   function reset() {
-    onDeckExpanded.value = defaults.onDeckExpanded;
     wakeLockEnabled.value = defaults.wakeLockEnabled;
     imagesEnabled.value = defaults.imagesEnabled;
     cardOutlineEnabled.value = defaults.cardOutlineEnabled;
@@ -55,7 +45,6 @@ export const useSettingsStore = defineStore('settings', () => {
   function save() {
     const { save: persist } = useLocalStorage();
     persist(STORAGE_KEY, {
-      onDeckExpanded: onDeckExpanded.value,
       wakeLockEnabled: wakeLockEnabled.value,
       imagesEnabled: imagesEnabled.value,
       cardOutlineEnabled: cardOutlineEnabled.value,
@@ -69,9 +58,6 @@ export const useSettingsStore = defineStore('settings', () => {
     if (!data) {
       return false;
     }
-
-    if (typeof data.onDeckExpanded === 'boolean')
-      onDeckExpanded.value = data.onDeckExpanded;
 
     if (typeof data.wakeLockEnabled === 'boolean')
       wakeLockEnabled.value = data.wakeLockEnabled;
@@ -87,20 +73,14 @@ export const useSettingsStore = defineStore('settings', () => {
 
   load();
 
-  watch(
-    [onDeckExpanded, wakeLockEnabled, imagesEnabled, cardOutlineEnabled],
-    () => {
-      save();
-    },
-  );
+  watch([wakeLockEnabled, imagesEnabled, cardOutlineEnabled], () => {
+    save();
+  });
 
   return {
     save,
     load,
     reset,
-
-    onDeckExpanded,
-    toggleOnDeckExpanded,
 
     wakeLockEnabled,
     setWakeLockEnabled,
