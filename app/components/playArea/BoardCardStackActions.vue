@@ -33,15 +33,18 @@
         {
           label: 'Copy card',
           icon: 'i-lucide-copy',
+          onSelect: () => battlefield.copyCard(stack.primary, 'card'),
           color: 'primary',
         },
         {
           label: 'Copy card + counters',
           icon: 'i-lucide-copy-plus',
+          onSelect: () => battlefield.copyCard(stack.primary, 'counters'),
         },
         {
           label: 'Copy everything',
           icon: 'i-lucide-square-stack',
+          onSelect: () => battlefield.copyCard(stack.primary, 'stack'),
         },
       ]"
       :content="{
@@ -52,6 +55,7 @@
     >
       <UButton
         icon="i-lucide-copy"
+        aria-label="Copy"
         :ui="{ base: 'bg-slate-300/85 text-black' }"
         size="xs"
         variant="solid"

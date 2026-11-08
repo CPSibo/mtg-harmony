@@ -1,2 +1,2 @@
 export { createBoardCard } from './boardCard';
-export { useBattlefieldStore } from './store';
+export { useBattlefieldStore, type CopyMode } from './store';

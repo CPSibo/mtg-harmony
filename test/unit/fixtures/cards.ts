@@ -18,9 +18,14 @@ export function makeScryfallCard(
   } as ScryfallCard;
 }
 
-/** A board card, untapped with no modifiers and not in any stack. */
+/**
+ * A board card, untapped with no modifiers and not in any stack. A `name`
+ * override names its Scryfall data too, as on a real card.
+ */
 export function makeCard(overrides: Partial<BoardCard> = {}): BoardCard {
-  const scryfallInfo = makeScryfallCard();
+  const scryfallInfo = makeScryfallCard(
+    overrides.name ? { name: overrides.name } : {},
+  );
   return {
     id: `card-${nextId}`,
     scryfallInfo,

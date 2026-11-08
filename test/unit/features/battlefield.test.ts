@@ -451,3 +451,103 @@ describe('battlefield store', () => {
     });
   });
 });
+
+// #33
+describe('copying cards', () => {
+  const flying = { name: 'Flying', symbol: 'ms ms-ability-flying' };
+
+  /** A tapped Host with a +1 counter, face number 3, an attachment and an under. */
+  function decoratedHost() {
+    const board = boardWithAttachments(1);
+    const host = board.stacks[0]!;
+    host.position = { x: 500, y: 600 };
+    host.primary.tapped = true;
+    host.primary.faceNumber = 3;
+    host.primary.modifiers.add({ modifier: flying, count: 2 });
+    const under = makeCard({ name: 'Under 0', tapped: true });
+    host.unders.add(under);
+    under.stack = host;
+    return { board, host };
+  }
+
+  it('copies just the card with fresh state', () => {
+    const { board, host } = decoratedHost();
+
+    const copy = board.copyCard(host.primary, 'card');
+
+    expect(copy.primary.id).not.toBe(host.primary.id);
+    expect(copy.primary.scryfallInfo).toBe(host.primary.scryfallInfo);
+    expect(copy.primary).toMatchObject({
+      name: 'Host',
+      tapped: false,
+      faceNumber: 0,
+      stack: copy,
+    });
+    expect(copy.primary.modifiers.size).toBe(0);
+    expect(copy.attachments.size).toBe(0);
+    expect(copy.unders.size).toBe(0);
+  });
+
+  it('copies the card with its own counters, face number and tapped state', () => {
+    const { board, host } = decoratedHost();
+
+    const copy = board.copyCard(host.primary, 'counters');
+
+    expect(copy.primary).toMatchObject({ tapped: true, faceNumber: 3 });
+    expect([...copy.primary.modifiers]).toEqual([
+      { modifier: flying, count: 2 },
+    ]);
+    expect(copy.attachments.size).toBe(0);
+
+    // The copy's counters are its own.
+    [...copy.primary.modifiers][0]!.count = 9;
+    expect([...host.primary.modifiers][0]!.count).toBe(2);
+  });
+
+  it('copies an attached card on its own', () => {
+    const { board, host } = decoratedHost();
+    const aura = [...host.attachments][0]!;
+
+    const copy = board.copyCard(aura, 'card');
+
+    expect(copy.primary.name).toBe('Aura 0');
+    expect(host.attachments.size).toBe(1);
+  });
+
+  it('copies everything: the whole stack, each card with its state and a new ID', () => {
+    const { board, host } = decoratedHost();
+
+    const copy = board.copyCard(host.primary, 'stack');
+
+    expect(copy.primary).toMatchObject({ name: 'Host', tapped: true });
+    expect([...copy.attachments].map((c) => c.name)).toEqual(['Aura 0']);
+    expect([...copy.unders]).toMatchObject([{ name: 'Under 0', tapped: true }]);
+    const all = [copy.primary, ...copy.attachments, ...copy.unders];
+    const originals = [host.primary, ...host.attachments, ...host.unders];
+    for (const card of all) {
+      expect(card.stack).toBe(copy);
+      expect(originals.map((c) => c.id)).not.toContain(card.id);
+    }
+  });
+
+  it('copies everything from an attachment as its whole stack', () => {
+    const { board, host } = decoratedHost();
+
+    const copy = board.copyCard([...host.attachments][0]!, 'stack');
+
+    expect(copy.primary.name).toBe('Host');
+    expect(copy.attachments.size).toBe(1);
+  });
+
+  it('places the copy offset from the source, in front', () => {
+    const { board, host } = decoratedHost();
+
+    const copy = board.copyCard(host.primary, 'card');
+
+    expect(copy.position).not.toEqual(host.position);
+    expect(Math.abs(copy.position.x - host.position.x)).toBeLessThan(100);
+    expect(Math.abs(copy.position.y - host.position.y)).toBeLessThan(100);
+    expect(board.orderedStacks.at(-1)).toBe(copy);
+    expect(board.stacks).toHaveLength(2);
+  });
+});
