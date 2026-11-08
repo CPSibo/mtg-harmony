@@ -11,7 +11,7 @@ import type { ScryfallCard } from '~/types/Scryfall';
 import { randomUUID } from '~/utils/randomUUID';
 import type { ElementSize, Position } from '@vueuse/core';
 import { useEventLogStore } from '~/features/eventLog';
-import { copyBoardCard, createBoardCard } from './boardCard';
+import { cardData, copyBoardCard, createBoardCard } from './boardCard';
 import { findFreeSpot, type Rect } from './placement';
 
 /** How much of a card `copyCard` copies. */
@@ -103,35 +103,42 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     center.value = value;
   }
 
-  /** What the board shows, in board pixels. Set by the board; not saved. */
-  const view = ref<Rect | null>(null);
+  // The view, transform and stack sizes are set by the board many times a
+  // second and only read when something is placed, so they aren't reactive.
+
+  /** What the board shows, in board pixels. Not saved. */
+  let view: Rect | null = null;
   function setView(value: Rect) {
-    view.value = value;
+    view = value;
   }
 
-  /** The board's pan (screen px) and zoom. Set by the board; not saved. */
-  const transform = ref<(Position & { scale: number }) | null>(null);
+  /** The board's pan (screen px) and zoom. Not saved. */
+  let transform: (Position & { scale: number }) | null = null;
   function setTransform(value: Position & { scale: number }) {
-    transform.value = value;
+    transform = value;
+  }
+  /** The board's zoom, 1 before the board reports it. */
+  function boardScale(): number {
+    return transform?.scale ?? 1;
   }
 
   /** The board point under a screen point, or null before the board is up. */
   function boardPointFromScreen(point: Position): Position | null {
-    const t = transform.value;
+    const t = transform;
     if (!t) return null;
     return { x: (point.x - t.x) / t.scale, y: (point.y - t.y) / t.scale };
   }
 
   /** Each stack's rendered size, reported by the board. Not saved. */
-  const stackSizes = ref(new Map<string, ElementSize>());
+  const stackSizes = new Map<string, ElementSize>();
   function setStackSize(id: string, size: ElementSize) {
-    stackSizes.value.set(id, size);
+    stackSizes.set(id, size);
   }
   function forgetStackSize(id: string) {
-    stackSizes.value.delete(id);
+    stackSizes.delete(id);
   }
   function stackSize(stack: BoardCardStack): ElementSize {
-    return stackSizes.value.get(stack.id) ?? NEW_STACK_SIZE;
+    return stackSizes.get(stack.id) ?? NEW_STACK_SIZE;
   }
 
   /**
@@ -140,7 +147,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
    * centre.
    */
   function newStackPosition(): Position {
-    const shown = view.value;
+    const shown = view;
     if (!shown) return { ...center.value };
 
     const occupied = stacks.value.map((s) => ({
@@ -506,7 +513,16 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
       return false;
     }
 
-    if (Array.isArray(data?.stacks)) stacks.value = data.stacks;
+    if (Array.isArray(data?.stacks)) {
+      for (const stack of data.stacks)
+        for (const card of [
+          stack.primary,
+          ...stack.attachments,
+          ...stack.unders,
+        ])
+          card.scryfallInfo = cardData(card.scryfallInfo);
+      stacks.value = data.stacks;
+    }
 
     if (Array.isArray(data?.zOrder)) zOrder.value = data.zOrder;
 
@@ -521,15 +537,10 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
 
   load();
 
-  watch(
-    [stacks, center, snapScale, zOrder],
-    () => {
-      save();
-    },
-    {
-      deep: true,
-    },
-  );
+  // Only the stacks need a deep watch (cards change in place). The centre
+  // changes as the board pans, so it mustn't set off that walk.
+  watch([stacks, zOrder], save, { deep: true });
+  watch([center, snapScale], save);
 
   return {
     save,
@@ -554,7 +565,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     setView,
     setTransform,
     boardPointFromScreen,
-    transform,
+    boardScale,
     stackActionsWidth: STACK_ACTIONS_WIDTH,
     setStackSize,
     forgetStackSize,

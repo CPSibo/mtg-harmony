@@ -80,6 +80,21 @@ npm run build         # production build into dist/
   `@tailwindcss/oxide-wasm32-wasi`). `npm ci` is unaffected. When changing dependencies, run
   `npm install --allow-remote=all`.
 
+## Reactivity
+
+Start non-reactive, and make something reactive only when something needs to react to it. Each step up costs
+more, so pick the lowest that works and say in a comment why when it isn't obvious:
+
+1. A `const` or plain `let`, or frozen data (`Object.freeze`, `markRaw` for objects that end up inside reactive
+   state). For data set often but only read on demand, like the board's view and stack sizes.
+2. `shallowRef`, with `triggerRef` after changes in place. For large or append-only data, like the event log.
+3. `ref` or `computed`. For values the template or a watcher reads.
+4. A `deep` watch. Only over small state that changes in place, never over Scryfall data or anything that
+   changes every frame.
+
+Write to the store at the end of a gesture (drag, pan, zoom), not on every frame. Measure on the production
+build before and after a reactivity change, and put the numbers in the PR.
+
 ## Imports
 
 There are no auto-imports. Import every component, composable and Vue API explicitly; `~` points to `app/`.

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { isReactive, reactive } from 'vue';
 import { createBoardCard } from '~/features/battlefield';
 import { makeScryfallCard } from '../fixtures/cards';
 
@@ -31,6 +32,39 @@ describe('createBoardCard', () => {
     expect(a.id).not.toBe(b.id);
     expect(a.id).not.toBe(scryfallCard.id);
     expect(a.scryfallInfo.id).toBe(scryfallCard.id);
+  });
+
+  it('keeps only the Scryfall fields the app uses', () => {
+    const scryfallCard = {
+      ...makeScryfallCard({
+        image_uris: { border_crop: 'b', normal: 'n', small: 's' },
+        card_faces: [{ name: 'Front', oracle_text: 'Hi' }],
+      }),
+      legalities: { modern: 'legal' },
+      prices: { usd: '1.00' },
+      image_uris_extra: 'x',
+    };
+    (scryfallCard.image_uris as Record<string, string>).png = 'p';
+    (scryfallCard.card_faces![0] as unknown as Record<string, unknown>).artist =
+      'A';
+
+    const { scryfallInfo } = createBoardCard(scryfallCard);
+
+    expect(scryfallInfo).toEqual({
+      id: scryfallCard.id,
+      name: scryfallCard.name,
+      mana_cost: scryfallCard.mana_cost,
+      scryfall_uri: scryfallCard.scryfall_uri,
+      image_uris: { border_crop: 'b', normal: 'n', small: 's' },
+      card_faces: [{ name: 'Front', oracle_text: 'Hi' }],
+    });
+  });
+
+  it('keeps the Scryfall data out of Vue reactivity', () => {
+    const card = reactive(createBoardCard(makeScryfallCard()));
+
+    expect(isReactive(card.scryfallInfo)).toBe(false);
+    expect(Object.isFrozen(card.scryfallInfo)).toBe(true);
   });
 
   it('leaves image_uri empty when the card has no image', () => {

@@ -160,7 +160,7 @@ import { useSettingsStore } from '~/stores/settings';
 import { useToast } from '@nuxt/ui/composables';
 import { storeToRefs } from 'pinia';
 import type { Position } from '@vueuse/core';
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import { useDiscordFetcherStore } from '..';
 
@@ -219,10 +219,9 @@ let pressedAt: (Position & { id: number }) | null = null;
 /** Where the ghost's centre is, in screen px, while dragging. */
 const ghost = ref<Position | null>(null);
 
-// The size the card will land at, so the drop matches what's shown.
-const ghostWidth = computed(
-  () => BOARD_CARD_WIDTH * (board.transform?.scale ?? 1),
-);
+// The size the card will land at, so the drop matches what's shown. Set as a
+// drag starts; the board can't zoom during one.
+const ghostWidth = ref(BOARD_CARD_WIDTH);
 
 function onPointerDown(e: PointerEvent) {
   if (e.button !== 0 || !card.value) return;
@@ -234,6 +233,7 @@ function onPointerMove(e: PointerEvent) {
   if (!pressedAt || e.pointerId !== pressedAt.id) return;
   const moved = Math.hypot(e.clientX - pressedAt.x, e.clientY - pressedAt.y);
   if (!ghost.value && moved < DRAG_THRESHOLD) return;
+  if (!ghost.value) ghostWidth.value = BOARD_CARD_WIDTH * board.boardScale();
   ghost.value = { x: e.clientX, y: e.clientY };
 }
 

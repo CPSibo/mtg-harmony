@@ -68,7 +68,6 @@ const isDragging = defineModel<boolean>('isDragging');
 
 const props = defineProps<{
   board: HTMLDivElement;
-  scale: number;
   stack: BoardCardStack;
 }>();
 
@@ -83,7 +82,8 @@ const { snapScale } = storeToRefs(battlefield);
 const stackEl = useTemplateRef('stack');
 
 const { style, isDragging: myIsDragging } = useBoardDraggable(stackEl, {
-  scale: () => props.scale,
+  // Read when a drag moves, so zooming doesn't re-render every stack.
+  scale: () => battlefield.boardScale(),
   snapScale: snapScale,
   containerElement: props.board,
   initialValue: {
@@ -113,8 +113,7 @@ onUnmounted(() => battlefield.forgetStackSize(props.stack.id));
 
 watch(myIsDragging, (value) => {
   isDragging.value = value;
-
-  battlefield.bringToFront(props.stack);
+  if (value) battlefield.bringToFront(props.stack);
 });
 </script>
 

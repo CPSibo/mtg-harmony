@@ -14,12 +14,8 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     return !(toValue(settings.disabled) ?? false);
   });
 
-  const size = ref<ElementSize>(
-    settings?.size ?? { width: 5000, height: 5000 },
-  );
-
-  const halfWidth = computed(() => size.value.width / 2.0);
-  const halfHeight = computed(() => size.value.height / 2.0);
+  // Fixed for the board's life, so not reactive.
+  const size: ElementSize = settings?.size ?? { width: 5000, height: 5000 };
 
   const { width: windowWidth, height: windowHeight } = useWindowSize();
 
@@ -28,8 +24,8 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
 
   const scale = ref(1.5);
   const position = ref<Position>({
-    x: -halfWidth.value * scale.value + halfWindowWidth.value,
-    y: -halfHeight.value * scale.value + halfWindowHeight.value,
+    x: (-size.width / 2) * scale.value + halfWindowWidth.value,
+    y: (-size.height / 2) * scale.value + halfWindowHeight.value,
   });
   const center = computed(() => {
     return {
@@ -38,24 +34,25 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     };
   });
 
-  const scrollSpeed = ref(0.1);
-  const pinchSpeed = ref(0.01);
+  const scrollSpeed = 0.1;
+  const pinchSpeed = 0.01;
 
-  // Internal pan state — not exposed
+  // Shown by the board (its cursor), so reactive.
   const isDragging = ref(false);
-  const dragStart = ref<Position>({ x: 0, y: 0 });
-  const positionAtDragStart = ref<Position>({ x: 0, y: 0 });
+  // Only the handlers read the rest of the gesture state, so it isn't.
+  let dragStart: Position = { x: 0, y: 0 };
+  let positionAtDragStart: Position = { x: 0, y: 0 };
 
   // Touch state for pinch and single-finger pan
   // Touch points currently on the screen, by Touch.identifier. Not reactive:
   // only the touch handlers read it.
   const activeTouches = new Map<number, Position>();
-  const pinchStartDistance = ref<number | null>(null);
-  const scaleAtPinchStart = ref(1.0);
+  let pinchStartDistance: number | null = null;
+  let scaleAtPinchStart = 1.0;
 
   const style = computed(() => {
-    const width = `width:${size.value.width}px`;
-    const height = `height:${size.value.height}px`;
+    const width = `width:${size.width}px`;
+    const height = `height:${size.height}px`;
     const transform = `transform:translate(${position.value.x}px, ${position.value.y}px) scale(${scale.value})`;
 
     return [width, height, transform].reduce(
@@ -77,11 +74,11 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     const isPinch = e.ctrlKey && e.deltaMode === 0 && !Number.isInteger(delta);
 
     if (isPinch) {
-      factor = 1 - delta * pinchSpeed.value;
+      factor = 1 - delta * pinchSpeed;
     } else {
       if (e.deltaMode === 0) delta /= 100;
       if (e.deltaMode === 1) delta /= 3;
-      factor = 1 - delta * scrollSpeed.value;
+      factor = 1 - delta * scrollSpeed;
     }
 
     // Cursor position relative to the canvas origin (top-left corner)
@@ -115,8 +112,8 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
 
     e.preventDefault();
     isDragging.value = true;
-    dragStart.value = { x: e.clientX, y: e.clientY };
-    positionAtDragStart.value = { ...position.value };
+    dragStart = { x: e.clientX, y: e.clientY };
+    positionAtDragStart = { ...position.value };
   }
 
   function onMouseMove(e: MouseEvent) {
@@ -124,19 +121,17 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
 
     if (!isDragging.value) return;
 
-    const requestedX =
-      positionAtDragStart.value.x + (e.clientX - dragStart.value.x);
-    const requestedY =
-      positionAtDragStart.value.y + (e.clientY - dragStart.value.y);
+    const requestedX = positionAtDragStart.x + (e.clientX - dragStart.x);
+    const requestedY = positionAtDragStart.y + (e.clientY - dragStart.y);
 
     position.value = clampPosition(requestedX, requestedY);
   }
 
   function clampPosition(requestedX: number, requestedY: number) {
-    const minAllowableX = -size.value.width * scale.value + windowWidth.value;
+    const minAllowableX = -size.width * scale.value + windowWidth.value;
     const maxAllowableX = 0;
 
-    const minAllowableY = -size.value.height * scale.value + windowHeight.value;
+    const minAllowableY = -size.height * scale.value + windowHeight.value;
     const maxAllowableY = 0;
 
     const finalX = Math.min(Math.max(requestedX, minAllowableX), maxAllowableX);
@@ -150,8 +145,8 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
 
   function clampScale(requestedScale: number) {
     const minAllowableScale = Math.max(
-      windowWidth.value / size.value.width,
-      windowHeight.value / size.value.height,
+      windowWidth.value / size.width,
+      windowHeight.value / size.height,
     );
     const maxAllowableScale = 3;
 
@@ -200,13 +195,13 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     if (touchList.length === 1) {
       // Single finger: begin pan
       isDragging.value = true;
-      dragStart.value = { ...touchList[0]! };
-      positionAtDragStart.value = { ...position.value };
+      dragStart = { ...touchList[0]! };
+      positionAtDragStart = { ...position.value };
     } else if (touchList.length === 2) {
       // Two fingers: begin pinch, cancel pan
       isDragging.value = false;
-      pinchStartDistance.value = getTouchDistance(touchList[0]!, touchList[1]!);
-      scaleAtPinchStart.value = scale.value;
+      pinchStartDistance = getTouchDistance(touchList[0]!, touchList[1]!);
+      scaleAtPinchStart = scale.value;
     }
   }
 
@@ -227,14 +222,13 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     if (touchList.length === 1 && isDragging.value) {
       // Pan
       position.value = {
-        x: positionAtDragStart.value.x + (touchList[0]!.x - dragStart.value.x),
-        y: positionAtDragStart.value.y + (touchList[0]!.y - dragStart.value.y),
+        x: positionAtDragStart.x + (touchList[0]!.x - dragStart.x),
+        y: positionAtDragStart.y + (touchList[0]!.y - dragStart.y),
       };
-    } else if (touchList.length === 2 && pinchStartDistance.value !== null) {
+    } else if (touchList.length === 2 && pinchStartDistance !== null) {
       const currentDistance = getTouchDistance(touchList[0]!, touchList[1]!);
       const factor =
-        (scaleAtPinchStart.value *
-          (currentDistance / pinchStartDistance.value)) /
+        (scaleAtPinchStart * (currentDistance / pinchStartDistance)) /
         scale.value;
 
       const midpoint = getTouchMidpoint(touchList[0]!, touchList[1]!);
@@ -271,7 +265,7 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     const touchList = [...activeTouches.values()];
 
     if (touchList.length < 2) {
-      pinchStartDistance.value = null;
+      pinchStartDistance = null;
     }
 
     if (touchList.length === 0) {
@@ -279,8 +273,8 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     } else if (touchList.length === 1) {
       // Finger lifted during pinch → resume pan with remaining finger
       isDragging.value = true;
-      dragStart.value = { ...touchList[0]! };
-      positionAtDragStart.value = { ...position.value };
+      dragStart = { ...touchList[0]! };
+      positionAtDragStart = { ...position.value };
     }
   }
 
