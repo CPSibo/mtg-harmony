@@ -100,9 +100,11 @@ const VIEW_INSET = { top: 64, right: 0, bottom: 0, left: 0 };
 
 const { width: windowWidth, height: windowHeight } = useWindowSize();
 
-// Tells the store what's in view, in board pixels, so cast cards land there.
+// Tells the store what's in view, in board pixels, so cast cards land there,
+// and the pan and zoom, so a card dropped on the board lands under the pointer.
 watchEffect(() => {
   const s = scale.value;
+  battlefield.setTransform({ ...position.value, scale: s });
   battlefield.setView({
     x: (VIEW_INSET.left - position.value.x) / s,
     y: (VIEW_INSET.top - position.value.y) / s,
