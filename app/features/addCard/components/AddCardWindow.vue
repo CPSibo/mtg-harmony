@@ -94,7 +94,7 @@ function onSelect(item: CommandPaletteItem) {
 
   if (!card) return;
 
-  battlefield.castCard(card);
+  battlefield.castCard(card, 'added');
 
   cards.value = [];
   searchTerm.value = '';

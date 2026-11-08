@@ -10,6 +10,7 @@ import type {
 import type { ScryfallCard } from '~/types/Scryfall';
 import { randomUUID } from '~/utils/randomUUID';
 import type { Position } from '@vueuse/core';
+import { useEventLogStore } from '~/features/eventLog';
 import { copyBoardCard, createBoardCard } from './boardCard';
 
 /** How much of a card `copyCard` copies. */
@@ -38,6 +39,7 @@ function createDefaults(): Battlefield {
 
 export const useBattlefieldStore = defineStore('battlefield', () => {
   const defaults = createDefaults();
+  const log = useEventLogStore();
 
   const stacks = ref<BoardCardStack[]>(defaults.stacks);
   function setStacks(value: BoardCardStack[]) {
@@ -109,9 +111,29 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     return newStack;
   }
 
-  /** Puts a new instance of a Scryfall card on the board in its own stack. */
-  function castCard(scryfallCard: ScryfallCard) {
-    return addStackByCard(createBoardCard(scryfallCard));
+  /**
+   * Puts a new instance of a Scryfall card on the board in its own stack and
+   * logs it: `cast` from On-deck, `added` through Add Card.
+   */
+  function castCard(
+    scryfallCard: ScryfallCard,
+    how: 'cast' | 'added' = 'cast',
+  ) {
+    const stack = addStackByCard(createBoardCard(scryfallCard));
+    log.record(how, { card: stack.primary });
+    return stack;
+  }
+
+  /** Takes a card off the board and logs it. Its stack-mates stay. */
+  function removeCard(card: BoardCard) {
+    log.record('removed', { card });
+    return removeCardFromStack(card);
+  }
+
+  /** Empties the board and logs it. */
+  function clearBoard() {
+    log.record('boardCleared', {});
+    reset();
   }
 
   /**
@@ -153,6 +175,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     // Add it only once complete, and return the store's reactive copy.
     stacks.value.push(copy);
     zOrder.value.push(copy.id);
+    log.record('copied', { card: primary, source: card, mode });
     return stacks.value.at(-1)!;
   }
 
@@ -333,6 +356,10 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     targetSet(stack).add(sourceCard);
     sourceCard.stack = stack;
 
+    if (attachMode.value === 'under')
+      log.record('putUnder', { card: sourceCard, target: stack.primary });
+    else log.record('attached', { card: sourceCard, target: stack.primary });
+
     cardToAttach.value = null;
   }
 
@@ -451,6 +478,8 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     setStacks,
     addStackByCard,
     castCard,
+    removeCard,
+    clearBoard,
     copyCard,
     clearStacks,
     removeStack,

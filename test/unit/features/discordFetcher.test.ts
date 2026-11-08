@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick } from 'vue';
 import type { ScryfallCardResponse } from '~/composables/useScryfall';
 import { useDiscordFetcherStore } from '~/features/discordFetcher';
+import { useEventLogStore } from '~/features/eventLog';
 import { makeCard, makeScryfallCard } from '../fixtures/cards';
 
 const STORAGE_KEY = 'mtg-harmony_discordFetcher';
@@ -53,6 +54,25 @@ describe('discord fetcher store', () => {
         src = '';
       },
     );
+  });
+
+  // #36
+  describe('event log', () => {
+    it('logs each card once when it is first shown, not when prefetched', async () => {
+      const store = useDiscordFetcherStore();
+      const log = useEventLogStore();
+
+      await store.next();
+      await store.next();
+      store.prev();
+      await store.next();
+      await settle(store);
+
+      expect(log.entries.map((e) => e.type)).toEqual(['fetched', 'fetched']);
+      expect(
+        log.entries.map((e) => ('card' in e ? e.card.instanceId : '')),
+      ).toEqual([store.cards[0]!.id, store.cards[1]!.id]);
+    });
   });
 
   describe('next', () => {
