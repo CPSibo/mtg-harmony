@@ -17,7 +17,7 @@ function sampleLog() {
   log.record('fetched', { card: makeScryfallCard({ name: 'Old Ooze' }) });
   log.record('cast', { card: makeCard({ name: 'Old Ooze' }) });
   vi.setSystemTime(new Date(2026, 10, 7, 9, 0));
-  log.startNewGame('clearSession');
+  log.startNewGame('newGame');
   log.record('fetched', { card: makeScryfallCard({ name: 'Bear' }) });
   log.record('cast', { card: makeCard({ name: 'Bear' }) });
   log.record('fetched', { card: makeScryfallCard({ name: 'Skipped' }) });
@@ -34,7 +34,7 @@ describe('selectForExport', () => {
   it('cast lists cards cast or added, oldest first', () => {
     const log = sampleLog();
 
-    const picked = selectForExport(log.entries, {
+    const picked = selectForExport(log.history, {
       range: 'all',
       cards: 'cast',
       gameId: log.gameId,
@@ -46,7 +46,7 @@ describe('selectForExport', () => {
   it('fetched lists every card On-deck showed', () => {
     const log = sampleLog();
 
-    const picked = selectForExport(log.entries, {
+    const picked = selectForExport(log.history, {
       range: 'all',
       cards: 'fetched',
       gameId: log.gameId,
@@ -58,7 +58,7 @@ describe('selectForExport', () => {
   it('all lists every event in the range', () => {
     const log = sampleLog();
 
-    const picked = selectForExport(log.entries, {
+    const picked = selectForExport(log.history, {
       range: 'game',
       cards: 'all',
       gameId: log.gameId,
@@ -77,7 +77,7 @@ describe('selectForExport', () => {
   it('limits to this game', () => {
     const log = sampleLog();
 
-    const picked = selectForExport(log.entries, {
+    const picked = selectForExport(log.history, {
       range: 'game',
       cards: 'fetched',
       gameId: log.gameId,
@@ -90,7 +90,7 @@ describe('selectForExport', () => {
     const log = sampleLog();
     const gameId = 'some other game';
 
-    const picked = selectForExport(log.entries, {
+    const picked = selectForExport(log.history, {
       range: 'today',
       cards: 'cast',
       gameId,
@@ -104,7 +104,7 @@ describe('selectForExport', () => {
 describe('exportEntries', () => {
   function todayCast() {
     const log = sampleLog();
-    return selectForExport(log.entries, {
+    return selectForExport(log.history, {
       range: 'game',
       cards: 'cast',
       gameId: log.gameId,
@@ -138,7 +138,7 @@ describe('exportEntries', () => {
       card: makeCard({ name: 'Aura' }),
       target: makeCard({ name: 'Host' }),
     });
-    const entries = selectForExport(log.entries, {
+    const entries = selectForExport(log.history, {
       range: 'game',
       cards: 'all',
       gameId: log.gameId,
@@ -147,9 +147,9 @@ describe('exportEntries', () => {
     const text = exportEntries(entries, 'text').split('\n');
     const csv = exportEntries(entries, 'csv').split('\n');
 
-    expect(text[0]).toBe('09:00  New game  cleared session');
+    expect(text[0]).toBe('09:00  New game  from the menu');
     expect(text.at(-2)).toBe('09:05  Attached  Aura to Host');
-    expect(csv[1]).toContain(',gameMarker,,cleared session,,');
+    expect(csv[1]).toContain(',gameMarker,,from the menu,,');
     expect(csv.at(-2)).toContain(',attached,Aura,Aura to Host,');
   });
 

@@ -3,7 +3,7 @@ import { computed, isProxy, nextTick } from 'vue';
 import { flushSaves } from '~/composables/useLocalStorage';
 import {
   MAX_ENTRIES,
-  MAX_AGE_MS,
+  NEARLY_FULL_ENTRIES,
   snapshotCard,
   useEventLogStore,
   type EventEntry,
@@ -78,37 +78,121 @@ describe('event log store', () => {
     const log = useEventLogStore();
     const first = log.gameId;
 
-    const marker = log.startNewGame('clearSession');
+    const marker = log.startNewGame('newGame');
 
     expect(log.gameId).not.toBe(first);
     expect(marker).toMatchObject({
       type: 'gameMarker',
-      reason: 'clearSession',
+      reason: 'newGame',
       gameId: log.gameId,
     });
   });
 
-  it('drops entries older than the maximum age', () => {
-    vi.useFakeTimers({ now: 0 });
+  it('keeps only the current game; a new game archives the rest', async () => {
     const log = useEventLogStore();
-    log.record('fetched', { card: makeScryfallCard({ name: 'Old' }) });
+    log.record('fetched', { card: makeScryfallCard({ name: 'Last game' }) });
 
-    vi.setSystemTime(MAX_AGE_MS + 1);
-    log.record('fetched', { card: makeScryfallCard({ name: 'New' }) });
+    log.startNewGame('newGame');
+    log.record('fetched', { card: makeScryfallCard({ name: 'This game' }) });
+    await log.settled();
 
-    expect(log.entries.map(cardName)).toEqual(['New']);
+    expect(log.entries.map((e) => e.type)).toEqual(['gameMarker', 'fetched']);
+    await log.loadHistory();
+    expect(log.history.map(cardName)).toEqual([
+      'Last game',
+      undefined,
+      'This game',
+    ]);
   });
 
-  it('keeps at most the maximum number of entries, dropping the oldest', () => {
+  it('when the current game fills, keeps only the newest 250 of a recent game', () => {
     const log = useEventLogStore();
-    for (let i = 0; i < MAX_ENTRIES + 2; i++) log.record('boardCleared', {});
+    for (let i = 0; i <= MAX_ENTRIES; i++) log.record('boardCleared', {});
 
-    expect(log.entries).toHaveLength(MAX_ENTRIES);
+    expect(log.entries).toHaveLength(250);
+  });
+
+  it('when the current game fills, drops everything over a day old if that drops more', () => {
+    vi.useFakeTimers({ now: new Date('2026-11-07T12:00:00Z') });
+    const log = useEventLogStore();
+    for (let i = 0; i < MAX_ENTRIES - 100; i++) log.record('boardCleared', {});
+
+    vi.setSystemTime(Date.now() + 25 * 60 * 60 * 1000);
+    for (let i = 0; i <= 100; i++) log.record('boardCleared', {});
+
+    expect(log.entries).toHaveLength(101);
+  });
+
+  it('says when the current game is nearly full', () => {
+    const log = useEventLogStore();
+    for (let i = 1; i < NEARLY_FULL_ENTRIES; i++)
+      log.record('boardCleared', {});
+    expect(log.nearlyFull).toBe(false);
+
+    log.record('boardCleared', {});
+    expect(log.nearlyFull).toBe(true);
+  });
+
+  it('archives a finished game on the next start if the tab closed first', async () => {
+    const log = useEventLogStore();
+    log.record('fetched', { card: makeScryfallCard({ name: 'Last game' }) });
+    log.startNewGame('newGame');
+    await nextTick();
+    flushSaves(); // The tab closes before the archive write lands.
+
+    setActivePinia(createPinia());
+    const reloaded = useEventLogStore();
+    await reloaded.settled();
+    await reloaded.loadHistory();
+
+    expect(reloaded.history.map(cardName)).toContain('Last game');
+    expect(reloaded.history.filter((e) => e.type === 'fetched')).toHaveLength(
+      1,
+    );
+  });
+
+  it('clear history empties the archive but keeps the current game', async () => {
+    const log = useEventLogStore();
+    log.record('fetched', { card: makeScryfallCard({ name: 'Last game' }) });
+    log.startNewGame('newGame');
+    await log.settled();
+
+    log.clearHistory();
+    await log.settled();
+    await log.loadHistory();
+
+    expect(log.history.map((e) => e.type)).toEqual(['gameMarker']);
+  });
+
+  it('reset empties the archive too', async () => {
+    const log = useEventLogStore();
+    log.record('fetched', { card: makeScryfallCard() });
+    log.startNewGame('newGame');
+    await log.settled();
+
+    log.reset();
+    await log.settled();
+    await log.loadHistory();
+
+    expect(log.history).toEqual([]);
+  });
+
+  it('without IndexedDB, keeps the current game only and says so', async () => {
+    Reflect.deleteProperty(globalThis, 'indexedDB');
+    const log = useEventLogStore();
+    log.record('fetched', { card: makeScryfallCard({ name: 'Last game' }) });
+
+    log.startNewGame('newGame');
+    await log.settled();
+    await log.loadHistory();
+
+    expect(log.archiveAvailable).toBe(false);
+    expect(log.history.map((e) => e.type)).toEqual(['gameMarker']);
   });
 
   it('survives a reload, game included', async () => {
     const log = useEventLogStore();
-    log.startNewGame('clearBoard');
+    log.startNewGame('newGame');
     log.record('cast', { card: makeCard({ name: 'Kept' }) });
     const gameId = log.gameId;
     await nextTick();
@@ -160,22 +244,6 @@ describe('event log store', () => {
 
     log.reset();
     expect(count.value).toBe(0);
-  });
-
-  it('saves after a trim on load drops old entries', async () => {
-    vi.useFakeTimers({ now: new Date('2026-11-07T12:00:00Z') });
-    useEventLogStore().record('cast', { card: makeCard() });
-    await nextTick();
-    flushSaves();
-
-    vi.setSystemTime(Date.now() + MAX_AGE_MS + 1);
-    setActivePinia(createPinia());
-    expect(useEventLogStore().entries).toEqual([]);
-    await nextTick();
-    vi.runAllTimers();
-
-    setActivePinia(createPinia());
-    expect(localStorage.getItem('mtg-harmony_eventLog')).not.toContain('cast');
   });
 
   it('keeps cards that are still on the board apart from new instances', () => {

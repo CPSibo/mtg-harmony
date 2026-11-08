@@ -35,7 +35,7 @@
             icon="i-lucide-clipboard-copy"
             label="Copy"
             variant="soft"
-            :disabled="!entries.length"
+            :disabled="!!disabledReason"
             :title="disabledReason"
             @click="copy"
           />
@@ -47,7 +47,7 @@
     <template #footer>
       <UButton
         icon="i-lucide-download"
-        :disabled="!entries.length"
+        :disabled="!!disabledReason"
         :title="disabledReason"
         @click="download"
       >
@@ -117,7 +117,7 @@ const groups: Group[] = [
 ];
 
 const entries = computed(() =>
-  selectForExport(log.entries, {
+  selectForExport(log.history, {
     range: range.value,
     cards: cards.value,
     gameId: log.gameId,
@@ -133,9 +133,12 @@ const noun = computed(() => {
 });
 
 /** Why Copy and Download are disabled, shown on hover. */
-const disabledReason = computed(() =>
-  entries.value.length ? undefined : `No ${noun.value} match these options`,
-);
+const disabledReason = computed(() => {
+  if (log.historyLoading) return 'Loading past games…';
+  return entries.value.length
+    ? undefined
+    : `No ${noun.value} match these options`;
+});
 
 async function copy() {
   try {

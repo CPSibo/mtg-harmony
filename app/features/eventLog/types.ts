@@ -26,7 +26,7 @@ export type LoggedCardText = Pick<
 >;
 
 /** Why a new game started. */
-export type GameMarkerReason = 'clearBoard' | 'clearSession' | 'idlePrompt';
+export type GameMarkerReason = 'newGame' | 'idlePrompt';
 
 type AnyCard = BoardCard | ScryfallCard;
 

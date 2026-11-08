@@ -73,9 +73,9 @@ describe('describeEntry', () => {
     });
     log.record('removed', { card: makeCard({ name: 'C' }) });
     log.record('added', { card: makeCard({ name: 'D' }) });
-    log.startNewGame('clearSession');
+    log.startNewGame('newGame');
 
-    expect(log.entries.map((e: EventEntry) => describeEntry(e))).toEqual([
+    expect(log.history.map((e: EventEntry) => describeEntry(e))).toEqual([
       'Fetched Smoke Ooze',
       'Cast Smoke Ooze',
       'Attached Smoke Ooze to Grizzly Host',
@@ -84,7 +84,7 @@ describe('describeEntry', () => {
       'Put A under B',
       'Removed C',
       'Added D',
-      'New game (cleared session)',
+      'New game (from the menu)',
     ]);
   });
 });

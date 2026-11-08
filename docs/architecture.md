@@ -8,15 +8,15 @@ defined in [domain.md](domain.md).
 A single-page, client-only Vue 3 app built with Vite. There is no server and no router. All state lives in Pinia
 stores and is saved to `localStorage`. Cloudflare Pages serves the static build from `dist/`.
 
-| Piece       | Choice                                                                                  |
-| ----------- | --------------------------------------------------------------------------------------- |
-| Framework   | Vue 3 (`<script setup>`, TypeScript), mounted from `app/main.ts` into `index.html`      |
-| UI kit      | Nuxt UI through its Vite plugin, with no auto-imports, component registration or router |
-| State       | Pinia setup stores                                                                      |
-| Utilities   | VueUse                                                                                  |
-| Styling     | Tailwind v4 (`app/assets/css/main.css`), `mana-font` for mana and ability symbols       |
-| Card data   | The [Scryfall API](https://scryfall.com/docs/api), called directly from the browser     |
-| Persistence | `localStorage`, serialized with [devalue](https://github.com/Rich-Harris/devalue)       |
+| Piece       | Choice                                                                                                                                                     |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Framework   | Vue 3 (`<script setup>`, TypeScript), mounted from `app/main.ts` into `index.html`                                                                         |
+| UI kit      | Nuxt UI through its Vite plugin, with no auto-imports, component registration or router                                                                    |
+| State       | Pinia setup stores                                                                                                                                         |
+| Utilities   | VueUse                                                                                                                                                     |
+| Styling     | Tailwind v4 (`app/assets/css/main.css`), `mana-font` for mana and ability symbols                                                                          |
+| Card data   | The [Scryfall API](https://scryfall.com/docs/api), called directly from the browser                                                                        |
+| Persistence | `localStorage`, serialized with [devalue](https://github.com/Rich-Harris/devalue); past games in IndexedDB via [idb](https://github.com/jakearchibald/idb) |
 
 Every component, composable and Vue API is imported explicitly. `~` points to `app/`. See `AGENTS.md` for the
 import gotchas (`UIcon`, `$fetch`).
@@ -102,17 +102,17 @@ watch([…state], save, { deep }); // On every change
 - `load()` checks every field's type before using it, so stale or hand-edited storage can't break the app.
 - Stores build their defaults from a `createDefaults()` factory where the defaults hold objects or arrays, so no
   two store instances share them.
-- `reset()` returns a store to its defaults. `useReset()` builds the menu's three levels from these: **clear
-  board** (battlefield), **clear session** (plus On-deck's queue and shown card) and **reset all data** (plus
-  settings and the event log). Each shows one toast.
+- `reset()` returns a store to its defaults. `useReset()` builds the menu's three levels from these: **Clear
+  board** (battlefield, for board wipes), **New game** (plus On-deck's queue and shown card, and a new game in the
+  event log) and **Reset app** (plus settings and the whole event log). Each shows one toast.
 
-| Key                          | Store                    | Holds                                     |
-| ---------------------------- | ------------------------ | ----------------------------------------- |
-| `mtg-harmony_battlefield`    | `useBattlefieldStore`    | Stacks, z-order, board centre, snap size  |
-| `mtg-harmony_discordFetcher` | `useDiscordFetcherStore` | Queued cards, the shown card, settings    |
-| `mtg-harmony_settings`       | `useSettingsStore`       | App settings                              |
-| `mtg-harmony_inputMode`      | `useInputModeStore`      | Last input mode (touch or cursor)         |
-| `mtg-harmony_eventLog`       | `useEventLogStore`       | Event log entries and the current game ID |
+| Key                          | Store                    | Holds                                                                        |
+| ---------------------------- | ------------------------ | ---------------------------------------------------------------------------- |
+| `mtg-harmony_battlefield`    | `useBattlefieldStore`    | Stacks, z-order, board centre, snap size                                     |
+| `mtg-harmony_discordFetcher` | `useDiscordFetcherStore` | Queued cards, the shown card, settings                                       |
+| `mtg-harmony_settings`       | `useSettingsStore`       | App settings                                                                 |
+| `mtg-harmony_inputMode`      | `useInputModeStore`      | Last input mode (touch or cursor)                                            |
+| `mtg-harmony_eventLog`       | `useEventLogStore`       | The current game's log entries, finished games not yet archived, the game ID |
 
 `useLocalStorage` serializes with **devalue**, not JSON, because the board model has `Set`s and cycles: a card
 points to its stack (`BoardCard.stack`), and the stack points back to the card. devalue keeps both, so a loaded
@@ -206,12 +206,26 @@ Rules the battlefield store enforces:
 `features/eventLog` keeps one list of meaningful changes, newest last: fetched, cast, added, attached, put under,
 copied, removed, board cleared and game markers. Moving, tapping and counters aren't logged.
 
+The log is split in two (#81):
+
+- **The current game** is `entries`, saved to `localStorage` and read synchronously. On-deck history, the idle
+  prompt and anything else in play only ever need this game. `entries` is a `shallowRef`: entries never change
+  once recorded, and deep reactivity over thousands of them cost tens of milliseconds per event.
+- **Finished games** move to an IndexedDB archive (`archive.ts`, database `mtg-harmony`) when a new game starts.
+  Each game is one record, so a card is stored once per game. Only the log window and export read it, through
+  `loadHistory()` (once; archiving and clearing keep it up to date) and `history` (archive, then current game).
+- Archive work runs one task at a time (`settled()` resolves when it's done). A finished game waits in `pending`,
+  saved with the current game, until its archive write lands, so a tab closed mid-write archives it on the next
+  start. Archiving a game again replaces it.
+- Without IndexedDB (some private windows), finished games are dropped, `archiveAvailable` is false, and the log
+  window says it shows this game only.
+
 - `record(type, payload)` adds an entry with an ID, timestamp and the current game ID. Cards in the payload are
   stored as snapshots (`snapshotCard`: instance ID, Scryfall ID, name, image and Scryfall URI), so later changes
   on the board don't rewrite history. A card fetched but not yet on the board has no instance ID.
 - Every entry about the same card shares one snapshot object, keyed by instance ID (or Scryfall ID for a card not
-  on the board). devalue writes a shared object once, so the saved log stores each card once. 5000 typical
-  entries come to about 0.9 MB.
+  on the board). devalue writes a shared object once, so the saved log stores each card once. 2,000 typical
+  entries, card text included, come to about 0.8 MB.
 - Events are recorded in the store actions, not in components:
 
   | Event          | Recorded by                                                        |
@@ -226,14 +240,16 @@ copied, removed, board cleared and game markers. Moving, tapping and counters ar
 
   Internal moves (`removeCardFromStack`, `explodeStack`, `detach`) aren't logged.
 
-- `startNewGame(reason)` switches to a new game ID and records a `gameMarker`. A refresh never ends a game.
-- The menu's **Clear board**, **Clear session** and **Reset all data** (`useReset`) each show one toast. Clear
-  board and Clear session start a new game, one marker each. Reset all data empties the log (`reset()`), back to
-  a fresh install.
+- `startNewGame(reason)` moves the current game's entries to the archive, switches to a new game ID and records a
+  `gameMarker`. A refresh never ends a game; neither does Clear board.
+- The menu's **New game** (`useReset().newGame`) starts a new game. **Reset app** empties the log and the
+  archive (`reset()`), back to a fresh install. **Clear past games** in the log window empties the archive only
+  (`clearHistory()`), after a second click.
 - After 2 hours without events (`IDLE_PROMPT_AFTER_MS`), `NewGamePrompt` offers a new game when the app opens or
   its tab comes back into view (`shouldOfferNewGame`). Only with cards on the board, and not when the last event
-  is already a new game, so a player who cleared up or never played isn't asked. **New game** does what Clear session does, with the reason
-  `idlePrompt`. Closing it any other way dismisses the offer until there's new activity; the dismissal is saved.
+  is already a new game, so a player who cleared up or never played isn't asked. **New game** does what the menu's
+  New game does, with the reason `idlePrompt`. Once the current game has 1,000 entries (`NEARLY_FULL_ENTRIES`),
+  the prompt has a warning header and asks the player to start a new game at the start of each game. Closing it any other way dismisses the offer until there's new activity; the dismissal is saved.
 - The **Event log** window (`EventLogWindow.vue`) opens from the palette (`e`, then `l`) or the menu. It lists
   entries newest first (`filterEntries`), filtered by event type and part of a card name, and shows the newest 200
   matches. A fetched entry has **Cast**, which casts the card again from its snapshot
@@ -243,8 +259,10 @@ copied, removed, board cleared and game markers. Moving, tapping and counters ar
   (`selectForExport`). Plain text is one line per event with local times; CSV has
   `time,event,card,details,scryfall_url,game` with UTC ISO times (`exportEntries`). `details` (`entryDetails`)
   covers what a card name doesn't: an attachment's target, a copy's mode, a new game's reason.
-- The log keeps 30 days and at most 5000 entries (`MAX_AGE_MS`, `MAX_ENTRIES`), trimmed on load and on each
-  record.
+- **Limits.** The current game keeps at most 2,000 entries (`MAX_ENTRIES`); a realistic long game, six players
+  over two sittings, logs about 1,000. Past that, it keeps whichever is smaller: the last 24 hours or the newest
+  250 entries. The archive keeps a year and at most 500,000 entries (`ARCHIVE_MAX_AGE_MS`,
+  `ARCHIVE_MAX_ENTRIES`), dropping whole games, oldest first, whenever a game is archived.
 
 ## Scryfall
 
@@ -264,7 +282,7 @@ All calls go straight from the browser to `api.scryfall.com`. There is no proxy 
   arrives, while the rest of the batch keeps loading. When fewer than 3 cards are queued, it tops up in the
   background. Overlapping fetches share one request. The next queued card's image is preloaded.
 - **History**: the fetcher keeps only the queue and the newest card shown. Each shown card is logged as `fetched`,
-  and "previous" steps back through those log entries (since the last Clear session), rebuilding each card from
+  and "previous" steps back through those log entries (since the last New game), rebuilding each card from
   its snapshot. "Next" steps forward through them again before taking a new card from the queue.
 
 ## Gotchas

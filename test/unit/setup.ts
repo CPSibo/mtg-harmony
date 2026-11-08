@@ -1,3 +1,5 @@
+import 'fake-indexeddb/auto';
+import { IDBFactory } from 'fake-indexeddb';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, vi } from 'vitest';
 import { flushSaves } from '~/composables/useLocalStorage';
@@ -8,6 +10,8 @@ beforeEach(() => {
   // Saves are debounced at module level; don't let one test's land in the next.
   flushSaves();
   localStorage.clear();
+  // A fresh, empty IndexedDB (happy-dom has none).
+  globalThis.indexedDB = new IDBFactory();
   vi.useRealTimers();
   setActivePinia(createPinia());
 });

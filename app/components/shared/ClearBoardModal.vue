@@ -24,7 +24,7 @@
       <ul>
         <li>All cards on the board</li>
       </ul>
-      <p>The event log keeps everything and marks a new game.</p>
+      <p>The game goes on; the event log notes the cleared board.</p>
     </template>
 
     <template #footer>

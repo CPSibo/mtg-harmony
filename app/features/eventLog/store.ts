@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia';
-import { ref, shallowRef, triggerRef, watch } from 'vue';
+import { computed, ref, shallowRef, triggerRef, watch } from 'vue';
 import { useLocalStorage } from '~/composables/useLocalStorage';
 import { randomUUID } from '~/utils/randomUUID';
+import { archiveEntries, clearArchive, loadArchive } from './archive';
 import { snapshotCard } from './snapshot';
 import {
   EVENT_TYPES,
@@ -15,10 +16,20 @@ import {
 
 const STORAGE_KEY = 'mtg-harmony_eventLog';
 
-/** Entries older than this are dropped. */
-export const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
-/** At most this many entries are kept; the oldest go first. */
-export const MAX_ENTRIES = 5000;
+/**
+ * The most entries the current game keeps. A realistic long game (six
+ * players over two sittings) logs about 1,000.
+ */
+export const MAX_ENTRIES = 2000;
+/** From here the idle prompt warns that the log is filling up. */
+export const NEARLY_FULL_ENTRIES = 1000;
+/**
+ * When the current game fills, it keeps whichever is smaller: the last day,
+ * or the newest this many entries. Someone who never starts a new game
+ * doesn't need its history.
+ */
+const KEEP_WHEN_FULL = 250;
+const KEEP_WHEN_FULL_MS = 24 * 60 * 60 * 1000;
 
 const CARD_FIELDS = ['card', 'target', 'source'] as const;
 
@@ -39,10 +50,15 @@ function isEntry(value: unknown): value is EventEntry {
 }
 
 /**
- * The event log: one list of meaningful changes (fetches, casts, attaches,
- * copies, removals, game markers), newest last. Moving, tapping and counters
- * aren't logged. Saved to localStorage and trimmed by age and count. A
- * refresh never ends a game; only `startNewGame` does.
+ * The event log: meaningful changes (fetches, casts, attaches, copies,
+ * removals, game markers), newest last. Moving, tapping and counters aren't
+ * logged. A refresh never ends a game; only `startNewGame` does.
+ *
+ * Split in two (#81): `entries` is the current game, kept in localStorage
+ * and read synchronously by anything in play. Finished games move to an
+ * IndexedDB archive, which only the log window and export read, through
+ * `loadHistory()` and `history`. Without IndexedDB the log is the current
+ * game only.
  */
 export const useEventLogStore = defineStore('eventLog', () => {
   // Shallow: entries never change once recorded, and making thousands of them
@@ -53,6 +69,79 @@ export const useEventLogStore = defineStore('eventLog', () => {
     triggerRef(entries);
   }
   const gameId = ref(randomUUID());
+
+  /**
+   * Finished games not yet in the archive. Saved with the current game, so a
+   * tab closed mid-write archives them on the next start.
+   */
+  const pending = shallowRef<EventEntry[]>([]);
+  /** The archive once loaded by `loadHistory()`, else null. */
+  const archived = shallowRef<EventEntry[] | null>(null);
+  /** Whether IndexedDB works here; null until first used. */
+  const archiveAvailable = ref<boolean | null>(null);
+
+  /** Archive work, one task at a time and in order. */
+  let queue: Promise<void> = Promise.resolve();
+  function enqueue(task: () => Promise<void>) {
+    queue = queue.then(task, task);
+    return queue;
+  }
+  /** Resolves when archive work queued so far has finished. */
+  function settled() {
+    return queue;
+  }
+
+  function archivePending() {
+    return enqueue(async () => {
+      const batch = pending.value;
+      if (!batch.length) return;
+      const ok = await archiveEntries(batch);
+      archiveAvailable.value = ok;
+      // Archived, or nowhere to put it: either way it leaves localStorage.
+      const done = new Set(batch);
+      pending.value = pending.value.filter((e) => !done.has(e));
+      if (ok && archived.value) archived.value = [...archived.value, ...batch];
+    });
+  }
+
+  /** Whether `loadHistory()` is reading the archive. */
+  const historyLoading = ref(false);
+
+  /**
+   * Loads the archive into `history`, once: after that, archiving and
+   * clearing keep it up to date.
+   */
+  function loadHistory() {
+    if (archived.value) return settled();
+    historyLoading.value = true;
+    return enqueue(async () => {
+      try {
+        const loaded = await loadArchive();
+        archiveAvailable.value = loaded !== null;
+        archived.value = loaded ?? [];
+      } finally {
+        historyLoading.value = false;
+      }
+    });
+  }
+
+  /** Every entry the log has, oldest first: after `loadHistory()`, past games too. */
+  const history = computed(() => [
+    ...(archived.value ?? []),
+    ...pending.value,
+    ...entries.value,
+  ]);
+
+  /** Empties the archive. The current game stays. */
+  function clearHistory() {
+    pending.value = [];
+    if (archived.value) archived.value = [];
+    void enqueue(clearArchive);
+  }
+
+  const nearlyFull = computed(
+    () => entries.value.length >= NEARLY_FULL_ENTRIES,
+  );
 
   /** When the idle new-game offer was last dismissed (ms), or null. */
   const newGameOfferDismissedAt = ref<number | null>(null);
@@ -93,19 +182,19 @@ export const useEventLogStore = defineStore('eventLog', () => {
     }
   }
 
-  /** Drops old entries. Returns whether it dropped any. */
+  /**
+   * When the current game is over the cap, drops whichever is more: entries
+   * over a day old, or all but the newest 250. Returns whether it dropped any.
+   */
   function trim(now = Date.now()): boolean {
-    const cutoff = now - MAX_AGE_MS;
-    let start = entries.value.findIndex((e) => e.at >= cutoff);
-    if (start === -1) start = entries.value.length;
-    start = Math.max(start, entries.value.length - MAX_ENTRIES);
-    if (start > 0) {
-      entries.value.splice(0, start);
-      reindexSnapshots();
-      changed();
-      return true;
-    }
-    return false;
+    const list = entries.value;
+    if (list.length <= MAX_ENTRIES) return false;
+    let old = list.findIndex((e) => e.at >= now - KEEP_WHEN_FULL_MS);
+    if (old === -1) old = list.length;
+    list.splice(0, Math.max(old, list.length - KEEP_WHEN_FULL));
+    reindexSnapshots();
+    changed();
+    return true;
   }
 
   /** Adds an entry for the current game and returns it. */
@@ -133,14 +222,24 @@ export const useEventLogStore = defineStore('eventLog', () => {
     return entry;
   }
 
-  /** Starts a new game, recording a marker as its first entry. */
+  /**
+   * Starts a new game, recording a marker as its first entry. Everything
+   * before it moves to the archive.
+   */
   function startNewGame(reason: GameMarkerReason) {
+    pending.value = [...pending.value, ...entries.value];
+    entries.value = [];
+    snapshots.clear();
     gameId.value = randomUUID();
-    return record('gameMarker', { reason });
+    const marker = record('gameMarker', { reason });
+    void archivePending();
+    return marker;
   }
 
+  /** Empties the log, archive included. */
   function reset() {
     entries.value = [];
+    clearHistory();
     newGameOfferDismissedAt.value = null;
     snapshots.clear();
     gameId.value = randomUUID();
@@ -149,6 +248,7 @@ export const useEventLogStore = defineStore('eventLog', () => {
   function save() {
     useLocalStorage().save(STORAGE_KEY, {
       entries: entries.value,
+      pending: pending.value,
       gameId: gameId.value,
       newGameOfferDismissedAt: newGameOfferDismissedAt.value,
     });
@@ -157,6 +257,7 @@ export const useEventLogStore = defineStore('eventLog', () => {
   function load(): boolean {
     const data = useLocalStorage().load<{
       entries?: unknown;
+      pending?: unknown;
       gameId?: unknown;
       newGameOfferDismissedAt?: unknown;
     }>(STORAGE_KEY);
@@ -164,6 +265,8 @@ export const useEventLogStore = defineStore('eventLog', () => {
 
     if (Array.isArray(data.entries))
       entries.value = data.entries.filter(isEntry);
+    if (Array.isArray(data.pending))
+      pending.value = data.pending.filter(isEntry);
     if (typeof data.gameId === 'string') gameId.value = data.gameId;
     if (typeof data.newGameOfferDismissedAt === 'number')
       newGameOfferDismissedAt.value = data.newGameOfferDismissedAt;
@@ -173,7 +276,8 @@ export const useEventLogStore = defineStore('eventLog', () => {
   }
 
   load();
-  watch([entries, gameId, newGameOfferDismissedAt], save);
+  watch([entries, pending, gameId, newGameOfferDismissedAt], save);
+  if (pending.value.length) void archivePending();
 
   return {
     entries,
@@ -181,6 +285,13 @@ export const useEventLogStore = defineStore('eventLog', () => {
     record,
     startNewGame,
     reset,
+    nearlyFull,
+    history,
+    historyLoading,
+    loadHistory,
+    clearHistory,
+    archiveAvailable,
+    settled,
     save,
     load,
     newGameOfferDismissedAt,

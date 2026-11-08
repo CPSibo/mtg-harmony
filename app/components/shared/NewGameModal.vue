@@ -9,7 +9,7 @@
       footer: 'flex flex-row justify-between',
     }"
     :close="false"
-    description="Confirm that you want to clear the session"
+    description="Confirm that you want to start a new game"
   >
     <template #title>
       <UIcon
@@ -25,7 +25,7 @@
         <li>All cards on the board</li>
         <li>The On-deck card and the cards fetched ahead</li>
       </ul>
-      <p>The event log keeps everything and marks a new game.</p>
+      <p>The event log keeps everything and starts a new game.</p>
     </template>
 
     <template #footer>
@@ -38,10 +38,10 @@
         Cancel
       </UButton>
       <UButton
-        icon="i-lucide-rotate-ccw"
+        icon="i-lucide-flag"
         color="warning"
         variant="solid"
-        @click="clearSession"
+        @click="newGame"
       >
         Confirm
       </UButton>
@@ -59,8 +59,8 @@ const reset = useReset();
 
 const open = defineModel<boolean>('open');
 
-const clearSession = () => {
-  reset.clearSession();
+const newGame = () => {
+  reset.newGame();
 
   open.value = false;
 };

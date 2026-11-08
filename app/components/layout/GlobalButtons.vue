@@ -11,7 +11,7 @@
     <LayoutMenu
       @open-settings-requested="emit('openSettingsRequested')"
       @clear-board-requested="emit('clearBoardRequested')"
-      @clear-session-requested="emit('clearSessionRequested')"
+      @new-game-requested="emit('newGameRequested')"
       @reset-all-requested="emit('resetAllRequested')"
     />
   </div>
@@ -25,7 +25,7 @@ import DiscordFetch from '../../features/discordFetcher/components/SidePanel.vue
 const emit = defineEmits<{
   openSettingsRequested: [];
   clearBoardRequested: [];
-  clearSessionRequested: [];
+  newGameRequested: [];
   resetAllRequested: [];
 }>();
 </script>

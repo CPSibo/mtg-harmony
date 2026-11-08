@@ -9,7 +9,7 @@
       footer: 'flex flex-row justify-between',
     }"
     :close="false"
-    description="Confirm that you want to reset all app data"
+    description="Confirm that you want to reset the app"
   >
     <template #title>
       <UIcon

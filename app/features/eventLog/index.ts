@@ -1,5 +1,5 @@
 export { snapshotCard } from './snapshot';
-export { MAX_AGE_MS, MAX_ENTRIES, useEventLogStore } from './store';
+export { MAX_ENTRIES, NEARLY_FULL_ENTRIES, useEventLogStore } from './store';
 export * from './types';
 export {
   EVENT_LABELS,

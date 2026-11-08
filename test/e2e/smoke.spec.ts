@@ -573,3 +573,28 @@ test('with card outlines off, board cards have no visible border', async ({
   await wrapper.hover();
   await expect(wrapper).toHaveCSS('border-top-color', 'rgba(0, 0, 0, 0)');
 });
+
+// #81: past games live in IndexedDB, the current game in localStorage.
+test('the log keeps the last game after a new game and a reload', async ({
+  page,
+}) => {
+  await page.getByRole('button', { name: 'On-deck' }).click();
+  await page.getByRole('button', { name: 'Next card' }).click();
+  await page.getByRole('button', { name: 'Cast to board' }).click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'Next card' })).toBeHidden();
+
+  await page.getByRole('button', { name: 'Open menu' }).click();
+  await page.getByRole('menuitem', { name: 'New game' }).click();
+  await page.getByRole('button', { name: 'Confirm' }).click();
+  await expect(page.locator('.board-card')).toHaveCount(0);
+  await page.reload();
+
+  await page.getByRole('button', { name: 'Open menu' }).click();
+  await page.getByRole('menuitem', { name: 'Event log' }).click();
+  const events = page
+    .getByRole('dialog', { name: 'Event log' })
+    .getByRole('list', { name: 'Events' });
+  await expect(events.getByText('New game (from the menu)')).toBeVisible();
+  await expect(events.getByText(`Cast ${card.name}`)).toBeVisible();
+});

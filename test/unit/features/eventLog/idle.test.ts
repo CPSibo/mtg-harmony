@@ -39,7 +39,7 @@ describe('shouldOfferNewGame', () => {
     vi.useFakeTimers({ now: 0 });
     const log = useEventLogStore();
     log.record('cast', { card: makeCard() });
-    log.startNewGame('clearSession');
+    log.startNewGame('newGame');
 
     expect(shouldOfferNewGame(log, 10 * HOUR, true)).toBe(false);
   });
