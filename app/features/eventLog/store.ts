@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, toRaw, watch } from 'vue';
+import { ref, shallowRef, triggerRef, watch } from 'vue';
 import { useLocalStorage } from '~/composables/useLocalStorage';
 import { randomUUID } from '~/utils/randomUUID';
 import { snapshotCard } from './snapshot';
@@ -45,7 +45,13 @@ function isEntry(value: unknown): value is EventEntry {
  * refresh never ends a game; only `startNewGame` does.
  */
 export const useEventLogStore = defineStore('eventLog', () => {
-  const entries = ref<EventEntry[]>([]);
+  // Shallow: entries never change once recorded, and making thousands of them
+  // deeply reactive cost tens of milliseconds per event (#81). Changes to the
+  // list call `changed()`.
+  const entries = shallowRef<EventEntry[]>([]);
+  function changed() {
+    triggerRef(entries);
+  }
   const gameId = ref(randomUUID());
 
   /** When the idle new-game offer was last dismissed (ms), or null. */
@@ -80,14 +86,15 @@ export const useEventLogStore = defineStore('eventLog', () => {
     snapshots.clear();
     for (const entry of entries.value) {
       for (const field of CARD_FIELDS) {
-        const card = toRaw((entry as Record<string, unknown>)[field]) as
+        const card = (entry as Record<string, unknown>)[field] as
           LoggedCard | undefined;
         if (card) snapshots.set(cardKey(card), card);
       }
     }
   }
 
-  function trim(now = Date.now()) {
+  /** Drops old entries. Returns whether it dropped any. */
+  function trim(now = Date.now()): boolean {
     const cutoff = now - MAX_AGE_MS;
     let start = entries.value.findIndex((e) => e.at >= cutoff);
     if (start === -1) start = entries.value.length;
@@ -95,7 +102,10 @@ export const useEventLogStore = defineStore('eventLog', () => {
     if (start > 0) {
       entries.value.splice(0, start);
       reindexSnapshots();
+      changed();
+      return true;
     }
+    return false;
   }
 
   /** Adds an entry for the current game and returns it. */
@@ -118,6 +128,7 @@ export const useEventLogStore = defineStore('eventLog', () => {
     } as EventEntryOf<T>;
 
     entries.value.push(entry as EventEntry);
+    changed();
     trim(entry.at);
     return entry;
   }
@@ -157,12 +168,12 @@ export const useEventLogStore = defineStore('eventLog', () => {
     if (typeof data.newGameOfferDismissedAt === 'number')
       newGameOfferDismissedAt.value = data.newGameOfferDismissedAt;
     reindexSnapshots();
-    trim();
+    if (trim()) save();
     return true;
   }
 
   load();
-  watch([entries, gameId, newGameOfferDismissedAt], save, { deep: true });
+  watch([entries, gameId, newGameOfferDismissedAt], save);
 
   return {
     entries,
