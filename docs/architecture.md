@@ -100,8 +100,9 @@ load();                 // On creation
 watch([…state], save);  // On every change; deep only where data changes in place
 ```
 
-- Only the battlefield's `stacks` and `zOrder` and On-deck's queue are deep-watched, because cards change in
-  place. The board centre is watched shallowly, so a pan doesn't walk every card.
+- Only the battlefield's `stacks` and `zOrder` are deep-watched, because board cards change in place. On-deck's
+  queue and shown card are only ever replaced, so they're shallow refs (the queue is triggered after a push or
+  shift). The board centre is watched shallowly, so a pan doesn't walk every card.
 
 - `load()` checks every field's type before using it, so stale or hand-edited storage can't break the app.
 - Stores build their defaults from a `createDefaults()` factory where the defaults hold objects or arrays, so no

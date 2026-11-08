@@ -14,7 +14,6 @@
       color="info"
       size="xl"
       title="Open menu"
-      @click="isMenuOpen = true"
     />
   </UDropdownMenu>
 </template>
@@ -24,17 +23,14 @@ import { useEventLogStore } from '~/features/eventLog';
 import UButton from '@nuxt/ui/components/Button.vue';
 import UDropdownMenu from '@nuxt/ui/components/DropdownMenu.vue';
 import { useFullscreen } from '@vueuse/core';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import type { DropdownMenuItem } from '@nuxt/ui';
-
-const isMenuOpen = ref(false);
 
 const eventLog = useEventLogStore();
 const fullscreen = useFullscreen();
-const fullscreenIcon = computed(() =>
-  fullscreen.isFullscreen.value ? 'i-lucide-shrink' : 'i-lucide-expand',
-);
-const items = ref<DropdownMenuItem[][]>([
+// Rebuilt only when fullscreen toggles (its icon); nothing else in it changes,
+// so it isn't a deep ref.
+const items = computed<DropdownMenuItem[][]>(() => [
   [
     {
       label: 'MTG Harmony',
@@ -58,7 +54,9 @@ const items = ref<DropdownMenuItem[][]>([
     },
     {
       label: 'Fullscreen',
-      icon: fullscreenIcon,
+      icon: fullscreen.isFullscreen.value
+        ? 'i-lucide-shrink'
+        : 'i-lucide-expand',
       color: 'neutral',
       onSelect: () => fullscreen.toggle(),
     },

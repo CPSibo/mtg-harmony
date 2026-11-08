@@ -1,15 +1,18 @@
 import { defineShortcuts } from '@nuxt/ui/composables';
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, shallowRef, triggerRef } from 'vue';
 import type { Fn } from '@vueuse/core';
 import type { WidgetDefinition } from '~/features/widgets/types';
 
 export const useWidgetRegistry = defineStore('widgetRegistry', () => {
-  const widgets = ref<Map<string, WidgetDefinition>>(new Map());
-  const widgetShortcuts = ref<Map<string, Fn>>(new Map());
+  // Definitions are fixed once registered: shallow, triggered on register and
+  // unregister. The shortcuts' unregister functions are only read here.
+  const widgets = shallowRef(new Map<string, WidgetDefinition>());
+  const widgetShortcuts = new Map<string, Fn>();
 
   function register(widget: WidgetDefinition) {
     widgets.value.set(widget.id, widget);
+    triggerRef(widgets);
 
     const unregister = defineShortcuts(
       widget.commands
@@ -23,17 +26,18 @@ export const useWidgetRegistry = defineStore('widgetRegistry', () => {
         ),
     );
 
-    widgetShortcuts.value.set(widget.id, unregister);
+    widgetShortcuts.set(widget.id, unregister);
   }
 
   function unregister(id: string) {
-    const unregister = widgetShortcuts.value.get(id);
+    const unregister = widgetShortcuts.get(id);
 
     if (unregister) unregister();
 
-    widgetShortcuts.value.delete(id);
+    widgetShortcuts.delete(id);
 
     widgets.value.delete(id);
+    triggerRef(widgets);
   }
 
   const widgetObjects = computed(() => {

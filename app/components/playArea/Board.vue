@@ -98,7 +98,7 @@ const {
     // Performance consideration.
     // Watching the center directly does bad
     // stuff, even with `save` being debounced.
-    centerState.value = center.value;
+    centerState.value = center();
   },
   disabled: () => battlefield.isAttaching,
   smoothing: () => settings.pointerSmoothing,
@@ -139,7 +139,7 @@ watchEffect(() => {
 
 // The centre goes to the store when a pan or zoom ends (`onEnd`), not on
 // every frame.
-battlefield.setCenter(center.value);
+battlefield.setCenter(center());
 
 // ─── Imperative touch listeners ───────────────────────────────────────────────
 //
