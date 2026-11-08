@@ -6,126 +6,118 @@ export interface Rect extends Position, ElementSize {}
 /** Space kept between a new stack and its neighbours, in board pixels. */
 const GAP = 16;
 
-/** How much of a new stack must land inside the view. */
-const MIN_VISIBLE_SHARE = 1 / 3;
-
-/** Cost of a unit of area within the gap around a stack. */
-const GAP_COST = 1;
-
-/**
- * Extra cost, in card areas, of covering a whole stack. It grows with the
- * fourth power of the share covered, so a little overlap costs next to
- * nothing and hiding a card costs a lot.
- */
-const HIDE_COST = 8;
+/** The step between layers of the spiral, in board pixels. */
+const LAYER_OFFSET = 40;
 
 export function overlaps(a: Rect, b: Rect) {
-  return overlapArea(a, b) > 0;
+  return (
+    a.x < b.x + b.width &&
+    b.x < a.x + a.width &&
+    a.y < b.y + b.height &&
+    b.y < a.y + a.height
+  );
 }
 
-function overlapArea(a: Rect, b: Rect) {
-  const w = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
-  const h = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
-  return w > 0 && h > 0 ? w * h : 0;
+function grow(r: Rect, by: number): Rect {
+  return {
+    x: r.x - by,
+    y: r.y - by,
+    width: r.width + by * 2,
+    height: r.height + by * 2,
+  };
+}
+
+/** Slot offsets in rings around (0, 0), nearest first. */
+function spiral(rings: number): Position[] {
+  const slots: Position[] = [{ x: 0, y: 0 }];
+  for (let ring = 1; ring <= rings; ring++) {
+    const ringSlots: Position[] = [];
+    for (let x = -ring; x <= ring; x++) {
+      for (let y = -ring; y <= ring; y++) {
+        if (Math.max(Math.abs(x), Math.abs(y)) === ring)
+          ringSlots.push({ x, y });
+      }
+    }
+    // Sides before corners.
+    ringSlots.sort((a, b) => a.x ** 2 + a.y ** 2 - (b.x ** 2 + b.y ** 2));
+    slots.push(...ringSlots);
+  }
+  return slots;
 }
 
 /**
- * How much worse a unit of card area off screen is than one covering another
- * stack. High, so a full view fills well past one card deep, on screen,
- * before cards start to hang off its edges. Tuned by filling desktop and
- * phone views with 30 cards.
+ * Shifts for each layer of the spiral: multiples of {@link LAYER_OFFSET} on
+ * each axis, under half a step, so no two layers coincide. No shift first,
+ * then nearest first, down and right before up and left.
  */
-const OFFSCREEN_COST = 12;
+function layerShifts(step: Position): Position[] {
+  const offsets = (span: number) => {
+    const n = Math.floor((span / 2 - 1) / LAYER_OFFSET);
+    return Array.from({ length: n * 2 + 1 }, (_, i) => (i - n) * LAYER_OFFSET);
+  };
+  const shifts = offsets(step.x).flatMap((x) =>
+    offsets(step.y).map((y) => ({ x, y })),
+  );
+  const rank = (p: Position) =>
+    Math.max(Math.abs(p.x), Math.abs(p.y)) * 4 -
+    Math.sign(p.x) -
+    Math.sign(p.y);
+  return shifts.sort((a, b) => rank(a) - rank(b));
+}
 
 /**
- * The cost, in card areas, of being as far from the view's middle as its
- * corner. Keeps placement working from the middle out.
- */
-const DISTANCE_COST = 0.5;
-
-/**
- * The top-left corner for a new stack of `size`, with at least a third of it
- * inside `view`. Each spot costs what it covers of `occupied` (more for
- * hiding most of one stack), plus {@link OFFSCREEN_COST} times its area off
- * screen, plus a little for its distance from the middle. So it takes a free
- * spot in view if there is one, nearest the middle, and fills a full view
- * from the middle out, offset from the cards already there. Null when no spot
- * shows enough of the stack.
+ * The top-left corner for a new stack of `size`: the first slot, spiralling
+ * out from the middle of `view` in card-sized steps, that is fully in view
+ * and clear of other stacks. When the view has no such slot, the spiral
+ * starts again shifted by a multiple of {@link LAYER_OFFSET} on each axis,
+ * nearest shift first, so new cards sit offset from the ones below rather
+ * than on top; a slot then only needs no stack already on that spot. Only
+ * stacks that touch the view count.
  */
 export function findFreeSpot(
   view: Rect,
   occupied: readonly Rect[],
   size: ElementSize,
-): Position | null {
-  const blocked = occupied.map((r) => ({
-    x: r.x - GAP,
-    y: r.y - GAP,
-    width: r.width + GAP * 2,
-    height: r.height + GAP * 2,
-  }));
-
+): Position {
   const middle = {
     x: view.x + (view.width - size.width) / 2,
     y: view.y + (view.height - size.height) / 2,
   };
-  const step = Math.max(10, Math.min(size.width, size.height) / 4);
+  if (size.width > view.width || size.height > view.height) return middle;
 
-  // Candidates on each axis: a grid from the view's middle a quarter card
-  // apart, flush with the view's edges, and flush with each neighbour. A
-  // stack may hang up to two thirds off the view on each axis; the visible
-  // share is checked per spot below.
-  function candidates(axis: 'x' | 'y', span: 'width' | 'height') {
-    const overhang = size[span] * (1 - MIN_VISIBLE_SHARE);
-    const min = view[axis] - overhang;
-    const max = view[axis] + view[span] - size[span] + overhang;
-    const values = new Set([
-      min,
-      max,
-      view[axis],
-      view[axis] + view[span] - size[span],
-    ]);
-    for (let v = middle[axis]; v >= min; v -= step) values.add(v);
-    for (let v = middle[axis]; v <= max; v += step) values.add(v);
-    for (const r of blocked) {
-      values.add(r[axis] + r[span]);
-      values.add(r[axis] - size[span]);
-    }
-    return [...values].filter((v) => v >= min && v <= max);
-  }
+  const nearby = occupied.filter((r) => overlaps(grow(r, GAP), view));
+  const step = { x: size.width + GAP, y: size.height + GAP };
+  const rings = Math.ceil(
+    Math.max(view.width / step.x, view.height / step.y) / 2,
+  );
+  const slots = spiral(rings);
+  const shifts = layerShifts(step);
 
-  const xs = candidates('x', 'width');
-  const ys = candidates('y', 'height');
-  const area = size.width * size.height;
+  for (const [layer, shift] of shifts.entries()) {
+    for (const slot of slots) {
+      const spot = {
+        x: middle.x + slot.x * step.x + shift.x,
+        y: middle.y + slot.y * step.y + shift.y,
+      };
+      const rect = { ...spot, ...size };
+      if (
+        rect.x < view.x ||
+        rect.y < view.y ||
+        rect.x + rect.width > view.x + view.width ||
+        rect.y + rect.height > view.y + view.height
+      )
+        continue;
 
-  const maxDistance = Math.hypot(view.width / 2, view.height / 2) || 1;
-
-  let best: Position | null = null;
-  let bestCost = Infinity;
-  for (const x of xs) {
-    for (const y of ys) {
-      const rect = { x, y, ...size };
-      const shown = overlapArea(rect, view);
-      if (shown < area * MIN_VISIBLE_SHARE) continue;
-
-      let cost =
-        (area - shown) * OFFSCREEN_COST +
-        (Math.hypot(x - middle.x, y - middle.y) / maxDistance) *
-          area *
-          DISTANCE_COST;
-      // Covering a stack costs its covered area, plus HIDE_COST for covering
-      // most of it. Coming within the gap costs a little.
-      for (const [i, r] of occupied.entries()) {
-        if (cost >= bestCost) break;
-        const covered = overlapArea(r, rect);
-        const share = covered / (r.width * r.height);
-        const nearby = overlapArea(blocked[i]!, rect) - covered;
-        cost += covered + share ** 4 * area * HIDE_COST + nearby * GAP_COST;
-      }
-      if (cost < bestCost) {
-        best = { x, y };
-        bestCost = cost;
-      }
+      const taken =
+        layer === 0
+          ? nearby.some((r) => overlaps(grow(r, GAP), rect))
+          : nearby.some(
+              (r) =>
+                Math.abs(r.x - spot.x) < LAYER_OFFSET / 2 &&
+                Math.abs(r.y - spot.y) < LAYER_OFFSET / 2,
+            );
+      if (!taken) return spot;
     }
   }
-  return best;
+  return middle;
 }

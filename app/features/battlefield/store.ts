@@ -115,9 +115,9 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
   }
 
   /**
-   * Where a new stack goes: a spot at least a third in view, clear of other
-   * stacks or, when the view is full, overlapping them least. Before the
-   * board reports a view, the saved centre.
+   * Where a new stack goes: a free spot in view, spiralling out from the
+   * middle (`findFreeSpot`). Before the board reports a view, the saved
+   * centre.
    */
   function newStackPosition(): Position {
     const shown = view.value;
@@ -127,12 +127,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
       ...s.position,
       ...stackSize(s),
     }));
-    return (
-      findFreeSpot(shown, occupied, NEW_STACK_SIZE) ?? {
-        x: shown.x + (shown.width - NEW_STACK_SIZE.width) / 2,
-        y: shown.y + (shown.height - NEW_STACK_SIZE.height) / 2,
-      }
-    );
+    return findFreeSpot(shown, occupied, NEW_STACK_SIZE);
   }
 
   const snapScale = ref<number>(defaults.snapScale);
