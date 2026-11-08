@@ -5,7 +5,7 @@
     :style="{ cursor: isDragging ? 'grabbing' : 'grab' }"
     @wheel.prevent="onWheel"
     @mousedown="onMouseDown"
-    @mousemove="onMouseMove"
+    @pointermove="(e) => e.pointerType === 'mouse' && onMouseMove(e)"
     @mouseup="onMouseUp"
     @mouseleave="onMouseLeave"
   >
@@ -68,9 +68,11 @@ import {
   watchEffect,
 } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
+import { useSettingsStore } from '~/stores/settings';
 import type { BoardCard } from '~/types/PlayArea';
 
 const battlefield = useBattlefieldStore();
+const settings = useSettingsStore();
 const { orderedStacks, center: centerState } = storeToRefs(battlefield);
 
 const wrapperEl = useTemplateRef('wrapper');
@@ -99,6 +101,7 @@ const {
     centerState.value = center.value;
   },
   disabled: () => battlefield.isAttaching,
+  smoothing: () => settings.pointerSmoothing,
 });
 
 const anyCardIsDragging = ref(false);

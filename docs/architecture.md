@@ -14,7 +14,7 @@ stores and is saved to `localStorage`. Cloudflare Pages serves the static build 
 | UI kit      | Nuxt UI through its Vite plugin, with no auto-imports, component registration or router                                                                    |
 | State       | Pinia setup stores                                                                                                                                         |
 | Utilities   | VueUse                                                                                                                                                     |
-| Styling     | Tailwind v4 (`app/assets/css/main.css`), `mana-font` for mana and ability symbols                                                                          |
+| Styling     | Tailwind v4 (`app/assets/css/main.css`), a `mana-font` subset (`npm run fonts:mana`)                                                                       |
 | Card data   | The [Scryfall API](https://scryfall.com/docs/api), called directly from the browser                                                                        |
 | Persistence | `localStorage`, serialized with [devalue](https://github.com/Rich-Harris/devalue); past games in IndexedDB via [idb](https://github.com/jakearchibald/idb) |
 
@@ -50,7 +50,8 @@ app/
   types/           PlayArea (the board model), Scryfall, MtgConcepts (the modifier list)
 public/            Served as-is: favicon, og-image.png (the social preview), manifest.webmanifest, icons/
 scripts/og-image/  Source of og-image.png. Edit og-image.html, then `npm run og-image`
-scripts/icons/     Source of public/icons/. Edit icon.html, then `npm run icons`
+scripts/icons/     Source of public/icons/ (`npm run icons`) and the bundled Lucide set (`npm run icons:lucide`)
+scripts/fonts/     Builds the mana-font subset in app/assets/ (`npm run fonts:mana`)
 ```
 
 A feature exports its public surface from its `index.ts`. Import from the feature (`~/features/battlefield`), not
@@ -151,12 +152,15 @@ layer kept through a zoom stays rastered at the old scale and blurs.
 
 ### Dragging stacks (`useScaledDraggable`)
 
-Each stack (`BoardCardStack.vue`) wraps VueUse's `useDraggable`. The wrapper divides pointer movement by the
+Each stack (`BoardCardStack.vue`) uses `useBoardDraggable`. A capture-phase `pointerdown` on the stack starts a
+drag; window listeners exist only while it lasts, so idle stacks cost nothing per pointer move. It divides pointer movement by the
 board's scale, snaps to `snapScale` and clamps the stack inside the canvas. Stacks are placed with
 `transform: translate()`, not `left`/`top`, so a move skips layout; the clamp bounds are measured once when a drag
 starts; and a dragged stack is its own GPU layer. On drop it calls
 `battlefield.setStackPosition()`. It reads the board's scale from the store (`boardScale()`) as the drag moves,
-so a zoom doesn't re-render every stack. While a stack is dragged, the board's own touch handling stands down
+so a zoom doesn't re-render every stack. Drags and pans follow the **Pointer smoothing** setting
+(`pointerSmoothing.ts`): 0 jumps to each pointer update; otherwise they ease towards it with that time
+constant in ms. While a stack is dragged, the board's own touch handling stands down
 (`anyCardIsDragging`).
 
 ### Z-order
@@ -303,7 +307,7 @@ All calls go straight from the browser to `api.scryfall.com`. There is no proxy 
 ## Gotchas
 
 - **Touch listeners in `Board.vue` are added imperatively.** Vue's `@touchstart.stop.prevent` modifiers compile
-  to a bubble-phase listener that calls `stopPropagation()`. That races with the capture-phase listeners `useDraggable` puts
+  to a bubble-phase listener that calls `stopPropagation()`. That races with the capture-phase listeners `useBoardDraggable` puts
   on stacks, and breaks either board panning or card taps at random. The board adds `{ passive: false }`
   listeners itself, so it can `preventDefault()` without stopping propagation. `touchend` stays passive and isn't
   prevented, so the browser still turns taps into clicks on buttons.

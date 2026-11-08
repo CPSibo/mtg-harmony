@@ -35,5 +35,10 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // Node scripts that generate assets.
+    files: ['scripts/**/*.mjs'],
+    languageOptions: { globals: { ...globals.node } },
+  },
   prettier, // Must be last. Disables conflicting stylistic rules.
 );

@@ -36,4 +36,23 @@ describe('settings store', () => {
 
     expect(read(await reload())).toBe(false);
   });
+
+  // #104
+  it('saves the pointer easing and ignores invalid values', async () => {
+    vi.useFakeTimers();
+    const store = useSettingsStore();
+    expect(store.pointerSmoothing).toBe(0);
+
+    store.setPointerSmoothing(20);
+    expect((await reload()).pointerSmoothing).toBe(20);
+
+    for (const bad of ['ease', -5, 500]) {
+      localStorage.setItem(
+        'mtg-harmony_settings',
+        JSON.stringify([{ pointerSmoothing: 1 }, bad]),
+      );
+      setActivePinia(createPinia());
+      expect(useSettingsStore().pointerSmoothing, String(bad)).toBe(0);
+    }
+  });
 });

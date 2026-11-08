@@ -17,10 +17,11 @@
       <ResetAppDataModal v-model:open="showConfirmResetAppData" />
 
       <AddCardWidgetComponent />
-      <AddCardWindow />
+      <!-- Loaded the first time they open, then kept for their close animation. -->
+      <AddCardWindow v-if="addCardLoaded" />
 
       <EventLogWidgetComponent />
-      <EventLogWindow />
+      <EventLogWindow v-if="eventLogLoaded" />
       <NewGamePrompt />
 
       <FloatingBar />
@@ -33,7 +34,7 @@ import UApp from '@nuxt/ui/components/App.vue';
 import UMain from '@nuxt/ui/components/Main.vue';
 import { useOverlay, useToast } from '@nuxt/ui/composables';
 import { useEventListener } from '@vueuse/core';
-import { defineAsyncComponent, onMounted, ref } from 'vue';
+import { computed, defineAsyncComponent, onMounted, ref } from 'vue';
 import GlobalButtons from '~/components/layout/GlobalButtons.vue';
 import PlayAreaBoard from '~/components/playArea/Board.vue';
 import {
@@ -42,14 +43,32 @@ import {
   removeRetiredStorage,
 } from '~/composables/useLocalStorage';
 import { useKeepScreenAwake } from '~/composables/useKeepScreenAwake';
-import { AddCardWidgetComponent, AddCardWindow } from '~/features/addCard';
+import { AddCardWidgetComponent, useAddCard } from '~/features/addCard';
 import {
   EventLogWidgetComponent,
-  EventLogWindow,
   NewGamePrompt,
+  useEventLogStore,
 } from '~/features/eventLog';
 import { FloatingBar } from '~/features/palette';
 import { useInputModeStore } from '~/stores/inputMode';
+
+// The Add Card and event log windows (with export and the archive) load the
+// first time they open, so they stay out of the startup bundle (#102).
+const AddCardWindow = defineAsyncComponent(
+  () => import('~/features/addCard/components/AddCardWindow.vue'),
+);
+const EventLogWindow = defineAsyncComponent(
+  () => import('~/features/eventLog/components/EventLogWindow.vue'),
+);
+const addCard = useAddCard();
+const log = useEventLogStore();
+// True from the first open on (a computed gets its previous value).
+const addCardLoaded = computed(
+  (was: boolean | undefined) => !!was || addCard.addCardWindowIsOpen,
+);
+const eventLogLoaded = computed(
+  (was: boolean | undefined) => !!was || log.windowIsOpen,
+);
 
 const ClearBoardModal = defineAsyncComponent(
   () => import('~/components/shared/ClearBoardModal.vue'),

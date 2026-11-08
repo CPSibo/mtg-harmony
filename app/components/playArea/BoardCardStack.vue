@@ -63,6 +63,7 @@ import { useResizeObserver } from '@vueuse/core';
 import { onUnmounted, useTemplateRef, watch } from 'vue';
 import type { Position } from '@vueuse/core';
 import { useBattlefieldStore } from '~/features/battlefield';
+import { useSettingsStore } from '~/stores/settings';
 import type { BoardCard, BoardCardStack } from '~/types/PlayArea';
 
 const isDragging = defineModel<boolean>('isDragging');
@@ -78,6 +79,7 @@ const emits = defineEmits<{
 }>();
 
 const battlefield = useBattlefieldStore();
+const settings = useSettingsStore();
 const { snapScale } = storeToRefs(battlefield);
 
 const stackEl = useTemplateRef('stack');
@@ -91,10 +93,8 @@ const { style, isDragging: myIsDragging } = useBoardDraggable(stackEl, {
     x: props.stack.position.x,
     y: props.stack.position.y,
   },
-  preventDefault: true,
-  stopPropagation: false,
-  capture: true,
   disabled: () => battlefield.isAttaching,
+  smoothing: () => settings.pointerSmoothing,
   onEnd: (position: Position) => {
     battlefield.setStackPosition(props.stack, position);
   },

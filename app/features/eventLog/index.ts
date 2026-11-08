@@ -10,7 +10,6 @@ export {
 } from './view';
 export { createEventLogWidget } from './widget';
 export { default as EventLogWidgetComponent } from './components/EventLogWidgetComponent.vue';
-export { default as EventLogWindow } from './components/EventLogWindow.vue';
 export { IDLE_PROMPT_AFTER_MS, shouldOfferNewGame } from './idle';
 export { default as NewGamePrompt } from './components/NewGamePrompt.vue';
 export {

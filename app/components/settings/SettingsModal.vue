@@ -95,6 +95,24 @@
           >
             <USwitch v-model="cardOutlineEnabled" />
           </UFormField>
+
+          <UFormField
+            label="Pointer smoothing"
+            description="Eases dragging and panning. May make the app feel better if you have a high refresh rate screen. Probably feels worse for touch devices. 0 to disable."
+          >
+            <div class="flex items-center gap-3">
+              <USlider
+                v-model="pointerSmoothing"
+                :min="0"
+                :max="MAX_POINTER_EASE_MS"
+                :step="5"
+                class="flex-1"
+              />
+              <span class="w-12 text-right text-sm tabular-nums">
+                {{ pointerSmoothing ? `${pointerSmoothing} ms` : 'Off' }}
+              </span>
+            </div>
+          </UFormField>
         </template>
       </UTabs>
     </template>
@@ -107,6 +125,8 @@ import UFormField from '@nuxt/ui/components/FormField.vue';
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
 import UInputNumber from '@nuxt/ui/components/InputNumber.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
+import USlider from '@nuxt/ui/components/Slider.vue';
+import { MAX_POINTER_EASE_MS } from '~/composables/pointerSmoothing';
 import USwitch from '@nuxt/ui/components/Switch.vue';
 import UTabs from '@nuxt/ui/components/Tabs.vue';
 import { useSettingsStore } from '~/stores/settings';
@@ -118,7 +138,7 @@ import { useDiscordFetcherStore } from '~/features/discordFetcher';
 const emit = defineEmits<{ close: [boolean] }>();
 
 const settingsStore = useSettingsStore();
-const { wakeLockEnabled, imagesEnabled, cardOutlineEnabled } =
+const { wakeLockEnabled, imagesEnabled, cardOutlineEnabled, pointerSmoothing } =
   storeToRefs(settingsStore);
 
 // The Wake Lock API needs a secure context (HTTPS or localhost).
