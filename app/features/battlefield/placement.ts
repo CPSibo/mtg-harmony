@@ -6,6 +6,9 @@ export interface Rect extends Position, ElementSize {}
 /** Space kept between a new stack and its neighbours, in board pixels. */
 const GAP = 16;
 
+/** How much of a new stack must land inside the view. */
+const MIN_VISIBLE_SHARE = 0.75;
+
 /** The step between layers of the spiral, in board pixels. */
 const LAYER_OFFSET = 40;
 
@@ -16,6 +19,14 @@ export function overlaps(a: Rect, b: Rect) {
     a.y < b.y + b.height &&
     b.y < a.y + a.height
   );
+}
+
+function visibleArea(r: Rect, view: Rect) {
+  const w =
+    Math.min(r.x + r.width, view.x + view.width) - Math.max(r.x, view.x);
+  const h =
+    Math.min(r.y + r.height, view.y + view.height) - Math.max(r.y, view.y);
+  return Math.max(0, w) * Math.max(0, h);
 }
 
 function grow(r: Rect, by: number): Rect {
@@ -67,8 +78,8 @@ function layerShifts(step: Position): Position[] {
 
 /**
  * The top-left corner for a new stack of `size`: the first slot, spiralling
- * out from the middle of `view` in card-sized steps (plus a gap), that is
- * fully in view and doesn't overlap another stack. When the view has no such slot, the spiral
+ * out from the middle of `view` in card-sized steps (plus a gap), that has
+ * at least 75% of the card in view and doesn't overlap another stack. When the view has no such slot, the spiral
  * starts again shifted by a multiple of {@link LAYER_OFFSET} on each axis,
  * nearest shift first, so new cards sit offset from the ones below rather
  * than on top; a slot then only needs no stack already on that spot. Only
@@ -87,11 +98,11 @@ export function findFreeSpot(
 
   const nearby = occupied.filter((r) => overlaps(grow(r, GAP), view));
   const step = { x: size.width + GAP, y: size.height + GAP };
-  const rings = Math.ceil(
-    Math.max(view.width / step.x, view.height / step.y) / 2,
-  );
+  const rings =
+    Math.ceil(Math.max(view.width / step.x, view.height / step.y) / 2) + 1;
   const slots = spiral(rings);
   const shifts = layerShifts(step);
+  const area = size.width * size.height;
 
   for (const [layer, shift] of shifts.entries()) {
     for (const slot of slots) {
@@ -100,13 +111,7 @@ export function findFreeSpot(
         y: middle.y + slot.y * step.y + shift.y,
       };
       const rect = { ...spot, ...size };
-      if (
-        rect.x < view.x ||
-        rect.y < view.y ||
-        rect.x + rect.width > view.x + view.width ||
-        rect.y + rect.height > view.y + view.height
-      )
-        continue;
+      if (visibleArea(rect, view) < area * MIN_VISIBLE_SHARE) continue;
 
       const taken =
         layer === 0

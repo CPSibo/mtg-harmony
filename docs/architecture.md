@@ -176,7 +176,7 @@ Rules the battlefield store enforces:
   new instance on the board, so casting the same card twice gives two independent cards. The On-deck card never
   goes on the board itself.
 - A cast card goes in a free spot in view (`findFreeSpot`, `placement.ts`): card-sized slots (16 px apart) spiral
-  out from the middle of the view, and it takes the first one fully in view and clear of other stacks. With none
+  out from the middle of the view, and it takes the first one at least 75% in view and clear of other stacks. With none
   left, the spiral starts again 40 px down and right, so cards land offset from the layer below. Only stacks that
   touch the view count. Players rearrange cards anyway; this just keeps a few cast in a row from hiding each other.
   The board reports what it shows

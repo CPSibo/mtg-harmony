@@ -6,11 +6,15 @@ const view: Rect = { x: 0, y: 0, width: 1000, height: 600 };
 
 const at = (x: number, y: number): Rect => ({ x, y, ...size });
 
-const inside = (r: Rect, within: Rect = view) =>
-  r.x >= within.x &&
-  r.y >= within.y &&
-  r.x + r.width <= within.x + within.width &&
-  r.y + r.height <= within.y + within.height;
+/** At least 75% of `r` is inside `within`. */
+function inside(r: Rect, within: Rect = view) {
+  const w =
+    Math.min(r.x + r.width, within.x + within.width) - Math.max(r.x, within.x);
+  const h =
+    Math.min(r.y + r.height, within.y + within.height) -
+    Math.max(r.y, within.y);
+  return Math.max(0, w) * Math.max(0, h) >= r.width * r.height * 0.75;
+}
 
 describe('findFreeSpot', () => {
   it('puts the first card in the middle of an empty view', () => {
@@ -48,6 +52,17 @@ describe('findFreeSpot', () => {
     const spot = findFreeSpot(view, [big], size);
 
     expect(overlaps(big, at(spot.x, spot.y))).toBe(false);
+  });
+
+  it('uses an edge slot when at least 75% of the card shows', () => {
+    // Slots from the middle at x = 450 ± 116: the one at 914 is 86% in view.
+    const placed: Rect[] = [];
+    for (let i = 0; i < 40; i++) {
+      const spot = findFreeSpot(view, placed, size);
+      placed.push(at(spot.x, spot.y));
+    }
+
+    expect(placed.some((r) => r.x + r.width > view.x + view.width)).toBe(true);
   });
 
   it('ignores stacks outside the view', () => {
