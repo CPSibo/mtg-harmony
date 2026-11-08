@@ -34,8 +34,8 @@
 
       <div
         v-if="paragraphs.length"
+        ref="rulesEl"
         class="rules"
-        :class="{ long: (face.oracle_text?.length ?? 0) > 220 }"
       >
         <template
           v-for="(paragraph, p) in paragraphs"
@@ -77,7 +77,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { useResizeObserver } from '@vueuse/core';
+import { computed, nextTick, useTemplateRef, watch } from 'vue';
 import type { ScryfallCard, ScryfallCardFace } from '~/types/Scryfall';
 import { manaSymbols, rulesText, type RulesPart } from '~/utils/manaSymbols';
 
@@ -122,6 +123,30 @@ const paragraphs = computed(() => {
   }
   return result.filter((paragraph) => paragraph.length);
 });
+
+// Long rules text shrinks only as far as it needs to fit: first the gaps
+// between paragraphs give way (in CSS), then the type, a step at a time.
+const FIT_STEP = 0.04;
+const MIN_FIT = 0.6;
+const rulesEl = useTemplateRef<HTMLElement>('rulesEl');
+
+function fit() {
+  const el = rulesEl.value;
+  if (!el) return;
+  el.style.removeProperty('--fit');
+  if (!el.clientHeight) return; // Not laid out yet.
+  let scale = 1;
+  while (el.scrollHeight > el.clientHeight + 1 && scale > MIN_FIT) {
+    scale = Math.max(MIN_FIT, scale - FIT_STEP);
+    el.style.setProperty('--fit', String(scale));
+  }
+}
+
+watch(paragraphs, () => nextTick(fit), { flush: 'post' });
+// Sizes scale with the card, so the fit only changes when it first gets a
+// size, or the font arrives.
+useResizeObserver(rulesEl, fit);
+document.fonts?.ready.then(fit);
 </script>
 
 <style scoped>
@@ -181,7 +206,7 @@ const paragraphs = computed(() => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  font-size: 5.2cqw;
+  font-size: calc(5.2cqw * var(--fit, 1));
 }
 
 .rules p {
@@ -192,10 +217,6 @@ const paragraphs = computed(() => {
    when the text needs the room. */
 .paragraph-gap {
   flex: 0 1 0.6em;
-}
-
-.rules.long {
-  font-size: 4.2cqw;
 }
 
 .rules .ms {
