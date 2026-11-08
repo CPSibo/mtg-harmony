@@ -715,3 +715,87 @@ describe('event log', () => {
     expect(board.stacks).toEqual([]);
   });
 });
+
+// #78
+describe('casting into the view', () => {
+  const view = { x: 1000, y: 1000, width: 1200, height: 800 };
+  const size = { width: 200, height: 250 };
+
+  function rectOf(
+    board: ReturnType<typeof useBattlefieldStore>,
+    stack: BoardCardStack,
+  ) {
+    return { ...stack.position, ...board.stackSize(stack) };
+  }
+
+  it('casts cards side by side in the view, none overlapping', () => {
+    const board = useBattlefieldStore();
+    board.setView(view);
+
+    const stacks = Array.from({ length: 6 }, () =>
+      board.castCard(makeScryfallCard()),
+    );
+
+    const rects = stacks.map((s) => rectOf(board, s));
+    for (const [i, a] of rects.entries()) {
+      const shownW =
+        Math.min(a.x + a.width, view.x + view.width) - Math.max(a.x, view.x);
+      const shownH =
+        Math.min(a.y + a.height, view.y + view.height) - Math.max(a.y, view.y);
+      expect(shownW * shownH).toBeGreaterThanOrEqual((a.width * a.height) / 3);
+      for (const b of rects.slice(i + 1)) {
+        expect(
+          a.x < b.x + b.width &&
+            b.x < a.x + a.width &&
+            a.y < b.y + b.height &&
+            b.y < a.y + a.height,
+        ).toBe(false);
+      }
+    }
+  });
+
+  it('uses the measured size of stacks on the board', () => {
+    const board = useBattlefieldStore();
+    board.setView(view);
+    const first = board.castCard(makeScryfallCard());
+    board.setStackSize(first.id, { width: 1200, height: 400 });
+    board.setStackPosition(first, { x: view.x, y: view.y });
+
+    const second = board.castCard(makeScryfallCard());
+
+    expect(second.position.y).toBeGreaterThanOrEqual(view.y + 400);
+  });
+
+  it('with the view full, cards land offset from each other', () => {
+    const board = useBattlefieldStore();
+    board.setView(view);
+    const filler = board.castCard(makeScryfallCard());
+    board.setStackSize(filler.id, {
+      width: view.width * 2,
+      height: view.height * 2,
+    });
+    board.setStackPosition(filler, {
+      x: view.x - view.width / 2,
+      y: view.y - view.height / 2,
+    });
+
+    const a = board.castCard(makeScryfallCard());
+    const b = board.castCard(makeScryfallCard());
+
+    expect(b.position).not.toEqual(a.position);
+    for (const s of [a, b]) {
+      expect(s.position.x).toBeGreaterThan(view.x - size.width);
+      expect(s.position.x).toBeLessThan(view.x + view.width);
+    }
+  });
+
+  it('falls back to the saved centre before the board reports a view', () => {
+    const board = useBattlefieldStore();
+    board.setCenter({ x: 42, y: 24 });
+
+    expect(board.castCard(makeScryfallCard()).position).toEqual({
+      x: 42,
+      y: 24,
+    });
+  });
+});

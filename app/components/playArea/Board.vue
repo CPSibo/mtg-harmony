@@ -49,7 +49,15 @@ import SharedGrid from '~/components/shared/Grid.vue';
 import { useBlockBrowserZoom } from '~/composables/useBlockBrowserZoom';
 import { usePanAndZoom } from '~/composables/usePanAndZoom';
 import { storeToRefs } from 'pinia';
-import { onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
+import { useWindowSize } from '@vueuse/core';
+import {
+  onMounted,
+  onUnmounted,
+  ref,
+  useTemplateRef,
+  watch,
+  watchEffect,
+} from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import type { BoardCard } from '~/types/PlayArea';
 
@@ -61,6 +69,7 @@ const boardEl = useTemplateRef('board');
 
 const {
   center,
+  position,
   scale,
   style,
   isDragging,
@@ -84,6 +93,29 @@ const {
 });
 
 const anyCardIsDragging = ref(false);
+
+// Screen pixels at the view's edges that don't count as in view when placing
+// a new card: the top, for the corner buttons.
+const VIEW_INSET = { top: 64, right: 0, bottom: 0, left: 0 };
+
+const { width: windowWidth, height: windowHeight } = useWindowSize();
+
+// Tells the store what's in view, in board pixels, so cast cards land there.
+watchEffect(() => {
+  const s = scale.value;
+  battlefield.setView({
+    x: (VIEW_INSET.left - position.value.x) / s,
+    y: (VIEW_INSET.top - position.value.y) / s,
+    width: Math.max(
+      0,
+      (windowWidth.value - VIEW_INSET.left - VIEW_INSET.right) / s,
+    ),
+    height: Math.max(
+      0,
+      (windowHeight.value - VIEW_INSET.top - VIEW_INSET.bottom) / s,
+    ),
+  });
+});
 
 watch(
   center,
