@@ -27,7 +27,7 @@
         class="relative size-full"
       >
         <PlayAreaBoardCardStack
-          v-for="stack in orderedStacks"
+          v-for="stack in battlefield.stacks"
           :key="stack.id"
           v-model:is-dragging="anyCardIsDragging"
           :stack="stack"
@@ -92,7 +92,7 @@ window.requestIdleCallback?.(() => {
 
 const battlefield = useBattlefieldStore();
 const settings = useSettingsStore();
-const { orderedStacks, center: centerState } = storeToRefs(battlefield);
+const { center: centerState } = storeToRefs(battlefield);
 
 const wrapperEl = useTemplateRef('wrapper');
 const boardEl = useTemplateRef('board');
@@ -289,6 +289,9 @@ const showCardModifiers = (card: BoardCard) => {
 .board {
   position: absolute;
   transform-origin: 0 0;
+  /* Contains the stacks' and radial menu's z-indexes, so they never rise
+     above the palette, side panel or other UI outside the board. */
+  isolation: isolate;
   /* A long press is the app's, not the browser's text selection or menu. */
   -webkit-touch-callout: none;
   -webkit-user-select: none;
