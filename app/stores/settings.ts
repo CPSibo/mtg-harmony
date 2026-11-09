@@ -2,6 +2,10 @@ import { useLocalStorage } from '~/composables/useLocalStorage';
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 import { isPointerEase } from '~/composables/pointerSmoothing';
+import {
+  DRAG_MENU_DELAY_MS,
+  isDragMenuDelay,
+} from '~/features/battlefield/dragMenuDelay';
 export interface AppSettings {
   /** Whether the Screen Wake Lock API is requested. */
   wakeLockEnabled: boolean;
@@ -14,6 +18,9 @@ export interface AppSettings {
 
   /** Easing for drags and pans, in ms; 0 is off (#104). */
   pointerSmoothing: number;
+
+  /** How long a dragged card hovers before the attach menu opens, in ms (#108). */
+  dragMenuDelay: number;
 }
 
 const STORAGE_KEY = 'mtg-harmony_settings';
@@ -23,6 +30,7 @@ const defaults: AppSettings = {
   imagesEnabled: true,
   cardOutlineEnabled: true,
   pointerSmoothing: 0,
+  dragMenuDelay: DRAG_MENU_DELAY_MS,
 };
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -46,11 +54,17 @@ export const useSettingsStore = defineStore('settings', () => {
     pointerSmoothing.value = value;
   }
 
+  const dragMenuDelay = ref<number>(defaults.dragMenuDelay);
+  function setDragMenuDelay(value: number) {
+    dragMenuDelay.value = value;
+  }
+
   function reset() {
     wakeLockEnabled.value = defaults.wakeLockEnabled;
     imagesEnabled.value = defaults.imagesEnabled;
     cardOutlineEnabled.value = defaults.cardOutlineEnabled;
     pointerSmoothing.value = defaults.pointerSmoothing;
+    dragMenuDelay.value = defaults.dragMenuDelay;
   }
 
   function save() {
@@ -60,6 +74,7 @@ export const useSettingsStore = defineStore('settings', () => {
       imagesEnabled: imagesEnabled.value,
       cardOutlineEnabled: cardOutlineEnabled.value,
       pointerSmoothing: pointerSmoothing.value,
+      dragMenuDelay: dragMenuDelay.value,
     });
   }
 
@@ -83,13 +98,22 @@ export const useSettingsStore = defineStore('settings', () => {
     if (isPointerEase(data.pointerSmoothing))
       pointerSmoothing.value = data.pointerSmoothing;
 
+    if (isDragMenuDelay(data.dragMenuDelay))
+      dragMenuDelay.value = data.dragMenuDelay;
+
     return true;
   }
 
   load();
 
   watch(
-    [wakeLockEnabled, imagesEnabled, cardOutlineEnabled, pointerSmoothing],
+    [
+      wakeLockEnabled,
+      imagesEnabled,
+      cardOutlineEnabled,
+      pointerSmoothing,
+      dragMenuDelay,
+    ],
     save,
   );
 
@@ -109,5 +133,8 @@ export const useSettingsStore = defineStore('settings', () => {
 
     pointerSmoothing,
     setPointerSmoothing,
+
+    dragMenuDelay,
+    setDragMenuDelay,
   };
 });

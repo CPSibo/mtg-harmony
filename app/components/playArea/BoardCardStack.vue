@@ -1,6 +1,7 @@
 <template>
   <div
     ref="stack"
+    :data-stack-id="stack.id"
     :style="style"
     class="board-card-stack origin-top-left absolute top-0 left-0"
     :class="{ dragging: myIsDragging }"
@@ -30,6 +31,7 @@
       <PlayAreaBoardCard
         class="primary-card"
         :card="stack.primary"
+        :data-drag-target="stack.id"
         :stack="stack"
         @show-card-details="emits('showCardDetails', stack.primary)"
         @show-card-modifiers="emits('showCardModifiers', stack.primary)"
@@ -62,7 +64,12 @@ import { storeToRefs } from 'pinia';
 import { useResizeObserver } from '@vueuse/core';
 import { onUnmounted, useTemplateRef, watch } from 'vue';
 import type { Position } from '@vueuse/core';
-import { useBattlefieldStore } from '~/features/battlefield';
+import {
+  dragMenu,
+  useBattlefieldStore,
+  type AttachMode,
+  type DragMenuHit,
+} from '~/features/battlefield';
 import { useSettingsStore } from '~/stores/settings';
 import type { BoardCard, BoardCardStack } from '~/types/PlayArea';
 
@@ -95,10 +102,69 @@ const { style, isDragging: myIsDragging } = useBoardDraggable(stackEl, {
   },
   disabled: () => battlefield.isAttaching,
   smoothing: () => settings.pointerSmoothing,
-  onEnd: (position: Position) => {
-    battlefield.setStackPosition(props.stack, position);
+  // A single card held over another stack opens the radial menu (#108).
+  onStart: () => dragMenu.start(true),
+  onMove: (e) => dragMenu.move(hitAt(e)),
+  onEnd: (position: Position, e) => {
+    const picked = dragMenu.end();
+    const target =
+      picked && e.type === 'pointerup'
+        ? battlefield.stacks.find((s) => s.id === picked.stackId)
+        : undefined;
+    if (picked && target)
+      battlefield.dropCardOn(props.stack.primary, target, picked.mode);
+    else battlefield.setStackPosition(props.stack, position);
   },
 });
+
+/** The menu option, or another stack's primary, under the pointer. */
+function hitAt(e: PointerEvent): DragMenuHit {
+  const hit = findHit(e);
+  const open = dragMenu.target.value;
+  if (open && !hit.option) hit.inArea = inMenuArea(open, e);
+  return hit;
+}
+
+/**
+ * Whether the pointer is inside the bounding box of the open menu's stack
+ * and the menu together. Measured per move only while the menu is open.
+ */
+function inMenuArea(stackId: string, e: PointerEvent) {
+  const parts = [
+    document.querySelector(`[data-stack-id="${CSS.escape(stackId)}"]`),
+    ...document.querySelectorAll('[data-drag-menu-option]'),
+  ]
+    .filter((el) => !!el)
+    .map((el) => el.getBoundingClientRect());
+  if (!parts.length) return false;
+  const left = Math.min(...parts.map((r) => r.left));
+  const right = Math.max(...parts.map((r) => r.right));
+  const top = Math.min(...parts.map((r) => r.top));
+  const bottom = Math.max(...parts.map((r) => r.bottom));
+  return (
+    e.clientX >= left &&
+    e.clientX <= right &&
+    e.clientY >= top &&
+    e.clientY <= bottom
+  );
+}
+
+function findHit(e: PointerEvent): DragMenuHit {
+  for (const el of document.elementsFromPoint(e.clientX, e.clientY)) {
+    const option = el.closest<HTMLElement>('[data-drag-menu-option]')?.dataset
+      .dragMenuOption;
+    if (option) return { option: option as AttachMode };
+
+    const id =
+      el.closest<HTMLElement>('[data-drag-target]')?.dataset.dragTarget;
+    if (!id || id === props.stack.id) continue;
+    const target = battlefield.stacks.find((s) => s.id === id);
+    if (target && battlefield.canOfferDragMenu(props.stack, target))
+      return { stackId: id };
+    return {};
+  }
+  return {};
+}
 
 // Layout size, unaffected by the board's zoom, so in board pixels. New cards
 // are placed clear of it (#78).

@@ -166,6 +166,51 @@ describe('battlefield store', () => {
       expect(board.isAttaching).toBe(false);
     });
 
+    describe('dropping onto a stack (#108)', () => {
+      it('offers the drag menu only for a single-card stack onto another stack', () => {
+        const board = useBattlefieldStore();
+        board.addStackByCard(makeCard({ name: 'Host' }));
+        board.addStackByCard(makeCard({ name: 'Solo' }));
+        const [host, solo] = board.stacks as [BoardCardStack, BoardCardStack];
+
+        expect(board.canOfferDragMenu(solo, host)).toBe(true);
+        expect(board.canOfferDragMenu(solo, solo)).toBe(false);
+
+        const under = makeCard({ name: 'Under' });
+        solo.unders.add(under);
+        under.stack = solo;
+        expect(board.canOfferDragMenu(solo, host)).toBe(false);
+        expect(board.canOfferDragMenu(host, solo)).toBe(true);
+      });
+
+      it('refuses a stack with attachments as the dragged stack', () => {
+        const board = boardWithAttachments(1);
+        board.addStackByCard(makeCard({ name: 'Other' }));
+        const [host, other] = board.stacks as [BoardCardStack, BoardCardStack];
+        expect(board.canOfferDragMenu(host, other)).toBe(false);
+      });
+
+      it('attaches or puts under through dropCardOn', () => {
+        const board = useBattlefieldStore();
+        board.addStackByCard(makeCard({ name: 'Host' }));
+        board.addStackByCard(makeCard({ name: 'Aura' }));
+        board.addStackByCard(makeCard({ name: 'Exiled' }));
+        const [host, aura, exiled] = board.stacks as [
+          BoardCardStack,
+          BoardCardStack,
+          BoardCardStack,
+        ];
+
+        board.dropCardOn(aura.primary, host, 'attach');
+        board.dropCardOn(exiled.primary, host, 'under');
+
+        expect(names(board.stacks)).toEqual(['Host']);
+        expect([...host.attachments].map((c) => c.name)).toEqual(['Aura']);
+        expect([...host.unders].map((c) => c.name)).toEqual(['Exiled']);
+        expect(board.isAttaching).toBe(false);
+      });
+    });
+
     it('cancels attaching', () => {
       const board = useBattlefieldStore();
       board.startAttaching(makeCard());

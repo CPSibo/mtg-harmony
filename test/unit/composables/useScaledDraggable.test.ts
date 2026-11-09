@@ -80,4 +80,19 @@ describe('useBoardDraggable', () => {
     expect(drag.isDragging.value).toBe(false);
     scope.stop();
   });
+  it('reports the start and each move of a drag (#108)', () => {
+    const onStart = vi.fn();
+    const onMove = vi.fn();
+    const { el, scope } = setup({ onStart, onMove });
+
+    el.dispatchEvent(pointer('pointerdown', 0, 0));
+    window.dispatchEvent(pointer('pointermove', 5, 5));
+    window.dispatchEvent(pointer('pointermove', 9, 9));
+    window.dispatchEvent(pointer('pointerup', 9, 9));
+    window.dispatchEvent(pointer('pointermove', 20, 20));
+
+    expect(onStart).toHaveBeenCalledOnce();
+    expect(onMove).toHaveBeenCalledTimes(2);
+    scope.stop();
+  });
 });
