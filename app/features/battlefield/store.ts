@@ -443,6 +443,28 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     cardToAttach.value = null;
   }
 
+  /**
+   * Whether dragging `source` over `target` may open the radial menu (#108):
+   * only a stack of one card, onto another stack.
+   */
+  function canOfferDragMenu(source: BoardCardStack, target: BoardCardStack) {
+    return (
+      source !== target &&
+      source.attachments.size === 0 &&
+      source.unders.size === 0
+    );
+  }
+
+  /** Attaches `card` to `stack` or puts it under, as one action. */
+  function dropCardOn(
+    card: BoardCard,
+    stack: BoardCardStack,
+    mode: AttachMode,
+  ) {
+    startAttaching(card, mode);
+    finishAttaching(stack);
+  }
+
   const isAttaching = computed(() => !!cardToAttach.value);
 
   function isValidAttachmentTarget(targetCard: BoardCard) {
@@ -589,6 +611,8 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     isAttaching,
     attachMode,
     isValidAttachmentTarget,
+    canOfferDragMenu,
+    dropCardOn,
     detach,
   };
 });

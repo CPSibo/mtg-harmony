@@ -30,6 +30,7 @@
       <PlayAreaBoardCard
         class="primary-card"
         :card="stack.primary"
+        :data-drag-target="stack.id"
         :stack="stack"
         @show-card-details="emits('showCardDetails', stack.primary)"
         @show-card-modifiers="emits('showCardModifiers', stack.primary)"
@@ -62,7 +63,12 @@ import { storeToRefs } from 'pinia';
 import { useResizeObserver } from '@vueuse/core';
 import { onUnmounted, useTemplateRef, watch } from 'vue';
 import type { Position } from '@vueuse/core';
-import { useBattlefieldStore } from '~/features/battlefield';
+import {
+  dragMenu,
+  useBattlefieldStore,
+  type AttachMode,
+  type DragMenuHit,
+} from '~/features/battlefield';
 import { useSettingsStore } from '~/stores/settings';
 import type { BoardCard, BoardCardStack } from '~/types/PlayArea';
 
@@ -95,10 +101,38 @@ const { style, isDragging: myIsDragging } = useBoardDraggable(stackEl, {
   },
   disabled: () => battlefield.isAttaching,
   smoothing: () => settings.pointerSmoothing,
-  onEnd: (position: Position) => {
-    battlefield.setStackPosition(props.stack, position);
+  // A single card held over another stack opens the radial menu (#108).
+  onStart: () => dragMenu.start(true),
+  onMove: (e) => dragMenu.move(hitAt(e)),
+  onEnd: (position: Position, e) => {
+    const picked = dragMenu.end();
+    const target =
+      picked && e.type === 'pointerup'
+        ? battlefield.stacks.find((s) => s.id === picked.stackId)
+        : undefined;
+    if (picked && target)
+      battlefield.dropCardOn(props.stack.primary, target, picked.mode);
+    else battlefield.setStackPosition(props.stack, position);
   },
 });
+
+/** The menu option, or another stack's primary, under the pointer. */
+function hitAt(e: PointerEvent): DragMenuHit {
+  for (const el of document.elementsFromPoint(e.clientX, e.clientY)) {
+    const option = el.closest<HTMLElement>('[data-drag-menu-option]')?.dataset
+      .dragMenuOption;
+    if (option) return { option: option as AttachMode };
+
+    const id =
+      el.closest<HTMLElement>('[data-drag-target]')?.dataset.dragTarget;
+    if (!id || id === props.stack.id) continue;
+    const target = battlefield.stacks.find((s) => s.id === id);
+    if (target && battlefield.canOfferDragMenu(props.stack, target))
+      return { stackId: id };
+    return {};
+  }
+  return {};
+}
 
 // Layout size, unaffected by the board's zoom, so in board pixels. New cards
 // are placed clear of it (#78).
