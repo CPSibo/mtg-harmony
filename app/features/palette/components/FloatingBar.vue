@@ -2,6 +2,11 @@
   <UModal
     v-model:open="open"
     :modal="false"
+    :content="{
+      // Closing after a command mustn't send focus back to the search
+      // button: the window the command opened would see focus leave and close.
+      onCloseAutoFocus: (e: Event) => e.preventDefault(),
+    }"
     :ui="{
       content: 'top-2 translate-none -translate-x-1/2!',
     }"
@@ -31,7 +36,10 @@
       <UCommandPalette
         v-model:search-term="searchTerm"
         :groups="groups"
+        @update:model-value="open = false"
       />
+      <!-- A picked command runs and the palette gets out of its way, so a
+           window it opens (like Add Card) isn't left stacked under it. -->
     </template>
   </UModal>
 </template>
