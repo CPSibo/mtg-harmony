@@ -225,6 +225,12 @@ Rules the battlefield store enforces:
 - `copyCard(card, mode)` puts a copy in a new stack, 40 px down and right of the source, in front. `card` copies
   the card fresh, `counters` keeps its counters, face number and tapped state, and `stack` copies its whole stack
   (primary, attachments and unders, each with its state). Every copied card gets a new ID.
+- **Swap art** in card details (#114, `features/swapArt`, loaded on first use) lists the card's printings newest
+  first (`order=released&dir=desc`), 24 per page; `unique=prints` already folds foil and non-foil into one entry.
+  The set box filters on Scryfall (`e:<code>`, debounced 500 ms). Scryfall sends 175 per request, and the next
+  request is made only when the grid pages past what's loaded. Picking one calls `swapPrinting`, which replaces
+  the card's `scryfallInfo`, image and link and keeps its ID, stack and state. It isn't logged; the log's
+  snapshots keep the art each event saw.
 - Card and stack IDs come from `randomUUID` (`utils/randomUUID.ts`). It falls back to `crypto.getRandomValues`
   where `crypto.randomUUID` is missing, as on a plain-HTTP dev server opened from a phone.
 
@@ -299,6 +305,7 @@ All calls go straight from the browser to `api.scryfall.com`. There is no proxy 
 | ---------------- | ----------------------------------------------------- | ---------------------------------------- |
 | On-deck fetching | `GET /cards/random?q=-t:land+game:paper`              | `useScryfall` → `useDiscordFetcherStore` |
 | Add Card search  | `GET /cards/search?q=…` (debounced 500 ms, cancelled) | `AddCardWindow.vue`                      |
+| Swap art         | `GET /cards/search?q=!"name" [e:set]&unique=prints`   | `usePrintings` → `SwapArtModal.vue`      |
 
 - **Rate limiting** (`useScryfall`): requests are spaced at least 600 ms apart, shared across all callers.
   Scryfall allows about 2 per second. A 429 waits out Scryfall's 30-second cooldown once; a second 429 stops the

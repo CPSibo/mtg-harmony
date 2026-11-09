@@ -1,4 +1,5 @@
 import { useLocalStorage } from '~/composables/useLocalStorage';
+import { pickImageUri } from '~/composables/useScryfall';
 import { defineStore } from 'pinia';
 import { computed, ref, toValue, watch } from 'vue';
 import type {
@@ -401,6 +402,20 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     card.faceNumber = value;
   }
 
+  /**
+   * Shows `card` as another printing of itself (#114): its Scryfall data,
+   * image and link change; its ID, stack and state stay. Not logged, like
+   * tapping: later events snapshot the new art, and past ones keep the old.
+   */
+  function swapPrinting(card: BoardCard, printing: ScryfallCard) {
+    const data = cardData(printing);
+    card.scryfallInfo = data;
+    card.name = data.name;
+    card.mana_cost = data.mana_cost;
+    card.image_uri = pickImageUri(data) ?? card.image_uri;
+    card.scryfall_uri = data.scryfall_uri;
+  }
+
   /** Removes every counter and granted keyword from a card. */
   function clearModifiers(card: BoardCard) {
     card.modifiers = new Set<BoardCardModifier>();
@@ -605,6 +620,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     removeCard,
     clearBoard,
     copyCard,
+    swapPrinting,
     clearStacks,
     removeStack,
     removeCardFromStack,
