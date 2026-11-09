@@ -59,7 +59,7 @@ describe('settings store', () => {
   it('saves the drag menu delay and ignores invalid values', async () => {
     vi.useFakeTimers();
     const store = useSettingsStore();
-    expect(store.dragMenuDelay).toBe(1000);
+    expect(store.dragMenuDelay).toBe(500);
 
     store.setDragMenuDelay(1500);
     expect((await reload()).dragMenuDelay).toBe(1500);
