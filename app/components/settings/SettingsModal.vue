@@ -113,6 +113,24 @@
               </span>
             </div>
           </UFormField>
+
+          <UFormField
+            label="Attach menu delay"
+            description="How long to hold a dragged card over another before the attach and put-under menu opens."
+          >
+            <div class="flex items-center gap-3">
+              <USlider
+                v-model="dragMenuDelay"
+                :min="MIN_DRAG_MENU_DELAY_MS"
+                :max="MAX_DRAG_MENU_DELAY_MS"
+                :step="250"
+                class="flex-1"
+              />
+              <span class="w-12 text-right text-sm tabular-nums">
+                {{ (dragMenuDelay / 1000).toFixed(2).replace(/0$/, '') }} s
+              </span>
+            </div>
+          </UFormField>
         </template>
       </UTabs>
     </template>
@@ -132,14 +150,23 @@ import UTabs from '@nuxt/ui/components/Tabs.vue';
 import { useSettingsStore } from '~/stores/settings';
 import { useSupported } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
-import { useBattlefieldStore } from '~/features/battlefield';
+import {
+  MAX_DRAG_MENU_DELAY_MS,
+  MIN_DRAG_MENU_DELAY_MS,
+  useBattlefieldStore,
+} from '~/features/battlefield';
 import { useDiscordFetcherStore } from '~/features/discordFetcher';
 
 const emit = defineEmits<{ close: [boolean] }>();
 
 const settingsStore = useSettingsStore();
-const { wakeLockEnabled, imagesEnabled, cardOutlineEnabled, pointerSmoothing } =
-  storeToRefs(settingsStore);
+const {
+  wakeLockEnabled,
+  imagesEnabled,
+  cardOutlineEnabled,
+  pointerSmoothing,
+  dragMenuDelay,
+} = storeToRefs(settingsStore);
 
 // The Wake Lock API needs a secure context (HTTPS or localhost).
 const wakeLockSupported = useSupported(

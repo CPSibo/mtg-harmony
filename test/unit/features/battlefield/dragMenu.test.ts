@@ -87,4 +87,21 @@ describe('createDragMenu (#108)', () => {
     vi.advanceTimersByTime(DRAG_MENU_DELAY_MS);
     expect(menu.target.value).toBeNull();
   });
+
+  it('reads the delay when each hover starts', () => {
+    let delay = 500;
+    const menu = createDragMenu(() => delay);
+    menu.start(true);
+    menu.move({ stackId: 'b' });
+    vi.advanceTimersByTime(500);
+    expect(menu.target.value).toBe('b');
+
+    delay = 1500;
+    menu.start(true);
+    menu.move({ stackId: 'b' });
+    vi.advanceTimersByTime(1000);
+    expect(menu.target.value).toBeNull();
+    vi.advanceTimersByTime(500);
+    expect(menu.target.value).toBe('b');
+  });
 });

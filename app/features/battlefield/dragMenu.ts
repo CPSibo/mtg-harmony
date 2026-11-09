@@ -1,8 +1,14 @@
-import { ref, shallowRef } from 'vue';
+import { ref, shallowRef, toValue, type MaybeRefOrGetter } from 'vue';
+import { useSettingsStore } from '~/stores/settings';
+import { DRAG_MENU_DELAY_MS } from './dragMenuDelay';
 import type { AttachMode } from './store';
 
-/** How long a dragged card hovers over a stack before the menu opens. */
-export const DRAG_MENU_DELAY_MS = 2000;
+export {
+  DRAG_MENU_DELAY_MS,
+  isDragMenuDelay,
+  MAX_DRAG_MENU_DELAY_MS,
+  MIN_DRAG_MENU_DELAY_MS,
+} from './dragMenuDelay';
 
 /** What is under the pointer during a drag. */
 export interface DragMenuHit {
@@ -14,11 +20,14 @@ export interface DragMenuHit {
 
 /**
  * The radial menu a single dragged card opens over another stack (#108).
- * Hovering over a stack's primary for `delay` ms opens the menu around it; it
+ * Hovering over a stack's primary for `delay` ms (read as each hover
+ * starts) opens the menu around it; it
  * stays open for the rest of the drag, and dropping on an option picks it.
  * Holds no DOM: the caller says what the pointer is over.
  */
-export function createDragMenu(delay = DRAG_MENU_DELAY_MS) {
+export function createDragMenu(
+  delay: MaybeRefOrGetter<number> = DRAG_MENU_DELAY_MS,
+) {
   /** The stack the menu is open around. Read by the board to render it. */
   const target = shallowRef<string | null>(null);
   /** The option under the pointer, highlighted while dragging. */
@@ -53,7 +62,7 @@ export function createDragMenu(delay = DRAG_MENU_DELAY_MS) {
     timer = setTimeout(() => {
       target.value = stackId;
       clearTimer();
-    }, delay);
+    }, toValue(delay));
   }
 
   /** Ends the drag: the picked option, or null for a normal move. */
@@ -73,4 +82,4 @@ export function createDragMenu(delay = DRAG_MENU_DELAY_MS) {
 }
 
 /** The board's one menu; only one card is dragged at a time. */
-export const dragMenu = createDragMenu();
+export const dragMenu = createDragMenu(() => useSettingsStore().dragMenuDelay);

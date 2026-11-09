@@ -1,38 +1,42 @@
 <template>
-  <!-- Around the target's primary card, in board pixels. Only the options
-       take the pointer, so the drag can find them under it (#108). -->
+  <!-- Arc segments around the target's primary card, centred on it, in board
+       pixels. Only the segments take the pointer, so the drag can find them
+       under it (#108). -->
   <div
-    v-if="box"
+    v-if="layout"
     class="drag-radial-menu"
-    :style="{
-      left: `${box.x}px`,
-      top: `${box.y}px`,
-      width: `${box.width}px`,
-      height: `${box.height}px`,
-      '--option-size': `${box.optionSize}px`,
-      '--ring-size': `${box.ringSize}px`,
-      '--line': `${box.line}px`,
-    }"
+    :style="{ left: `${layout.cx}px`, top: `${layout.cy}px` }"
   >
-    <div
-      class="ring"
-      aria-hidden="true"
-    />
-    <div
-      v-for="option in OPTIONS"
-      :key="option.mode"
-      class="option"
-      :class="[option.side, { active: dragMenu.hovered.value === option.mode }]"
-      :data-drag-menu-option="option.mode"
-      role="img"
-      :aria-label="option.label"
-      :title="option.label"
+    <svg
+      class="arcs"
+      width="1"
+      height="1"
     >
-      <UIcon
-        :name="option.icon"
-        class="size-[55%]"
-      />
-    </div>
+      <path
+        v-for="segment in layout.segments"
+        :key="segment.mode"
+        class="segment"
+        :class="{ active: dragMenu.hovered.value === segment.mode }"
+        :d="segment.path"
+        :data-drag-menu-option="segment.mode"
+        role="img"
+        :aria-label="segment.label"
+      >
+        <title>{{ segment.label }}</title>
+      </path>
+    </svg>
+    <UIcon
+      v-for="segment in layout.segments"
+      :key="segment.mode"
+      :name="segment.icon"
+      class="icon"
+      :style="{
+        left: `${segment.icon_x}px`,
+        top: `${segment.icon_y}px`,
+        width: `${layout.iconSize}px`,
+        height: `${layout.iconSize}px`,
+      }"
+    />
   </div>
 </template>
 
@@ -51,27 +55,56 @@ const props = defineProps<{
   stackId: string;
 }>();
 
-// Unders peek out above a card and attachments hang below it, so each
-// option sits on that side.
+/** Clock positions, 12 straight up, going clockwise. */
 const OPTIONS: {
   mode: AttachMode;
   label: string;
   icon: string;
-  side: string;
+  from: number;
+  to: number;
 }[] = [
+  { mode: 'attach', label: 'Attach to', icon: 'i-lucide-link', from: 1, to: 2 },
   {
     mode: 'under',
     label: 'Put under',
     icon: 'i-lucide-arrow-down-to-line',
-    side: 'top',
+    from: 2,
+    to: 3,
   },
-  { mode: 'attach', label: 'Attach to', icon: 'i-lucide-link', side: 'bottom' },
 ];
+
+// Sizes on screen, in px; divided by the zoom so they stay finger-sized.
+const THICKNESS = 56;
+const GAP_FROM_CARD = 8;
+const ICON = 24;
+/** Gap between segments, in degrees. */
+const SEGMENT_GAP_DEG = 1.5;
 
 const battlefield = useBattlefieldStore();
 
+/** A point `r` from the centre at clock angle `deg` (0 is up). */
+function point(r: number, deg: number) {
+  const rad = (deg * Math.PI) / 180;
+  return { x: r * Math.sin(rad), y: -r * Math.cos(rad) };
+}
+
+function arcPath(inner: number, outer: number, from: number, to: number) {
+  const a = point(outer, from);
+  const b = point(outer, to);
+  const c = point(inner, to);
+  const d = point(inner, from);
+  const large = to - from > 180 ? 1 : 0;
+  return [
+    `M ${a.x} ${a.y}`,
+    `A ${outer} ${outer} 0 ${large} 1 ${b.x} ${b.y}`,
+    `L ${c.x} ${c.y}`,
+    `A ${inner} ${inner} 0 ${large} 0 ${d.x} ${d.y}`,
+    'Z',
+  ].join(' ');
+}
+
 // Measured once when the menu opens; the board can't pan or zoom mid-drag.
-const box = computed(() => {
+const layout = computed(() => {
   const card = props.board.querySelector(
     `[data-drag-target="${CSS.escape(props.stackId)}"]`,
   );
@@ -79,16 +112,29 @@ const box = computed(() => {
   const scale = battlefield.boardScale();
   const boardRect = props.board.getBoundingClientRect();
   const rect = card.getBoundingClientRect();
+  const width = rect.width / scale;
+  const height = rect.height / scale;
+
+  // Clear of the card's corners.
+  const inner = Math.hypot(width, height) / 2 + GAP_FROM_CARD / scale;
+  const outer = inner + THICKNESS / scale;
+  const iconSize = ICON / scale;
+
   return {
-    x: (rect.left - boardRect.left) / scale,
-    y: (rect.top - boardRect.top) / scale,
-    width: rect.width / scale,
-    height: rect.height / scale,
-    // Options stay a finger's size (48 px on screen) whatever the zoom.
-    optionSize: 48 / scale,
-    // A circle through the options, clear of the card's corners.
-    ringSize: Math.max(rect.width, rect.height) / scale + 48 / scale,
-    line: 2 / scale,
+    cx: (rect.left - boardRect.left) / scale + width / 2,
+    cy: (rect.top - boardRect.top) / scale + height / 2,
+    iconSize,
+    segments: OPTIONS.map((o) => {
+      const from = o.from * 30 + SEGMENT_GAP_DEG / 2;
+      const to = o.to * 30 - SEGMENT_GAP_DEG / 2;
+      const mid = point((inner + outer) / 2, (from + to) / 2);
+      return {
+        ...o,
+        path: arcPath(inner, outer, from, to),
+        icon_x: mid.x - iconSize / 2,
+        icon_y: mid.y - iconSize / 2,
+      };
+    }),
   };
 });
 </script>
@@ -98,56 +144,35 @@ const box = computed(() => {
   position: absolute;
   z-index: 10;
   pointer-events: none;
+  animation: appear 120ms ease-out;
 }
 
-.ring,
-.option {
+.arcs {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  border-radius: 9999px;
-  animation: appear 150ms ease-out;
+  overflow: visible;
 }
 
-.ring {
-  width: var(--ring-size);
-  height: var(--ring-size);
-  translate: -50% -50%;
-  border: var(--line) dashed var(--ui-primary);
-  background: color-mix(in oklab, var(--ui-bg) 35%, transparent);
-}
-
-/* Centred on the ring, above or below the card. */
-.option {
-  display: grid;
-  place-items: center;
-  width: var(--option-size);
-  height: var(--option-size);
+.segment {
   pointer-events: auto;
-  color: var(--ui-text-inverted);
-  background: var(--ui-primary);
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.4);
-  transition:
-    scale 100ms ease-out,
-    background-color 100ms ease-out;
-
-  &.top {
-    translate: -50% calc(-50% - var(--ring-size) / 2);
-  }
-
-  &.bottom {
-    translate: -50% calc(-50% + var(--ring-size) / 2);
-  }
+  fill: var(--ui-primary);
+  filter: drop-shadow(0 2px 6px rgb(0 0 0 / 0.45));
+  transition: fill 100ms ease-out;
 
   &.active {
-    background: var(--ui-secondary);
-    scale: 1.25;
+    fill: var(--ui-secondary);
   }
+}
+
+.icon {
+  position: absolute;
+  pointer-events: none;
+  color: var(--ui-text-inverted);
 }
 
 @keyframes appear {
   from {
     opacity: 0;
+    scale: 0.9;
   }
 }
 </style>
