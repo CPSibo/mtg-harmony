@@ -252,6 +252,8 @@ test('a card found through Add Card goes on the board', async ({ page }) => {
     name: card.name,
   });
   await expect(boardCard).toBeVisible();
+  await expect(addCard).toBeHidden();
+  await expect(page.getByRole('option', { name: /Add card/i })).toBeHidden();
 });
 
 test.describe('dragging an Add Card result', () => {
@@ -282,6 +284,8 @@ test.describe('dragging an Add Card result', () => {
     expect(Math.abs(box.x + box.width / 2 - drop.x)).toBeLessThan(15);
     expect(Math.abs(box.y + box.height / 2 - drop.y)).toBeLessThan(15);
     await expect(addCard).toBeHidden();
+    // The root palette closes too, as it does after a tap.
+    await expect(page.getByRole('option', { name: /Add card/i })).toBeHidden();
   });
 
   test('cancels when dropped back on the window', async ({ page }) => {
