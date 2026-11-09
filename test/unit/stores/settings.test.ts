@@ -55,4 +55,22 @@ describe('settings store', () => {
       expect(useSettingsStore().pointerSmoothing, String(bad)).toBe(0);
     }
   });
+  // #108
+  it('saves the drag menu delay and ignores invalid values', async () => {
+    vi.useFakeTimers();
+    const store = useSettingsStore();
+    expect(store.dragMenuDelay).toBe(500);
+
+    store.setDragMenuDelay(1500);
+    expect((await reload()).dragMenuDelay).toBe(1500);
+
+    for (const bad of ['slow', 0, 100, 60000]) {
+      localStorage.setItem(
+        'mtg-harmony_settings',
+        JSON.stringify([{ dragMenuDelay: 1 }, bad]),
+      );
+      setActivePinia(createPinia());
+      expect(useSettingsStore().dragMenuDelay, String(bad)).toBe(500);
+    }
+  });
 });

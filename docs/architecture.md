@@ -200,6 +200,13 @@ Rules the battlefield store enforces:
 - Attaching and putting under share one flow: `startAttaching(card, 'attach' | 'under')`, then tapping the target
   stack's primary calls `finishAttaching`. A card can move between a stack's attachments and its unders.
   `detach` takes either out into its own stack; a taken-out under lands below its old stack.
+- Dragging a one-card stack and holding it over another stack's primary opens a radial menu around that card
+  (`dragMenu.ts`, `DragRadialMenu.vue`, #108): solid arc segments centred on the card's top-right corner,
+  **Attach to** from 12 to 1:30 and **Put under** from 1:30 to 3. The wait is the **Attach menu delay** setting
+  (`dragMenuDelay`, 1 s by default, 0.25 to 3 s). Staying outside the bounding box of the stack and the menu for
+  that long closes it, and the card under the pointer then starts its own wait. Dropping on a segment calls `dropCardOn`; dropping anywhere else is a normal move. A
+  stack with attachments or unders never opens it (`canOfferDragMenu`). The dragged stack finds what is under
+  the pointer with `elementsFromPoint`, so the segments keep `pointer-events`.
 - Every card is its own instance. `createBoardCard` builds one from Scryfall data with a fresh ID, and the
   Scryfall ID stays on `scryfallInfo.id`. Casting from On-deck or Add Card goes through `castCard`, which puts a
   new instance on the board, so casting the same card twice gives two independent cards. The On-deck card never

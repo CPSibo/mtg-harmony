@@ -35,6 +35,12 @@
           @show-card-details="showCardDetails"
           @show-card-modifiers="showCardModifiers"
         />
+        <PlayAreaDragRadialMenu
+          v-if="dragMenu.target.value"
+          :key="dragMenu.target.value"
+          :board="boardEl"
+          :stack-id="dragMenu.target.value"
+        />
       </div>
     </div>
   </div>
@@ -53,6 +59,7 @@
 
 <script setup lang="ts">
 import PlayAreaBoardCardStack from '~/components/playArea/BoardCardStack.vue';
+import PlayAreaDragRadialMenu from '~/components/playArea/DragRadialMenu.vue';
 import { useBlockBrowserZoom } from '~/composables/useBlockBrowserZoom';
 import { usePanAndZoom } from '~/composables/usePanAndZoom';
 import { storeToRefs } from 'pinia';
@@ -66,7 +73,7 @@ import {
   useTemplateRef,
   watchEffect,
 } from 'vue';
-import { useBattlefieldStore } from '~/features/battlefield';
+import { dragMenu, useBattlefieldStore } from '~/features/battlefield';
 import { useSettingsStore } from '~/stores/settings';
 import type { BoardCard } from '~/types/PlayArea';
 

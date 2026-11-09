@@ -20,6 +20,9 @@ export interface UseBoardDraggableOptions {
   disabled?: MaybeRefOrGetter<boolean>;
   /** Easing in ms; 0 is off (#104). */
   smoothing?: MaybeRefOrGetter<number>;
+  onStart?: (event: PointerEvent) => void;
+  /** Each pointer move of a drag, before smoothing. */
+  onMove?: (event: PointerEvent) => void;
   onEnd?: (position: Position, event: PointerEvent) => void;
 }
 
@@ -88,6 +91,7 @@ export function useBoardDraggable(
     window.addEventListener('pointermove', onMove, { capture: true });
     window.addEventListener('pointerup', onUp, { capture: true });
     window.addEventListener('pointercancel', onUp, { capture: true });
+    options.onStart?.(e);
   }
 
   function onMove(e: PointerEvent) {
@@ -99,6 +103,7 @@ export function useBoardDraggable(
       x: clamp(snapTo(start.x + (p.x - startPointer.x) / s, snap()), max.x),
       y: clamp(snapTo(start.y + (p.y - startPointer.y) / s, snap()), max.y),
     });
+    options.onMove?.(e);
   }
 
   function stopListening() {
