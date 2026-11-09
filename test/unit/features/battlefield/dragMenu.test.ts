@@ -58,8 +58,8 @@ describe('createDragMenu (#108)', () => {
     menu.start(true);
     menu.move({ stackId: 'b' });
     vi.advanceTimersByTime(DRAG_MENU_DELAY_MS);
-    // Moving off the stack towards an option keeps the menu open.
-    menu.move({});
+    // Moving off the card towards an option, inside the menu's area.
+    menu.move({ inArea: true });
     expect(menu.target.value).toBe('b');
     menu.move({ option: 'under' });
     expect(menu.hovered.value).toBe('under');
@@ -103,5 +103,60 @@ describe('createDragMenu (#108)', () => {
     expect(menu.target.value).toBeNull();
     vi.advanceTimersByTime(500);
     expect(menu.target.value).toBe('b');
+  });
+
+  describe('leaving the menu (#108)', () => {
+    function openOn(menu: ReturnType<typeof createDragMenu>, stackId: string) {
+      menu.start(true);
+      menu.move({ stackId });
+      vi.advanceTimersByTime(DRAG_MENU_DELAY_MS);
+      expect(menu.target.value).toBe(stackId);
+    }
+
+    it('closes after the pointer stays outside its area for the delay', () => {
+      const menu = createDragMenu();
+      openOn(menu, 'b');
+      menu.move({});
+      vi.advanceTimersByTime(DRAG_MENU_DELAY_MS - 1);
+      expect(menu.target.value).toBe('b');
+      vi.advanceTimersByTime(1);
+      expect(menu.target.value).toBeNull();
+      expect(menu.end()).toBeNull();
+    });
+
+    it('stays open when the pointer comes back in time', () => {
+      const menu = createDragMenu();
+      openOn(menu, 'b');
+      menu.move({});
+      vi.advanceTimersByTime(DRAG_MENU_DELAY_MS - 100);
+      menu.move({ option: 'attach', inArea: true });
+      vi.advanceTimersByTime(DRAG_MENU_DELAY_MS);
+      expect(menu.target.value).toBe('b');
+      menu.move({});
+      vi.advanceTimersByTime(DRAG_MENU_DELAY_MS - 100);
+      menu.move({ inArea: true });
+      vi.advanceTimersByTime(DRAG_MENU_DELAY_MS);
+      expect(menu.target.value).toBe('b');
+    });
+
+    it('clears the hovered option when it closes', () => {
+      const menu = createDragMenu();
+      openOn(menu, 'b');
+      menu.move({ option: 'under', inArea: true });
+      menu.move({});
+      vi.advanceTimersByTime(DRAG_MENU_DELAY_MS);
+      expect(menu.hovered.value).toBeNull();
+    });
+
+    it('opens around another card the pointer moved to and stayed on', () => {
+      const menu = createDragMenu();
+      openOn(menu, 'b');
+      menu.move({ stackId: 'c' });
+      vi.advanceTimersByTime(DRAG_MENU_DELAY_MS);
+      expect(menu.target.value).toBeNull();
+      // Held still over c: no more moves arrive, but it still opens there.
+      vi.advanceTimersByTime(DRAG_MENU_DELAY_MS);
+      expect(menu.target.value).toBe('c');
+    });
   });
 });

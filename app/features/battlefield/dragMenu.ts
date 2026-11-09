@@ -16,13 +16,16 @@ export interface DragMenuHit {
   stackId?: string;
   /** A menu option the pointer is over. */
   option?: AttachMode;
+  /** Whether the pointer is inside the open menu's area: its stack and the menu. */
+  inArea?: boolean;
 }
 
 /**
  * The radial menu a single dragged card opens over another stack (#108).
  * Hovering over a stack's primary for `delay` ms (read as each hover
- * starts) opens the menu around it; it
- * stays open for the rest of the drag, and dropping on an option picks it.
+ * starts) opens the menu around it, and dropping on an option picks it.
+ * Leaving the menu's area for `delay` ms closes it again, and the card
+ * under the pointer then starts its own wait.
  * Holds no DOM: the caller says what the pointer is over.
  */
 export function createDragMenu(
@@ -36,11 +39,27 @@ export function createDragMenu(
   let eligible = false;
   let pending: string | null = null;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  /** Closes the open menu once the pointer has been outside it a while. */
+  let leaveTimer: ReturnType<typeof setTimeout> | undefined;
+  let lastHit: DragMenuHit = {};
 
   function clearTimer() {
     clearTimeout(timer);
     timer = undefined;
     pending = null;
+  }
+
+  function clearLeaveTimer() {
+    clearTimeout(leaveTimer);
+    leaveTimer = undefined;
+  }
+
+  function close() {
+    clearLeaveTimer();
+    target.value = null;
+    hovered.value = null;
+    // Whatever the pointer is over now starts its own wait.
+    move(lastHit);
   }
 
   function start(canOpen: boolean) {
@@ -50,8 +69,11 @@ export function createDragMenu(
 
   function move(hit: DragMenuHit) {
     if (!eligible) return;
+    lastHit = hit;
     if (target.value) {
       hovered.value = hit.option ?? null;
+      if (hit.option || hit.inArea) clearLeaveTimer();
+      else leaveTimer ??= setTimeout(close, toValue(delay));
       return;
     }
     const stackId = hit.stackId ?? null;
@@ -72,6 +94,8 @@ export function createDragMenu(
         ? { stackId: target.value, mode: hovered.value }
         : null;
     clearTimer();
+    clearLeaveTimer();
+    lastHit = {};
     eligible = false;
     target.value = null;
     hovered.value = null;

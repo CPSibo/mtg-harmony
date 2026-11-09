@@ -1,6 +1,7 @@
 <template>
   <div
     ref="stack"
+    :data-stack-id="stack.id"
     :style="style"
     class="board-card-stack origin-top-left absolute top-0 left-0"
     :class="{ dragging: myIsDragging }"
@@ -118,6 +119,37 @@ const { style, isDragging: myIsDragging } = useBoardDraggable(stackEl, {
 
 /** The menu option, or another stack's primary, under the pointer. */
 function hitAt(e: PointerEvent): DragMenuHit {
+  const hit = findHit(e);
+  const open = dragMenu.target.value;
+  if (open && !hit.option) hit.inArea = inMenuArea(open, e);
+  return hit;
+}
+
+/**
+ * Whether the pointer is inside the bounding box of the open menu's stack
+ * and the menu together. Measured per move only while the menu is open.
+ */
+function inMenuArea(stackId: string, e: PointerEvent) {
+  const parts = [
+    document.querySelector(`[data-stack-id="${CSS.escape(stackId)}"]`),
+    ...document.querySelectorAll('[data-drag-menu-option]'),
+  ]
+    .filter((el) => !!el)
+    .map((el) => el.getBoundingClientRect());
+  if (!parts.length) return false;
+  const left = Math.min(...parts.map((r) => r.left));
+  const right = Math.max(...parts.map((r) => r.right));
+  const top = Math.min(...parts.map((r) => r.top));
+  const bottom = Math.max(...parts.map((r) => r.bottom));
+  return (
+    e.clientX >= left &&
+    e.clientX <= right &&
+    e.clientY >= top &&
+    e.clientY <= bottom
+  );
+}
+
+function findHit(e: PointerEvent): DragMenuHit {
   for (const el of document.elementsFromPoint(e.clientX, e.clientY)) {
     const option = el.closest<HTMLElement>('[data-drag-menu-option]')?.dataset
       .dragMenuOption;

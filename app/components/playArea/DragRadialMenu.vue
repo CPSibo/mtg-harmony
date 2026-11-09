@@ -1,5 +1,5 @@
 <template>
-  <!-- Arc segments around the target's primary card, centred on it, in board
+  <!-- Arc segments centred on the target card's top-right corner, in board
        pixels. Only the segments take the pointer, so the drag can find them
        under it (#108). -->
   <div
@@ -75,7 +75,8 @@ const OPTIONS: {
 
 // Sizes on screen, in px; divided by the zoom so they stay finger-sized.
 const THICKNESS = 56;
-const GAP_FROM_CARD = 8;
+/** From the corner to the segments' inner edge. */
+const INNER_RADIUS = 64;
 const ICON = 24;
 /** Gap between segments, in degrees. */
 const SEGMENT_GAP_DEG = 1.5;
@@ -109,20 +110,18 @@ const layout = computed(() => {
     `[data-drag-target="${CSS.escape(props.stackId)}"]`,
   );
   if (!card) return null;
+  // The card itself, not its modifiers beside it.
+  const face = card.querySelector('.card-image-wrapper') ?? card;
   const scale = battlefield.boardScale();
   const boardRect = props.board.getBoundingClientRect();
-  const rect = card.getBoundingClientRect();
-  const width = rect.width / scale;
-  const height = rect.height / scale;
-
-  // Clear of the card's corners.
-  const inner = Math.hypot(width, height) / 2 + GAP_FROM_CARD / scale;
+  const rect = face.getBoundingClientRect();
+  const inner = INNER_RADIUS / scale;
   const outer = inner + THICKNESS / scale;
   const iconSize = ICON / scale;
 
   return {
-    cx: (rect.left - boardRect.left) / scale + width / 2,
-    cy: (rect.top - boardRect.top) / scale + height / 2,
+    cx: (rect.right - boardRect.left) / scale,
+    cy: (rect.top - boardRect.top) / scale,
     iconSize,
     segments: OPTIONS.map((o) => {
       const from = o.from * 30 + SEGMENT_GAP_DEG / 2;
