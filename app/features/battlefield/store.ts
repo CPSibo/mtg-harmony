@@ -98,6 +98,15 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     );
   });
 
+  /**
+   * Each stack's place in the z-order, for its CSS z-index. The board renders
+   * stacks in a stable order and stacks them with this instead of moving their
+   * elements: moving an element mid-click makes the browser drop the click.
+   */
+  const stackZIndex = computed(
+    () => new Map(zOrder.value.map((id, i) => [id, i])),
+  );
+
   const center = ref<Position>(defaults.center);
   function setCenter(value: Position) {
     center.value = value;
@@ -581,6 +590,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     bringToFront,
     setStackPosition,
     orderedStacks,
+    stackZIndex,
     setStacks,
     addStackByCard,
     castCard,

@@ -2,7 +2,7 @@
   <div
     ref="stack"
     :data-stack-id="stack.id"
-    :style="style"
+    :style="[style, { zIndex: battlefield.stackZIndex.get(stack.id) ?? 0 }]"
     class="board-card-stack origin-top-left absolute top-0 left-0"
     :class="{ dragging: myIsDragging }"
   >

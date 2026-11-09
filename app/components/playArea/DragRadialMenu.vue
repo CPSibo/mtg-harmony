@@ -147,7 +147,7 @@ const layout = computed(() => {
 <style lang="scss" scoped>
 .drag-radial-menu {
   position: absolute;
-  z-index: 10;
+  z-index: 1000000; /* Above every stack's z-order index. */
   pointer-events: none;
   animation: appear 120ms ease-out;
 }
