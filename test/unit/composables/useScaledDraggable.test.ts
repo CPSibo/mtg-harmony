@@ -72,6 +72,21 @@ describe('useBoardDraggable', () => {
     scope.stop();
   });
 
+  // #116: the card sits inside the stack, offset by its action buttons.
+  it('snaps the offset point, not the element origin, to the grid', () => {
+    const { el, drag, scope } = setup({
+      snapScale: 20,
+      snapOffset: () => ({ x: 29, y: 7 }),
+    });
+
+    el.dispatchEvent(pointer('pointerdown', 0, 0));
+    window.dispatchEvent(pointer('pointermove', 13, 26));
+
+    // 100 + 13 + 29 = 142 → 140; 50 + 26 + 7 = 83 → 80.
+    expect([drag.x.value, drag.y.value]).toEqual([111, 73]);
+    scope.stop();
+  });
+
   it("doesn't start while disabled", () => {
     const { el, drag, scope } = setup({ disabled: () => true });
 
