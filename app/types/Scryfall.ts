@@ -21,6 +21,8 @@ export interface ScryfallCardFace {
 
 export interface ScryfallCard {
   id: string;
+  /** Shared by every printing of the card; Swap art lists printings by it. */
+  oracle_id?: string;
   name: string;
   mana_cost: string;
   /** Shown when card images are off. */

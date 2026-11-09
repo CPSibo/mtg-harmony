@@ -145,6 +145,16 @@
         </UDropdownMenu>
 
         <UButton
+          icon="i-lucide-images"
+          color="neutral"
+          variant="ghost"
+          size="xl"
+          @click="openSwapArt"
+        >
+          Swap art
+        </UButton>
+
+        <UButton
           icon="i-lucide-trash"
           color="neutral"
           variant="ghost"
@@ -175,6 +185,12 @@
     :card="props.card"
     @canceled="confirmRemovedCanceled"
   />
+
+  <SwapArtModal
+    v-if="swapArtLoaded && props.card"
+    v-model:open="showSwapArt"
+    :card="props.card"
+  />
 </template>
 
 <script setup lang="ts">
@@ -186,7 +202,7 @@ import USeparator from '@nuxt/ui/components/Separator.vue';
 import PlayAreaRemoveCardModal from '~/components/playArea/RemoveCardModal.vue';
 import SharedCardText from '~/components/shared/CardText.vue';
 import { useSettingsStore } from '~/stores/settings';
-import { computed, ref } from 'vue';
+import { computed, defineAsyncComponent, ref } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import type { BoardCard } from '~/types/PlayArea';
 
@@ -204,6 +220,19 @@ const battlefield = useBattlefieldStore();
 const settings = useSettingsStore();
 
 const showConfirmRemove = ref(false);
+
+// Loads on first use: most games never swap art.
+const SwapArtModal = defineAsyncComponent(
+  () => import('~/features/swapArt/components/SwapArtModal.vue'),
+);
+const swapArtLoaded = ref(false);
+const showSwapArt = ref(false);
+
+const openSwapArt = () => {
+  swapArtLoaded.value = true;
+  showSwapArt.value = true;
+  open.value = false;
+};
 
 // Cancelling the removal goes back to the details.
 const confirmRemovedCanceled = () => {
