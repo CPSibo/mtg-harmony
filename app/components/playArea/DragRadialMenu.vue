@@ -63,12 +63,18 @@ const OPTIONS: {
   from: number;
   to: number;
 }[] = [
-  { mode: 'attach', label: 'Attach to', icon: 'i-lucide-link', from: 1, to: 2 },
+  {
+    mode: 'attach',
+    label: 'Attach to',
+    icon: 'i-lucide-link',
+    from: 0,
+    to: 1.5,
+  },
   {
     mode: 'under',
     label: 'Put under',
     icon: 'i-lucide-arrow-down-to-line',
-    from: 2,
+    from: 1.5,
     to: 3,
   },
 ];
@@ -76,7 +82,7 @@ const OPTIONS: {
 // Sizes on screen, in px; divided by the zoom so they stay finger-sized.
 const THICKNESS = 56;
 /** From the corner to the segments' inner edge. */
-const INNER_RADIUS = 64;
+const INNER_RADIUS = 32;
 const ICON = 24;
 /** Gap between segments, in degrees. */
 const SEGMENT_GAP_DEG = 1.5;
