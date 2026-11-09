@@ -190,7 +190,6 @@
     v-if="swapArtLoaded && props.card"
     v-model:open="showSwapArt"
     :card="props.card"
-    @swapped="open = true"
   />
 </template>
 

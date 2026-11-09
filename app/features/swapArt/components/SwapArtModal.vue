@@ -82,8 +82,6 @@ const open = defineModel<boolean>('open', { default: false });
 
 const props = defineProps<{ card: BoardCard }>();
 
-const emit = defineEmits<{ swapped: [] }>();
-
 const battlefield = useBattlefieldStore();
 const settings = useSettingsStore();
 
@@ -115,6 +113,5 @@ function imageOf(printing: Printing) {
 function choose(printing: Printing) {
   battlefield.swapPrinting(props.card, printing.card);
   open.value = false;
-  emit('swapped');
 }
 </script>
