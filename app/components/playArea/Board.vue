@@ -75,6 +75,7 @@ import {
 } from 'vue';
 import { dragMenu, useBattlefieldStore } from '~/features/battlefield';
 import { useSettingsStore } from '~/stores/settings';
+import { gridLevels } from '~/utils/gridLevels';
 import type { BoardCard } from '~/types/PlayArea';
 
 // Card details and modifiers (with the number input) load when the browser is
@@ -124,11 +125,17 @@ const {
 
 const anyCardIsDragging = ref(false);
 
-// CSS variables only: the backdrop's gradients scale and move in CSS.
-const backdropStyle = computed(
-  () =>
-    `--x: ${position.value.x}px; --y: ${position.value.y}px; --s: ${scale.value}`,
-);
+// CSS variables only: the backdrop's gradients scale and move in CSS. The
+// grid's finest level is the snap grid; coarser levels take over as you zoom
+// out (see `gridLevels`).
+const backdropStyle = computed(() => {
+  const s = scale.value;
+  const { minor, major, minorAlpha } = gridLevels(battlefield.snapScale, s);
+  return (
+    `--x: ${position.value.x}px; --y: ${position.value.y}px; --s: ${s}; ` +
+    `--minor: ${minor * s}px; --major: ${major * s}px; --minor-a: ${minorAlpha}`
+  );
+});
 
 // Screen pixels at the view's edges that don't count as in view when placing
 // a new card: the top, for the corner buttons.
@@ -243,9 +250,15 @@ const showCardModifiers = (card: BoardCard) => {
 }
 
 .board-backdrop {
-  --cell: calc(40px * var(--s));
   --line: color-mix(in oklab, var(--ui-border-inverted) 8%, transparent);
-  --stroke: calc(0.5px * var(--s));
+  --minor-line: color-mix(
+    in oklab,
+    var(--line) calc(var(--minor-a) * 100%),
+    transparent
+  );
+  --major-line: color-mix(in oklab, var(--ui-border-inverted) 14%, transparent);
+  /* Lines stay hairlines at any zoom; the levels keep them apart. */
+  --stroke: 1px;
 
   position: absolute;
   inset: 0;
@@ -257,21 +270,19 @@ const showCardModifiers = (card: BoardCard) => {
       transparent,
       rgb(0 0 0 / 0.65)
     ),
-    /* A dot in the middle of each cell. */
-    radial-gradient(
-        circle calc(1.25px * var(--s)) at center,
-        var(--line) 99%,
-        transparent
-      ),
-    /* Cell lines along the top and left of each cell. */
-    linear-gradient(to right, var(--line) var(--stroke), transparent 0),
-    linear-gradient(to bottom, var(--line) var(--stroke), transparent 0);
+    /* Major lines along the top and left of each major cell. */
+    linear-gradient(to right, var(--major-line) var(--stroke), transparent 0),
+    linear-gradient(to bottom, var(--major-line) var(--stroke), transparent 0),
+    /* Minor lines, fading out as they close up. */
+    linear-gradient(to right, var(--minor-line) var(--stroke), transparent 0),
+    linear-gradient(to bottom, var(--minor-line) var(--stroke), transparent 0);
   background-size:
     calc(5000px * var(--s)) calc(5000px * var(--s)),
-    var(--cell) var(--cell),
-    var(--cell) var(--cell),
-    var(--cell) var(--cell);
-  background-repeat: no-repeat, repeat, repeat, repeat;
+    var(--major) var(--major),
+    var(--major) var(--major),
+    var(--minor) var(--minor),
+    var(--minor) var(--minor);
+  background-repeat: no-repeat, repeat, repeat, repeat, repeat;
   background-position: var(--x) var(--y);
 }
 

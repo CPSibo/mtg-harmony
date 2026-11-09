@@ -95,6 +95,17 @@ const { style, isDragging: myIsDragging } = useBoardDraggable(stackEl, {
   // Read when a drag moves, so zooming doesn't re-render every stack.
   scale: () => battlefield.boardScale(),
   snapScale: snapScale,
+  // Snap the primary card's corner, not the stack's, so its edges sit on the
+  // grid lines whatever the action buttons and unders add around it (#116).
+  snapOffset: () => {
+    const stack = stackEl.value;
+    const card = stack?.querySelector('.primary-card');
+    if (!stack || !card) return { x: 0, y: 0 };
+    const s = battlefield.boardScale();
+    const a = stack.getBoundingClientRect();
+    const b = card.getBoundingClientRect();
+    return { x: (b.left - a.left) / s, y: (b.top - a.top) / s };
+  },
   containerElement: props.board,
   initialValue: {
     x: props.stack.position.x,

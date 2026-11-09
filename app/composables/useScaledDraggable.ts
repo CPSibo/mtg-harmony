@@ -15,6 +15,9 @@ export interface UseBoardDraggableOptions {
   scale?: MaybeRefOrGetter<number>;
   /** Grid size in board pixels; 0 doesn't snap. */
   snapScale?: MaybeRefOrGetter<number>;
+  /** Board pixels from the element's origin to the point that snaps to the
+   *  grid, e.g. a card's corner inside its stack. Read when a drag starts. */
+  snapOffset?: () => Position;
   /** Keeps the element inside this one. */
   containerElement?: MaybeRefOrGetter<HTMLElement | null | undefined>;
   disabled?: MaybeRefOrGetter<boolean>;
@@ -51,6 +54,7 @@ export function useBoardDraggable(
   // How far the element can go, in board pixels. Measured when a drag
   // starts, not on every move: reading layout each move forces a layout.
   let max: Position = { x: Infinity, y: Infinity };
+  let offset: Position = { x: 0, y: 0 };
 
   const follower = createFollower((p) => {
     x.value = p.x;
@@ -58,8 +62,8 @@ export function useBoardDraggable(
   }, smoothing);
 
   const clamp = (v: number, hi: number) => Math.min(Math.max(v, 0), hi);
-  const snapTo = (v: number, grid: number) =>
-    grid > 0 ? Math.round(v / grid) * grid : v;
+  const snapTo = (v: number, grid: number, off: number) =>
+    grid > 0 ? Math.round((v + off) / grid) * grid - off : v;
 
   function measureBounds() {
     const container = toValue(options.containerElement);
@@ -86,6 +90,7 @@ export function useBoardDraggable(
     startPointer = { x: e.clientX, y: e.clientY };
     start = { x: x.value, y: y.value };
     measureBounds();
+    offset = options.snapOffset?.() ?? { x: 0, y: 0 };
     follower.jump(start);
     isDragging.value = true;
     window.addEventListener('pointermove', onMove, { capture: true });
@@ -100,8 +105,14 @@ export function useBoardDraggable(
     const p = { x: e.clientX, y: e.clientY };
     const s = scale();
     follower.to({
-      x: clamp(snapTo(start.x + (p.x - startPointer.x) / s, snap()), max.x),
-      y: clamp(snapTo(start.y + (p.y - startPointer.y) / s, snap()), max.y),
+      x: clamp(
+        snapTo(start.x + (p.x - startPointer.x) / s, snap(), offset.x),
+        max.x,
+      ),
+      y: clamp(
+        snapTo(start.y + (p.y - startPointer.y) / s, snap(), offset.y),
+        max.y,
+      ),
     });
     options.onMove?.(e);
   }
