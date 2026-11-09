@@ -70,7 +70,7 @@ describe('settings store', () => {
         JSON.stringify([{ dragMenuDelay: 1 }, bad]),
       );
       setActivePinia(createPinia());
-      expect(useSettingsStore().dragMenuDelay, String(bad)).toBe(1000);
+      expect(useSettingsStore().dragMenuDelay, String(bad)).toBe(500);
     }
   });
 });
