@@ -33,18 +33,18 @@
         {
           label: 'Copy card',
           icon: 'i-lucide-copy',
-          onSelect: () => battlefield.copyCard(stack.primary, 'card'),
+          onSelect: () => copyCard(stack.primary, 'card'),
           color: 'primary',
         },
         {
           label: 'Copy card + counters',
           icon: 'i-lucide-copy-plus',
-          onSelect: () => battlefield.copyCard(stack.primary, 'counters'),
+          onSelect: () => copyCard(stack.primary, 'counters'),
         },
         {
           label: 'Copy everything',
           icon: 'i-lucide-square-stack',
-          onSelect: () => battlefield.copyCard(stack.primary, 'stack'),
+          onSelect: () => copyCard(stack.primary, 'stack'),
         },
       ]"
       :content="{
@@ -88,6 +88,7 @@ import { useInputModeStore } from '~/stores/inputMode';
 import { storeToRefs } from 'pinia';
 import { ref } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
+import { useCopyAnimation } from '~/features/castAnimation';
 import type { BoardCard, BoardCardStack } from '~/types/PlayArea';
 
 const props = defineProps<{
@@ -102,6 +103,7 @@ const inputModeStore = useInputModeStore();
 const { isTouch } = storeToRefs(inputModeStore);
 
 const battlefield = useBattlefieldStore();
+const copyCard = useCopyAnimation();
 
 const showConfirmRemove = ref(false);
 </script>

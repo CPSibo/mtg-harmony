@@ -22,7 +22,10 @@
     </UButton>
 
     <template #body>
-      <div class="on-deck-display">
+      <div
+        ref="display"
+        class="on-deck-display"
+      >
         <USkeleton
           v-if="loading"
           class="mtg-card-display vertical"
@@ -142,7 +145,8 @@ import { useSettingsStore } from '~/stores/settings';
 import { useToast } from '@nuxt/ui/composables';
 import { storeToRefs } from 'pinia';
 import type { Position } from '@vueuse/core';
-import { ref } from 'vue';
+import { ref, useTemplateRef } from 'vue';
+import { castSource, useCastAnimation } from '~/features/castAnimation';
 import { useDragToCast } from '~/composables/useDragToCast';
 import { useBattlefieldStore } from '~/features/battlefield';
 import { useDiscordFetcherStore } from '..';
@@ -158,6 +162,9 @@ const board = useBattlefieldStore();
 const settings = useSettingsStore();
 
 const loading = ref(false);
+
+const display = useTemplateRef<HTMLDivElement>('display');
+const animateCast = useCastAnimation();
 
 const goNext = async () => {
   try {
@@ -181,8 +188,12 @@ const goNext = async () => {
 const cast = (at?: Position) => {
   if (!card.value) return;
 
+  // Measured before the drawer closes; a drop has no flight (#124).
+  const source = at ? null : castSource(display.value?.firstElementChild);
+
   // A fresh copy, so casting the same card twice gives two cards (#23).
-  board.castCard(card.value.scryfallInfo, 'cast', at);
+  const stack = board.castCard(card.value.scryfallInfo, 'cast', at);
+  void animateCast(stack.id, source);
 
   discordFetchStore.clearCard();
 

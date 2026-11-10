@@ -25,7 +25,7 @@ export type AttachMode = 'attach' | 'under';
 const UNDER_TAKE_OUT_OFFSET = 240;
 
 /** How far a copy sits from its source, in board pixels. */
-const COPY_OFFSET = 40;
+const COPY_OFFSET = 80;
 
 const STORAGE_KEY = 'mtg-harmony_battlefield';
 
@@ -490,6 +490,8 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
   }
 
   const isAttaching = computed(() => !!cardToAttach.value);
+  /** The ID of the card being attached or put under, if any. */
+  const cardToAttachId = computed(() => cardToAttach.value?.id ?? null);
 
   function isValidAttachmentTarget(targetCard: BoardCard) {
     if (!isAttaching.value) return false;
@@ -635,6 +637,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     cancelAttaching,
     finishAttaching,
     isAttaching,
+    cardToAttachId,
     attachMode,
     isValidAttachmentTarget,
     canOfferDragMenu,

@@ -113,18 +113,18 @@
             {
               label: 'Copy card',
               icon: 'i-lucide-copy',
-              onSelect: () => battlefield.copyCard(card!, 'card'),
+              onSelect: () => copyCard(card!, 'card'),
               color: 'primary',
             },
             {
               label: 'Copy card + counters',
               icon: 'i-lucide-copy-plus',
-              onSelect: () => battlefield.copyCard(card!, 'counters'),
+              onSelect: () => copyCard(card!, 'counters'),
             },
             {
               label: 'Copy everything',
               icon: 'i-lucide-square-stack',
-              onSelect: () => battlefield.copyCard(card!, 'stack'),
+              onSelect: () => copyCard(card!, 'stack'),
             },
           ]"
           :content="{
@@ -204,6 +204,7 @@ import SharedCardText from '~/components/shared/CardText.vue';
 import { useSettingsStore } from '~/stores/settings';
 import { computed, defineAsyncComponent, ref } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
+import { useCopyAnimation, useMoveAnimation } from '~/features/castAnimation';
 import type { BoardCard } from '~/types/PlayArea';
 
 const open = defineModel<boolean>('open', { default: false });
@@ -276,13 +277,25 @@ const startAttaching = () => {
   open.value = false;
 };
 
+const animateMove = useMoveAnimation();
+const copyCard = useCopyAnimation();
+
 const tryDetach = () => {
-  battlefield.detach(props.card!);
+  const card = props.card!;
+  const play = animateMove([card.id]);
+  const hostId = card.stack?.primary.id ?? null;
+  battlefield.detach(card);
+  play(hostId, false);
   open.value = false;
 };
 
 const explodeStack = () => {
-  battlefield.explodeStack(props.card!.stack!);
+  const stack = props.card!.stack!;
+  const play = animateMove(
+    [...stack.attachments, ...stack.unders].map((c) => c.id),
+  );
+  battlefield.explodeStack(stack);
+  play(stack.primary.id, false);
   open.value = false;
 };
 

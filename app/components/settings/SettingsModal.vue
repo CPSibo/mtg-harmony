@@ -132,6 +132,55 @@
             </div>
           </UFormField>
         </template>
+
+        <template #animation>
+          <UFormField
+            label="Cast flight"
+            description="How a cast card flies from On-deck or Add Card onto the board"
+          >
+            <USelect
+              v-model="castFlight"
+              :items="flightItems"
+              class="w-48"
+            />
+          </UFormField>
+
+          <UFormField
+            label="Landing effect"
+            description="Marks where a cast card lands"
+          >
+            <USelect
+              v-model="castLanding"
+              :items="landingItems"
+              class="w-48"
+            />
+          </UFormField>
+
+          <UFormField
+            label="Flight time"
+            description="How long the flight takes"
+          >
+            <div class="flex items-center gap-3">
+              <USlider
+                v-model="castDuration"
+                :min="MIN_CAST_DURATION_MS"
+                :max="MAX_CAST_DURATION_MS"
+                :step="50"
+                class="flex-1"
+              />
+              <span class="w-14 text-right text-sm tabular-nums">
+                {{ castDuration }} ms
+              </span>
+            </div>
+          </UFormField>
+
+          <UFormField
+            label="Card action flourish"
+            description="A small effect when cards are attached, detached, copied or removed"
+          >
+            <USwitch v-model="attachFlareEnabled" />
+          </UFormField>
+        </template>
       </UTabs>
     </template>
   </UModal>
@@ -143,6 +192,7 @@ import UFormField from '@nuxt/ui/components/FormField.vue';
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
 import UInputNumber from '@nuxt/ui/components/InputNumber.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
+import USelect from '@nuxt/ui/components/Select.vue';
 import USlider from '@nuxt/ui/components/Slider.vue';
 import { MAX_POINTER_EASE_MS } from '~/composables/pointerSmoothing';
 import USwitch from '@nuxt/ui/components/Switch.vue';
@@ -156,6 +206,10 @@ import {
   useBattlefieldStore,
 } from '~/features/battlefield';
 import { useDiscordFetcherStore } from '~/features/discordFetcher';
+import {
+  MAX_CAST_DURATION_MS,
+  MIN_CAST_DURATION_MS,
+} from '~/features/castAnimation';
 
 const emit = defineEmits<{ close: [boolean] }>();
 
@@ -166,7 +220,24 @@ const {
   cardOutlineEnabled,
   pointerSmoothing,
   dragMenuDelay,
+  castFlight,
+  castLanding,
+  castDuration,
+  attachFlareEnabled,
 } = storeToRefs(settingsStore);
+
+const flightItems = [
+  { label: 'Off', value: 'off' },
+  { label: 'Tilt and fly', value: 'tilt' },
+  { label: 'Arc', value: 'arc' },
+];
+
+const landingItems = [
+  { label: 'None', value: 'none' },
+  { label: 'Sparkle burst', value: 'sparkle' },
+  { label: 'Ripple rings', value: 'ring' },
+  { label: 'Sparkles and ripple', value: 'sparkleRing' },
+];
 
 // The Wake Lock API needs a secure context (HTTPS or localhost).
 const wakeLockSupported = useSupported(
@@ -195,6 +266,11 @@ const items = [
     label: 'Field',
     icon: 'i-lucide-layout-grid',
     slot: 'field',
+  },
+  {
+    label: 'Animation',
+    icon: 'i-lucide-sparkles',
+    slot: 'animation',
   },
 ];
 </script>
