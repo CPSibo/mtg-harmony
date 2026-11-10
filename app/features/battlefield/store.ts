@@ -25,7 +25,7 @@ export type AttachMode = 'attach' | 'under';
 const UNDER_TAKE_OUT_OFFSET = 240;
 
 /** How far a copy sits from its source, in board pixels. */
-const COPY_OFFSET = 40;
+const COPY_OFFSET = 80;
 
 const STORAGE_KEY = 'mtg-harmony_battlefield';
 
