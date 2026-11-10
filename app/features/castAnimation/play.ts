@@ -146,11 +146,7 @@ function rings(layer: HTMLElement, subtle = false): Animation[] {
 
 async function land(target: HTMLElement, landing: CastLanding) {
   const pop = target.animate(
-    [
-      { transform: 'scale(1)' },
-      { transform: 'scale(1.08)', offset: 0.35 },
-      { transform: 'scale(1)' },
-    ],
+    [{ scale: '1' }, { scale: '1.08', offset: 0.35 }, { scale: '1' }],
     { duration: 320, easing: 'ease-out' },
   );
   if (landing === 'none') {
@@ -258,11 +254,7 @@ export async function playAttachAnimation(cardId: string, targetId: string) {
 
     const animations = [
       moved.animate(
-        [
-          { transform: 'scale(1)' },
-          { transform: 'scale(1.06)', offset: 0.4 },
-          { transform: 'scale(1)' },
-        ],
+        [{ scale: '1' }, { scale: '1.06', offset: 0.4 }, { scale: '1' }],
         { duration: 260, easing: 'ease-out' },
       ),
       ...sparkles(layer, rect, 14, 0.5),
@@ -270,11 +262,7 @@ export async function playAttachAnimation(cardId: string, targetId: string) {
     if (target)
       animations.push(
         target.animate(
-          [
-            { transform: 'scale(1)' },
-            { transform: 'scale(0.97)', offset: 0.35 },
-            { transform: 'scale(1)' },
-          ],
+          [{ scale: '1' }, { scale: '0.97', offset: 0.35 }, { scale: '1' }],
           { duration: 240, easing: 'ease-out' },
         ),
       );
