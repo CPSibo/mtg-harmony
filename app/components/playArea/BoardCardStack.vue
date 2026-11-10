@@ -241,6 +241,12 @@ watch(myIsDragging, (value) => {
   left: var(--actions-total-width);
   width: var(--w);
   z-index: -1;
+  /* Keeps unders centred while the primary taps (#124). */
+  transition: width 180ms ease-out;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
 
   &.primary-tapped {
     width: var(--h);
