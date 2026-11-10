@@ -140,6 +140,11 @@ const isHovered = useElementHover(cardImageSection);
     border-width: 2px;
     border-style: solid;
 
+    /* Tap and untap ease rather than snap (#124). */
+    transition:
+      width 180ms ease-out,
+      height 180ms ease-out;
+
     .card-image {
       width: var(--scaled-short);
       height: var(--scaled-long);
@@ -148,6 +153,7 @@ const isHovered = useElementHover(cardImageSection);
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%) rotate(0deg);
+      transition: transform 180ms ease-out;
 
       background-origin: center;
       background-color: black;
@@ -156,6 +162,13 @@ const isHovered = useElementHover(cardImageSection);
       background-clip: border-box;
       background-position: center center;
       background-size: var(--scaled-short) var(--scaled-long);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card-image-wrapper,
+    .card-image-wrapper .card-image {
+      transition: none;
     }
   }
 
