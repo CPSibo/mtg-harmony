@@ -173,6 +173,13 @@
               </span>
             </div>
           </UFormField>
+
+          <UFormField
+            label="Attach and under flourish"
+            description="A small sparkle when a card is attached to or put under another"
+          >
+            <USwitch v-model="attachFlareEnabled" />
+          </UFormField>
         </template>
       </UTabs>
     </template>
@@ -216,6 +223,7 @@ const {
   castFlight,
   castLanding,
   castDuration,
+  attachFlareEnabled,
 } = storeToRefs(settingsStore);
 
 const flightItems = [

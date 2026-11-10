@@ -65,9 +65,14 @@ function jitter(i: number, salt: number) {
 }
 
 /** Fine magic dust: many tiny bright specks that twinkle and drift down. */
-function sparkles(layer: HTMLElement, rect: ScreenRect): Animation[] {
-  const reach = Math.max(rect.width, rect.height) * 0.8;
-  return sparkleAngles(32).map((base, i) => {
+function sparkles(
+  layer: HTMLElement,
+  rect: ScreenRect,
+  count = 32,
+  spread = 0.8,
+): Animation[] {
+  const reach = Math.max(rect.width, rect.height) * spread;
+  return sparkleAngles(count).map((base, i) => {
     const s = document.createElement('div');
     const size = 2 + Math.round(jitter(i, 1) * 2);
     const gold = jitter(i, 2) < 0.5;
@@ -225,4 +230,58 @@ export function castSource(
   if (!element) return null;
   const { x, y, width, height } = element.getBoundingClientRect();
   return width && height ? { element, rect: { x, y, width, height } } : null;
+}
+
+/**
+ * A lighter flourish for a card attached to, or put under, another (#124):
+ * the moved card pops and sheds a little dust, and the card it joined gives
+ * a small nudge. Never throws.
+ */
+export async function playAttachAnimation(cardId: string, targetId: string) {
+  if (reducedMotion() || typeof Element.prototype.animate !== 'function')
+    return;
+  try {
+    await nextTick();
+    await frame();
+    const find = (id: string) =>
+      document.querySelector<HTMLElement>(
+        `[data-card-id="${CSS.escape(id)}"] .card-image`,
+      );
+    const moved = find(cardId);
+    if (!moved) return;
+    const target = find(targetId);
+
+    const rect = moved.getBoundingClientRect();
+    const layer = document.createElement('div');
+    Object.assign(layer.style, fixedBox(rect));
+    document.body.appendChild(layer);
+
+    const animations = [
+      moved.animate(
+        [
+          { transform: 'scale(1)' },
+          { transform: 'scale(1.06)', offset: 0.4 },
+          { transform: 'scale(1)' },
+        ],
+        { duration: 260, easing: 'ease-out' },
+      ),
+      ...sparkles(layer, rect, 14, 0.5),
+    ];
+    if (target)
+      animations.push(
+        target.animate(
+          [
+            { transform: 'scale(1)' },
+            { transform: 'scale(0.97)', offset: 0.35 },
+            { transform: 'scale(1)' },
+          ],
+          { duration: 240, easing: 'ease-out' },
+        ),
+      );
+
+    await Promise.allSettled(animations.map((a) => a.finished));
+    layer.remove();
+  } catch {
+    // Decoration only.
+  }
 }

@@ -1,6 +1,7 @@
 <template>
   <div
     ref="boardCard"
+    :data-card-id="card.id"
     class="board-card origin-top-left flex gap-1"
     :class="{ tapped: card.tapped }"
   >
@@ -77,6 +78,7 @@
 </template>
 
 <script setup lang="ts">
+import { useAttachAnimation } from '~/features/castAnimation';
 // Nuxt UI's plain-Vue Icon; components/Icon.vue is the Nuxt-only variant.
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
 import { useElementHover } from '@vueuse/core';
@@ -99,6 +101,7 @@ const stack = computed(() => props.card.stack);
 
 const battlefield = useBattlefieldStore();
 const settings = useSettingsStore();
+const animateAttach = useAttachAnimation();
 
 const isValidAttachmentTarget = computed(() => {
   return battlefield.isValidAttachmentTarget(props.card);
@@ -114,7 +117,8 @@ const tryAttach = (ev: Event) => {
   ev.stopPropagation();
   ev.preventDefault();
 
-  battlefield.finishAttaching(stack.value);
+  const moving = battlefield.finishAttaching(stack.value);
+  if (moving) animateAttach(moving.id, stack.value.primary.id);
 };
 
 const cardImageSection = useTemplateRef('cardImageSection');

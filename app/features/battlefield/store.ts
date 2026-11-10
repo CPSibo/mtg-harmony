@@ -465,6 +465,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     else log.record('attached', { card: sourceCard, target: stack.primary });
 
     cardToAttach.value = null;
+    return sourceCard;
   }
 
   /**

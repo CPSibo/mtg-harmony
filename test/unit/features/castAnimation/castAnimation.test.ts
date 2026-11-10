@@ -57,15 +57,18 @@ describe('cast animation settings', () => {
           castFlight: 1,
           castLanding: 2,
           castDuration: 3,
+          attachFlareEnabled: 4,
         },
         'arc',
         'nonsense',
         800,
+        false,
       ]),
     );
     const settings = useSettingsStore();
     expect(settings.castFlight).toBe('arc');
     expect(settings.castLanding).toBe('sparkleRing');
     expect(settings.castDuration).toBe(800);
+    expect(settings.attachFlareEnabled).toBe(false);
   });
 });

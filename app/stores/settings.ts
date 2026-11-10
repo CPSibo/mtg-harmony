@@ -40,6 +40,9 @@ export interface AppSettings {
 
   /** How long a cast card's flight takes, in ms (#124). */
   castDuration: number;
+
+  /** Whether attaching or putting under plays a small flourish (#124). */
+  attachFlareEnabled: boolean;
 }
 
 const STORAGE_KEY = 'mtg-harmony_settings';
@@ -53,6 +56,7 @@ const defaults: AppSettings = {
   castFlight: CAST_FLIGHT_DEFAULT,
   castLanding: CAST_LANDING_DEFAULT,
   castDuration: CAST_DURATION_DEFAULT,
+  attachFlareEnabled: true,
 };
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -84,6 +88,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const castFlight = ref<CastFlight>(defaults.castFlight);
   const castLanding = ref<CastLanding>(defaults.castLanding);
   const castDuration = ref<number>(defaults.castDuration);
+  const attachFlareEnabled = ref<boolean>(defaults.attachFlareEnabled);
 
   function reset() {
     wakeLockEnabled.value = defaults.wakeLockEnabled;
@@ -94,6 +99,7 @@ export const useSettingsStore = defineStore('settings', () => {
     castFlight.value = defaults.castFlight;
     castLanding.value = defaults.castLanding;
     castDuration.value = defaults.castDuration;
+    attachFlareEnabled.value = defaults.attachFlareEnabled;
   }
 
   function save() {
@@ -107,6 +113,7 @@ export const useSettingsStore = defineStore('settings', () => {
       castFlight: castFlight.value,
       castLanding: castLanding.value,
       castDuration: castDuration.value,
+      attachFlareEnabled: attachFlareEnabled.value,
     });
   }
 
@@ -138,6 +145,9 @@ export const useSettingsStore = defineStore('settings', () => {
     if (isCastDuration(data.castDuration))
       castDuration.value = data.castDuration;
 
+    if (typeof data.attachFlareEnabled === 'boolean')
+      attachFlareEnabled.value = data.attachFlareEnabled;
+
     return true;
   }
 
@@ -153,6 +163,7 @@ export const useSettingsStore = defineStore('settings', () => {
       castFlight,
       castLanding,
       castDuration,
+      attachFlareEnabled,
     ],
     save,
   );
@@ -180,5 +191,6 @@ export const useSettingsStore = defineStore('settings', () => {
     castFlight,
     castLanding,
     castDuration,
+    attachFlareEnabled,
   };
 });
