@@ -239,13 +239,9 @@ export async function playAttachAnimation(cardId: string, targetId: string) {
   try {
     await nextTick();
     await frame();
-    const find = (id: string) =>
-      document.querySelector<HTMLElement>(
-        `[data-card-id="${CSS.escape(id)}"] .card-image`,
-      );
-    const moved = find(cardId);
+    const moved = cardImage(cardId);
     if (!moved) return;
-    const target = find(targetId);
+    const target = cardImage(targetId);
 
     const rect = moved.getBoundingClientRect();
     const layer = document.createElement('div');
@@ -268,6 +264,91 @@ export async function playAttachAnimation(cardId: string, targetId: string) {
       );
 
     await Promise.allSettled(animations.map((a) => a.finished));
+    layer.remove();
+  } catch {
+    // Decoration only.
+  }
+}
+
+/** A board card's image, found by card ID. */
+export function cardImage(cardId: string) {
+  return document.querySelector<HTMLElement>(
+    `[data-card-id="${CSS.escape(cardId)}"] .card-image`,
+  );
+}
+
+/**
+ * The inverse of {@link playAttachAnimation}, for a card detached or taken
+ * out (#124): the card slides from where it sat in the stack (`from`,
+ * measured before the change) to its own spot with a small twist, sheds a
+ * little dust, and the card it left gives a small nudge. Uses the
+ * individual `translate`/`rotate`/`scale` properties so the card's own
+ * centring transform is kept. Never throws.
+ */
+export async function playDetachAnimation(
+  cardId: string,
+  from: ScreenRect | null,
+  hostId: string | null,
+) {
+  if (reducedMotion() || typeof Element.prototype.animate !== 'function')
+    return;
+  try {
+    await nextTick();
+    await frame();
+    const moved = cardImage(cardId);
+    if (!moved) return;
+    const host = hostId ? cardImage(hostId) : null;
+
+    const to = moved.getBoundingClientRect();
+    const animations: Animation[] = [];
+
+    if (from) {
+      // `translate` is in the card's own pixels, so undo the board's zoom.
+      const zoom = moved.offsetWidth ? to.width / moved.offsetWidth : 1;
+      const dx = (from.x + from.width / 2 - (to.x + to.width / 2)) / zoom;
+      const dy = (from.y + from.height / 2 - (to.y + to.height / 2)) / zoom;
+      const lean = dx <= 0 ? 1 : -1;
+      animations.push(
+        moved.animate(
+          [
+            { translate: `${dx}px ${dy}px`, rotate: '0deg', scale: '1' },
+            {
+              translate: `${dx * 0.85}px ${dy * 0.85 - 10}px`,
+              rotate: `${-6 * lean}deg`,
+              scale: '1.06',
+              offset: 0.2,
+              easing: 'cubic-bezier(0.3, 0.6, 0.5, 1)',
+            },
+            {
+              translate: '0px 0px',
+              rotate: `${3 * lean}deg`,
+              scale: '0.98',
+              offset: 0.8,
+              easing: 'ease-out',
+            },
+            { translate: '0px 0px', rotate: '0deg', scale: '1' },
+          ],
+          { duration: 380, easing: 'linear' },
+        ),
+      );
+    }
+    if (host)
+      animations.push(
+        host.animate(
+          [{ scale: '1' }, { scale: '1.03', offset: 0.35 }, { scale: '1' }],
+          { duration: 240, easing: 'ease-out' },
+        ),
+      );
+    await animations[0]?.finished.catch(() => {});
+
+    // Dust where it lands.
+    const rect = moved.getBoundingClientRect();
+    const layer = document.createElement('div');
+    Object.assign(layer.style, fixedBox(rect));
+    document.body.appendChild(layer);
+    await Promise.allSettled(
+      sparkles(layer, rect, 10, 0.45).map((a) => a.finished),
+    );
     layer.remove();
   } catch {
     // Decoration only.
