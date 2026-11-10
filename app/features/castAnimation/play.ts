@@ -14,6 +14,8 @@ export interface CastSource {
 }
 
 const EASE = 'cubic-bezier(0.22, 0.8, 0.3, 1)';
+/** Share of the flight after which the card counts as landed. */
+const LAND_AT = 0.78;
 const COLOUR = 'var(--ui-primary, #a78bfa)';
 
 function reducedMotion() {
@@ -54,11 +56,19 @@ function makeFlyer(source: Element, rect: ScreenRect): HTMLElement {
   return flyer;
 }
 
+/** A repeatable 0..1 jitter per sparkle, so the burst looks scattered. */
+function jitter(i: number, salt: number) {
+  const v = Math.sin(i * 12.9898 + salt * 78.233) * 43758.5453;
+  return v - Math.floor(v);
+}
+
+/** Fine magic dust: many tiny bright specks that twinkle and drift down. */
 function sparkles(layer: HTMLElement, rect: ScreenRect): Animation[] {
-  const reach = Math.max(rect.width, rect.height) * 0.9;
-  return sparkleAngles(18).map((angle, i) => {
+  const reach = Math.max(rect.width, rect.height) * 0.8;
+  return sparkleAngles(32).map((base, i) => {
     const s = document.createElement('div');
-    const size = 8 + (i % 3) * 4;
+    const size = 2 + Math.round(jitter(i, 1) * 2);
+    const gold = jitter(i, 2) < 0.5;
     Object.assign(s.style, {
       position: 'absolute',
       left: '50%',
@@ -66,31 +76,39 @@ function sparkles(layer: HTMLElement, rect: ScreenRect): Animation[] {
       width: `${size}px`,
       height: `${size}px`,
       borderRadius: '50%',
-      background: i % 2 ? '#fff7c2' : COLOUR,
-      boxShadow: `0 0 12px 4px ${COLOUR}`,
+      background: gold ? '#fff3b0' : '#ffffff',
+      boxShadow: `0 0 3px 1px ${gold ? '#ffd76a' : COLOUR}`,
       // Hidden outside the animation, so none lingers in the middle.
       opacity: '0',
     });
     layer.appendChild(s);
-    const r = reach * (0.7 + (i % 4) * 0.12);
+    const angle = base + (jitter(i, 3) - 0.5) * 0.4;
+    const r = reach * (0.45 + jitter(i, 4) * 0.6);
     const x = Math.cos(angle) * r;
     const y = Math.sin(angle) * r;
+    const fall = 20 + jitter(i, 5) * 25;
+    const at = (t: number, drop: number) =>
+      `translate(calc(-50% + ${x * t}px), calc(-50% + ${y * t + drop}px))`;
     return s.animate(
       [
-        { transform: 'translate(-50%, -50%) scale(0.3)', opacity: 1 },
+        { transform: `${at(0, 0)} scale(0.5)`, opacity: 0 },
+        { transform: `${at(0.55, 0)} scale(1.2)`, opacity: 1, offset: 0.25 },
         {
-          transform: `translate(calc(-50% + ${x * 0.6}px), calc(-50% + ${y * 0.6}px)) scale(1.2)`,
+          transform: `${at(0.8, fall * 0.3)} scale(0.8)`,
+          opacity: 0.3,
+          offset: 0.5,
+        },
+        {
+          transform: `${at(0.9, fall * 0.6)} scale(1)`,
           opacity: 1,
-          offset: 0.45,
+          offset: 0.65,
         },
-        {
-          transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(0.6)`,
-          opacity: 0,
-        },
+        { transform: `${at(1, fall)} scale(0.4)`, opacity: 0 },
       ],
       {
-        duration: 750 + (i % 3) * 120,
-        easing: 'cubic-bezier(0.1, 0.7, 0.3, 1)',
+        duration: 700 + jitter(i, 6) * 400,
+        delay: jitter(i, 7) * 80,
+        easing: 'cubic-bezier(0.15, 0.6, 0.35, 1)',
       },
     );
   });
@@ -175,11 +193,18 @@ export async function playCastAnimation(
       const flyer = makeFlyer(source.element, source.rect);
       target.style.visibility = 'hidden';
       try {
-        await flyer.animate(flightKeyframes(options.flight, source.rect, to), {
-          duration: options.duration,
-          easing: EASE,
-          fill: 'forwards',
-        }).finished;
+        const flight = flyer.animate(
+          flightKeyframes(options.flight, source.rect, to),
+          { duration: options.duration, easing: EASE, fill: 'forwards' },
+        );
+        // The ease-out's tail is all but still, so land once the card is
+        // there rather than waiting it out.
+        await Promise.race([
+          flight.finished,
+          new Promise((resolve) =>
+            setTimeout(resolve, options.duration * LAND_AT),
+          ),
+        ]);
       } finally {
         flyer.remove();
         target.style.visibility = '';

@@ -34,7 +34,7 @@ export function flightKeyframes(
       return [
         { transform: at(0, 'rotate(0deg)') },
         { transform: at(0.15, `rotate(${-8 * lean}deg)`), offset: 0.15 },
-        { transform: at(0.85, `rotate(${12 * lean}deg)`), offset: 0.85 },
+        { transform: at(0.7, `rotate(${12 * lean}deg)`), offset: 0.7 },
         { transform: at(1, 'rotate(0deg)') },
       ];
     case 'arc':
