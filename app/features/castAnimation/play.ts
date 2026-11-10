@@ -55,10 +55,10 @@ function makeFlyer(source: Element, rect: ScreenRect): HTMLElement {
 }
 
 function sparkles(layer: HTMLElement, rect: ScreenRect): Animation[] {
-  const reach = Math.max(rect.width, rect.height) * 0.75;
-  return sparkleAngles(14).map((angle, i) => {
+  const reach = Math.max(rect.width, rect.height) * 0.9;
+  return sparkleAngles(18).map((angle, i) => {
     const s = document.createElement('div');
-    const size = 6 + (i % 3) * 3;
+    const size = 8 + (i % 3) * 4;
     Object.assign(s.style, {
       position: 'absolute',
       left: '50%',
@@ -67,7 +67,9 @@ function sparkles(layer: HTMLElement, rect: ScreenRect): Animation[] {
       height: `${size}px`,
       borderRadius: '50%',
       background: i % 2 ? '#fff7c2' : COLOUR,
-      boxShadow: `0 0 8px 2px ${COLOUR}`,
+      boxShadow: `0 0 12px 4px ${COLOUR}`,
+      // Hidden outside the animation, so none lingers in the middle.
+      opacity: '0',
     });
     layer.appendChild(s);
     const r = reach * (0.7 + (i % 4) * 0.12);
@@ -75,53 +77,46 @@ function sparkles(layer: HTMLElement, rect: ScreenRect): Animation[] {
     const y = Math.sin(angle) * r;
     return s.animate(
       [
-        { transform: 'translate(-50%, -50%) scale(0.2)', opacity: 1 },
+        { transform: 'translate(-50%, -50%) scale(0.3)', opacity: 1 },
         {
-          transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(1)`,
+          transform: `translate(calc(-50% + ${x * 0.6}px), calc(-50% + ${y * 0.6}px)) scale(1.2)`,
+          opacity: 1,
+          offset: 0.45,
+        },
+        {
+          transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(0.6)`,
           opacity: 0,
         },
       ],
       {
-        duration: 650 + (i % 3) * 120,
+        duration: 750 + (i % 3) * 120,
         easing: 'cubic-bezier(0.1, 0.7, 0.3, 1)',
       },
     );
   });
 }
 
-function rings(layer: HTMLElement): Animation[] {
-  return [0, 140].map((delay) => {
+/** Expanding outlines; `subtle` is one thin, faint ring. */
+function rings(layer: HTMLElement, subtle = false): Animation[] {
+  return (subtle ? [0] : [0, 140]).map((delay) => {
     const ring = document.createElement('div');
     Object.assign(ring.style, {
       position: 'absolute',
       inset: '0',
       borderRadius: '12px',
-      border: `3px solid ${COLOUR}`,
-      boxShadow: `0 0 16px ${COLOUR}`,
+      border: `${subtle ? 2 : 3}px solid ${COLOUR}`,
+      boxShadow: `0 0 ${subtle ? 8 : 16}px ${COLOUR}`,
+      opacity: '0',
     });
     layer.appendChild(ring);
     return ring.animate(
       [
-        { transform: 'scale(1)', opacity: 0.9 },
-        { transform: 'scale(1.6)', opacity: 0 },
+        { transform: 'scale(1)', opacity: subtle ? 0.55 : 0.9 },
+        { transform: `scale(${subtle ? 1.35 : 1.6})`, opacity: 0 },
       ],
-      { duration: 700, delay, easing: 'ease-out', fill: 'backwards' },
+      { duration: subtle ? 600 : 700, delay, easing: 'ease-out' },
     );
   });
-}
-
-function glow(layer: HTMLElement): Animation[] {
-  layer.style.borderRadius = '12px';
-  return [
-    layer.animate(
-      [
-        { boxShadow: `0 0 0 0 ${COLOUR}`, opacity: 1 },
-        { boxShadow: `0 0 40px 18px ${COLOUR}`, opacity: 1, offset: 0.3 },
-        { boxShadow: `0 0 60px 30px ${COLOUR}`, opacity: 0 },
-      ],
-      { duration: 1100, easing: 'ease-out' },
-    ),
-  ];
 }
 
 async function land(target: HTMLElement, landing: CastLanding) {
@@ -148,7 +143,7 @@ async function land(target: HTMLElement, landing: CastLanding) {
       ? sparkles(layer, rect)
       : landing === 'ring'
         ? rings(layer)
-        : glow(layer);
+        : [...rings(layer, true), ...sparkles(layer, rect)];
 
   await Promise.allSettled([pop, ...effects].map((a) => a.finished));
   layer.remove();

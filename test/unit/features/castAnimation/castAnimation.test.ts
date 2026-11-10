@@ -58,14 +58,14 @@ describe('cast animation settings', () => {
           castLanding: 2,
           castDuration: 3,
         },
-        'flip',
+        'arc',
         'nonsense',
         800,
       ]),
     );
     const settings = useSettingsStore();
-    expect(settings.castFlight).toBe('flip');
-    expect(settings.castLanding).toBe('sparkle');
+    expect(settings.castFlight).toBe('arc');
+    expect(settings.castLanding).toBe('sparkleRing');
     expect(settings.castDuration).toBe(800);
   });
 });

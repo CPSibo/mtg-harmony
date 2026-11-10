@@ -222,15 +222,13 @@ const flightItems = [
   { label: 'Off', value: 'off' },
   { label: 'Tilt and fly', value: 'tilt' },
   { label: 'Arc', value: 'arc' },
-  { label: 'Spin', value: 'spin' },
-  { label: 'Flip', value: 'flip' },
 ];
 
 const landingItems = [
   { label: 'None', value: 'none' },
   { label: 'Sparkle burst', value: 'sparkle' },
   { label: 'Ripple rings', value: 'ring' },
-  { label: 'Glow', value: 'glow' },
+  { label: 'Sparkles and ripple', value: 'sparkleRing' },
 ];
 
 // The Wake Lock API needs a secure context (HTTPS or localhost).

@@ -46,20 +46,6 @@ export function flightKeyframes(
         },
         { transform: at(1, 'rotate(0deg)') },
       ];
-    case 'spin':
-      return [
-        { transform: at(0, 'rotate(0deg)') },
-        { transform: at(1, `rotate(${360 * lean}deg)`) },
-      ];
-    case 'flip':
-      return [
-        { transform: `perspective(800px) ${at(0, 'rotateY(0deg)')}` },
-        {
-          transform: `perspective(800px) ${at(0.5, 'rotateY(180deg) rotateZ(-6deg)', arcLift / 2)}`,
-          offset: 0.5,
-        },
-        { transform: `perspective(800px) ${at(1, 'rotateY(360deg)')}` },
-      ];
   }
 }
 
