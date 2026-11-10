@@ -30,13 +30,35 @@ export function flightKeyframes(
     `scale(${1 + (sx - 1) * t}, ${1 + (sy - 1) * t}) ${extra}`;
 
   switch (flight) {
-    case 'tilt':
+    case 'tilt': {
+      // A toss: a quick wind-up, a fast throw lifted off the table with a
+      // twist, a slap down that skids a touch past the spot, then settles.
+      // Each leg has its own easing; the whole runs linear.
+      const hw = from.width / 2;
+      const hh = from.height / 2;
+      const pose = (deg: number, lift: number) =>
+        `translate(${hw}px, ${hh}px) rotate(${deg * lean}deg) ` +
+        `scale(${lift}) translate(${-hw}px, ${-hh}px)`;
       return [
-        { transform: at(0, 'rotate(0deg)') },
-        { transform: at(0.15, `rotate(${-8 * lean}deg)`), offset: 0.15 },
-        { transform: at(0.7, `rotate(${12 * lean}deg)`), offset: 0.7 },
-        { transform: at(1, 'rotate(0deg)') },
+        { transform: at(0, pose(0, 1)), easing: 'ease-out' },
+        {
+          transform: at(-0.04, pose(-10, 1.06), 12),
+          offset: 0.14,
+          easing: 'cubic-bezier(0.5, 0, 0.6, 1)',
+        },
+        {
+          transform: at(0.8, pose(16, 1.14), 18),
+          offset: 0.62,
+          easing: 'cubic-bezier(0.3, 0.6, 0.6, 1)',
+        },
+        {
+          transform: at(1.03, pose(-4, 0.96)),
+          offset: 0.82,
+          easing: 'ease-out',
+        },
+        { transform: at(1, pose(0, 1)) },
       ];
+    }
     case 'arc':
       return [
         { transform: at(0, 'rotate(0deg)') },
@@ -52,4 +74,13 @@ export function flightKeyframes(
 /** Evenly spread directions for `count` sparkles, in radians. */
 export function sparkleAngles(count: number): number[] {
   return Array.from({ length: count }, (_, i) => (i / count) * Math.PI * 2);
+}
+
+/** Overall easing, and the share of the flight after which it counts as landed. */
+export function flightTiming(flight: Exclude<CastFlight, 'off'>) {
+  // Tilt's keyframes carry their own easing and end in motion (the skid),
+  // so it plays out. Arc's ease-out tail is all but still, so it's cut.
+  return flight === 'tilt'
+    ? { easing: 'linear', landAt: 1 }
+    : { easing: 'cubic-bezier(0.22, 0.8, 0.3, 1)', landAt: 0.78 };
 }

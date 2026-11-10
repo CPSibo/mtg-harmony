@@ -1,5 +1,10 @@
 import { nextTick } from 'vue';
-import { flightKeyframes, sparkleAngles, type ScreenRect } from './keyframes';
+import {
+  flightKeyframes,
+  flightTiming,
+  sparkleAngles,
+  type ScreenRect,
+} from './keyframes';
 import type { CastFlight, CastLanding } from './options';
 
 export interface CastAnimationOptions {
@@ -13,9 +18,6 @@ export interface CastSource {
   rect: ScreenRect;
 }
 
-const EASE = 'cubic-bezier(0.22, 0.8, 0.3, 1)';
-/** Share of the flight after which the card counts as landed. */
-const LAND_AT = 0.78;
 const COLOUR = 'var(--ui-primary, #a78bfa)';
 
 function reducedMotion() {
@@ -193,16 +195,16 @@ export async function playCastAnimation(
       const flyer = makeFlyer(source.element, source.rect);
       target.style.visibility = 'hidden';
       try {
+        const { easing, landAt } = flightTiming(options.flight);
         const flight = flyer.animate(
           flightKeyframes(options.flight, source.rect, to),
-          { duration: options.duration, easing: EASE, fill: 'forwards' },
+          { duration: options.duration, easing, fill: 'forwards' },
         );
-        // The ease-out's tail is all but still, so land once the card is
-        // there rather than waiting it out.
+        // Land once the card is there rather than waiting out a still tail.
         await Promise.race([
           flight.finished,
           new Promise((resolve) =>
-            setTimeout(resolve, options.duration * LAND_AT),
+            setTimeout(resolve, options.duration * landAt),
           ),
         ]);
       } finally {

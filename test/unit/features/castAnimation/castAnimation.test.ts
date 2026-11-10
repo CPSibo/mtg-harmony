@@ -28,8 +28,8 @@ describe('flightKeyframes', () => {
   it('leans the other way when flying left', () => {
     const right = flightKeyframes('tilt', from, to);
     const left = flightKeyframes('tilt', to, from);
-    expect(String(right[2]!.transform)).toContain('rotate(12deg)');
-    expect(String(left[2]!.transform)).toContain('rotate(-12deg)');
+    expect(String(right[2]!.transform)).toContain('rotate(16deg)');
+    expect(String(left[2]!.transform)).toContain('rotate(-16deg)');
   });
 });
 
