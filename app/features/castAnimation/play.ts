@@ -362,3 +362,60 @@ export async function playMoveAnimation(
     // Decoration only.
   }
 }
+
+/**
+ * Plays a removed card out (#124): it shrinks, tips and fades, leaving a
+ * puff of dust. A card that leads its stack takes the stack's buttons with
+ * it. Resolves once it's gone from view, so the card can be removed then.
+ * Never throws.
+ */
+export async function playRemoveAnimation(cardId: string) {
+  if (reducedMotion() || typeof Element.prototype.animate !== 'function')
+    return;
+  try {
+    const root = cardRoot(cardId);
+    const face = root?.querySelector<HTMLElement>('.card-image-wrapper');
+    if (!root || !face) return;
+    const stackEl = root.closest<HTMLElement>('[data-stack-id]');
+    const leads = !!stackEl && root.classList.contains('primary-card');
+
+    const rect = (cardImage(cardId) ?? face).getBoundingClientRect();
+    const layer = document.createElement('div');
+    Object.assign(layer.style, fixedBox(rect));
+    document.body.appendChild(layer);
+    const dust = sparkles(layer, rect, 18, 0.6);
+    void Promise.allSettled(dust.map((a) => a.finished)).then(() =>
+      layer.remove(),
+    );
+
+    const out = {
+      duration: 260,
+      easing: 'cubic-bezier(0.5, 0, 0.75, 0)',
+      fill: 'forwards' as const,
+    };
+    const animations = [
+      face.animate(
+        [
+          { rotate: '0deg', scale: '1', opacity: 1 },
+          { rotate: '-8deg', scale: '0.55', opacity: 0 },
+        ],
+        out,
+      ),
+    ];
+    const buttons = leads
+      ? stackEl!.querySelector<HTMLElement>(
+          '.primary-card-wrapper > :first-child',
+        )
+      : null;
+    if (buttons && buttons !== root)
+      animations.push(buttons.animate([{ opacity: 1 }, { opacity: 0 }], out));
+    // Capped, so the card is removed even if the animation stalls (say,
+    // in a hidden tab, where animations pause).
+    await Promise.race([
+      Promise.allSettled(animations.map((a) => a.finished)),
+      new Promise((resolve) => setTimeout(resolve, out.duration + 100)),
+    ]);
+  } catch {
+    // Decoration only.
+  }
+}

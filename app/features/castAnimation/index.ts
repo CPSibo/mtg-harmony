@@ -6,7 +6,13 @@ export {
   measureCards,
   playCastAnimation,
   playMoveAnimation,
+  playRemoveAnimation,
   type CastAnimationOptions,
   type CastSource,
 } from './play';
-export { useCastAnimation, useMoveAnimation } from './useCastAnimation';
+export {
+  useCastAnimation,
+  useCopyAnimation,
+  useMoveAnimation,
+  useRemoveAnimation,
+} from './useCastAnimation';

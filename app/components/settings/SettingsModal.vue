@@ -175,8 +175,8 @@
           </UFormField>
 
           <UFormField
-            label="Attach and detach flourish"
-            description="A small sparkle when a card is attached, put under, detached or taken out"
+            label="Card action flourish"
+            description="A small effect when cards are attached, detached, copied or removed"
           >
             <USwitch v-model="attachFlareEnabled" />
           </UFormField>
