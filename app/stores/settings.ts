@@ -6,6 +6,16 @@ import {
   DRAG_MENU_DELAY_MS,
   isDragMenuDelay,
 } from '~/features/battlefield/dragMenuDelay';
+import {
+  CAST_DURATION_DEFAULT,
+  CAST_FLIGHT_DEFAULT,
+  CAST_LANDING_DEFAULT,
+  isCastDuration,
+  isCastFlight,
+  isCastLanding,
+  type CastFlight,
+  type CastLanding,
+} from '~/features/castAnimation/options';
 export interface AppSettings {
   /** Whether the Screen Wake Lock API is requested. */
   wakeLockEnabled: boolean;
@@ -21,6 +31,15 @@ export interface AppSettings {
 
   /** How long a dragged card hovers before the attach menu opens, in ms (#108). */
   dragMenuDelay: number;
+
+  /** How a cast card flies onto the board (#124). */
+  castFlight: CastFlight;
+
+  /** The effect where a cast card lands (#124). */
+  castLanding: CastLanding;
+
+  /** How long a cast card's flight takes, in ms (#124). */
+  castDuration: number;
 }
 
 const STORAGE_KEY = 'mtg-harmony_settings';
@@ -31,6 +50,9 @@ const defaults: AppSettings = {
   cardOutlineEnabled: true,
   pointerSmoothing: 0,
   dragMenuDelay: DRAG_MENU_DELAY_MS,
+  castFlight: CAST_FLIGHT_DEFAULT,
+  castLanding: CAST_LANDING_DEFAULT,
+  castDuration: CAST_DURATION_DEFAULT,
 };
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -59,12 +81,19 @@ export const useSettingsStore = defineStore('settings', () => {
     dragMenuDelay.value = value;
   }
 
+  const castFlight = ref<CastFlight>(defaults.castFlight);
+  const castLanding = ref<CastLanding>(defaults.castLanding);
+  const castDuration = ref<number>(defaults.castDuration);
+
   function reset() {
     wakeLockEnabled.value = defaults.wakeLockEnabled;
     imagesEnabled.value = defaults.imagesEnabled;
     cardOutlineEnabled.value = defaults.cardOutlineEnabled;
     pointerSmoothing.value = defaults.pointerSmoothing;
     dragMenuDelay.value = defaults.dragMenuDelay;
+    castFlight.value = defaults.castFlight;
+    castLanding.value = defaults.castLanding;
+    castDuration.value = defaults.castDuration;
   }
 
   function save() {
@@ -75,6 +104,9 @@ export const useSettingsStore = defineStore('settings', () => {
       cardOutlineEnabled: cardOutlineEnabled.value,
       pointerSmoothing: pointerSmoothing.value,
       dragMenuDelay: dragMenuDelay.value,
+      castFlight: castFlight.value,
+      castLanding: castLanding.value,
+      castDuration: castDuration.value,
     });
   }
 
@@ -101,6 +133,11 @@ export const useSettingsStore = defineStore('settings', () => {
     if (isDragMenuDelay(data.dragMenuDelay))
       dragMenuDelay.value = data.dragMenuDelay;
 
+    if (isCastFlight(data.castFlight)) castFlight.value = data.castFlight;
+    if (isCastLanding(data.castLanding)) castLanding.value = data.castLanding;
+    if (isCastDuration(data.castDuration))
+      castDuration.value = data.castDuration;
+
     return true;
   }
 
@@ -113,6 +150,9 @@ export const useSettingsStore = defineStore('settings', () => {
       cardOutlineEnabled,
       pointerSmoothing,
       dragMenuDelay,
+      castFlight,
+      castLanding,
+      castDuration,
     ],
     save,
   );
@@ -136,5 +176,9 @@ export const useSettingsStore = defineStore('settings', () => {
 
     dragMenuDelay,
     setDragMenuDelay,
+
+    castFlight,
+    castLanding,
+    castDuration,
   };
 });

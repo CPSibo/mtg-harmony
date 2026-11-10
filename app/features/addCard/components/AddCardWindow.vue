@@ -90,6 +90,11 @@ import { useBattlefieldStore } from '~/features/battlefield';
 import type { ScryfallCard } from '~/types/Scryfall';
 import { useSettingsStore } from '~/stores/settings';
 import { useCardSearch } from '../useCardSearch';
+import {
+  castSource,
+  useCastAnimation,
+  type CastSource,
+} from '~/features/castAnimation';
 
 const addCardStore = useAddCard();
 const settings = useSettingsStore();
@@ -127,14 +132,27 @@ const groups = computed(() => [
 
 const battlefield = useBattlefieldStore();
 
+const animateCast = useCastAnimation();
+
+/** The result last pressed, to fly from when it's tapped (#124). */
+let pressed: Element | null = null;
+
 function onSelect(item: CommandPaletteItem) {
   const card = cards.value?.find((f) => f.id === item.id);
-  if (card) cast(card);
+  if (!card) return;
+  // A tap presses the result first; keyboard picks the highlighted one.
+  const from =
+    pressed ??
+    document.querySelector('[data-highlighted] .add-card-image') ??
+    null;
+  cast(card, undefined, castSource(from));
 }
 
 /** Casts a result: to a free spot in view, or centred on a board point. */
-function cast(card: ScryfallCard, at?: Position) {
-  battlefield.castCard(card, 'added', at);
+function cast(card: ScryfallCard, at?: Position, source?: CastSource | null) {
+  const stack = battlefield.castCard(card, 'added', at);
+  void animateCast(stack.id, source ?? null);
+  pressed = null;
 
   cards.value = [];
   searchTerm.value = '';
@@ -161,6 +179,7 @@ const {
 });
 
 function startDrag(e: PointerEvent, id: string) {
+  pressed = e.currentTarget as Element;
   dragged.value = cards.value?.find((f) => f.id === id) ?? null;
   if (dragged.value) onPointerDown(e);
 }
