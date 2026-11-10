@@ -301,12 +301,8 @@ function slide(cardId: string, from: ScreenRect): Animation[] {
     ],
     { duration, easing: 'linear' },
   );
-  if (leads) stackEl!.style.zIndex = '999';
-  void moves.finished
-    .catch(() => {})
-    .then(() => {
-      if (leads) stackEl!.style.zIndex = '';
-    });
+  // No z-index change: a stack that slides is new, so it's already on top,
+  // and writing the inline style would clobber the one Vue binds.
   return [moves, twist];
 }
 
