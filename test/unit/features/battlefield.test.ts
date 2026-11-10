@@ -157,8 +157,9 @@ describe('battlefield store', () => {
 
       board.startAttaching(aura);
       expect(board.isAttaching).toBe(true);
-      // It returns the moved card, for the flourish (#124).
-      expect(board.finishAttaching(board.stacks[0]!)).toBe(aura);
+      expect(board.cardToAttachId).toBe(aura.id);
+      board.finishAttaching(board.stacks[0]!);
+      expect(board.cardToAttachId).toBeNull();
 
       const host = board.stacks[0]!;
       expect(names(board.stacks)).toEqual(['Host']);

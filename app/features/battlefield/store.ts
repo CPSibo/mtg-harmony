@@ -465,7 +465,6 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     else log.record('attached', { card: sourceCard, target: stack.primary });
 
     cardToAttach.value = null;
-    return sourceCard;
   }
 
   /**
@@ -491,6 +490,8 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
   }
 
   const isAttaching = computed(() => !!cardToAttach.value);
+  /** The ID of the card being attached or put under, if any. */
+  const cardToAttachId = computed(() => cardToAttach.value?.id ?? null);
 
   function isValidAttachmentTarget(targetCard: BoardCard) {
     if (!isAttaching.value) return false;
@@ -636,6 +637,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     cancelAttaching,
     finishAttaching,
     isAttaching,
+    cardToAttachId,
     attachMode,
     isValidAttachmentTarget,
     canOfferDragMenu,

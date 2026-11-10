@@ -57,7 +57,7 @@
 </template>
 
 <script setup lang="ts">
-import { useAttachAnimation } from '~/features/castAnimation';
+import { useMoveAnimation } from '~/features/castAnimation';
 import PlayAreaBoardCard from '~/components/playArea/BoardCard.vue';
 import PlayAreaBoardCardStackActions from '~/components/playArea/BoardCardStackActions.vue';
 import { useBoardDraggable } from '~/composables/useScaledDraggable';
@@ -88,7 +88,7 @@ const emits = defineEmits<{
 
 const battlefield = useBattlefieldStore();
 const settings = useSettingsStore();
-const animateAttach = useAttachAnimation();
+const animateMove = useMoveAnimation();
 const { snapScale } = storeToRefs(battlefield);
 
 const stackEl = useTemplateRef('stack');
@@ -126,8 +126,10 @@ const { style, isDragging: myIsDragging } = useBoardDraggable(stackEl, {
         : undefined;
     if (picked && target) {
       const card = props.stack.primary;
+      // Measured where it was dropped (#124).
+      const play = animateMove([card.id]);
       battlefield.dropCardOn(card, target, picked.mode);
-      animateAttach(card.id, target.primary.id);
+      play(target.primary.id, true);
     } else battlefield.setStackPosition(props.stack, position);
   },
 });

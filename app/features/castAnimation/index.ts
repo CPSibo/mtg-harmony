@@ -3,14 +3,10 @@ export { flightKeyframes, sparkleAngles, type ScreenRect } from './keyframes';
 export {
   cardImage,
   castSource,
-  playAttachAnimation,
+  measureCards,
   playCastAnimation,
-  playDetachAnimation,
+  playMoveAnimation,
   type CastAnimationOptions,
   type CastSource,
 } from './play';
-export {
-  useAttachAnimation,
-  useCastAnimation,
-  useDetachAnimation,
-} from './useCastAnimation';
+export { useCastAnimation, useMoveAnimation } from './useCastAnimation';

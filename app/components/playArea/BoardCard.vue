@@ -78,7 +78,7 @@
 </template>
 
 <script setup lang="ts">
-import { useAttachAnimation } from '~/features/castAnimation';
+import { useMoveAnimation } from '~/features/castAnimation';
 // Nuxt UI's plain-Vue Icon; components/Icon.vue is the Nuxt-only variant.
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
 import { useElementHover } from '@vueuse/core';
@@ -101,7 +101,7 @@ const stack = computed(() => props.card.stack);
 
 const battlefield = useBattlefieldStore();
 const settings = useSettingsStore();
-const animateAttach = useAttachAnimation();
+const animateMove = useMoveAnimation();
 
 const isValidAttachmentTarget = computed(() => {
   return battlefield.isValidAttachmentTarget(props.card);
@@ -117,8 +117,10 @@ const tryAttach = (ev: Event) => {
   ev.stopPropagation();
   ev.preventDefault();
 
-  const moving = battlefield.finishAttaching(stack.value);
-  if (moving) animateAttach(moving.id, stack.value.primary.id);
+  const moving = battlefield.cardToAttachId;
+  const play = animateMove(moving ? [moving] : []);
+  battlefield.finishAttaching(stack.value);
+  play(stack.value.primary.id, true);
 };
 
 const cardImageSection = useTemplateRef('cardImageSection');

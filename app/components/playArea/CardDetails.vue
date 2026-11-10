@@ -204,7 +204,7 @@ import SharedCardText from '~/components/shared/CardText.vue';
 import { useSettingsStore } from '~/stores/settings';
 import { computed, defineAsyncComponent, ref } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
-import { cardImage, useDetachAnimation } from '~/features/castAnimation';
+import { useMoveAnimation } from '~/features/castAnimation';
 import type { BoardCard } from '~/types/PlayArea';
 
 const open = defineModel<boolean>('open', { default: false });
@@ -277,20 +277,24 @@ const startAttaching = () => {
   open.value = false;
 };
 
-const animateDetach = useDetachAnimation();
+const animateMove = useMoveAnimation();
 
 const tryDetach = () => {
   const card = props.card!;
-  // Measured before the card leaves its stack (#124).
-  const from = cardImage(card.id)?.getBoundingClientRect() ?? null;
+  const play = animateMove([card.id]);
   const hostId = card.stack?.primary.id ?? null;
   battlefield.detach(card);
-  animateDetach(card.id, from, hostId);
+  play(hostId, false);
   open.value = false;
 };
 
 const explodeStack = () => {
-  battlefield.explodeStack(props.card!.stack!);
+  const stack = props.card!.stack!;
+  const play = animateMove(
+    [...stack.attachments, ...stack.unders].map((c) => c.id),
+  );
+  battlefield.explodeStack(stack);
+  play(stack.primary.id, false);
   open.value = false;
 };
 
