@@ -1,10 +1,11 @@
 <template>
   <UModal
+    :fullscreen="smallScreen"
     :close="{ onClick: () => emit('close', false) }"
     :ui="{
       title: 'flex items-center gap-2',
       body: 'flex flex-col gap-6',
-      content: 'max-w-[50svw] min-h-[50svh]',
+      content: smallScreen ? '' : 'max-w-[50svw] min-h-[50svh]',
     }"
     description="Settings are automatically saved to this device"
   >
@@ -198,6 +199,7 @@ import { MAX_POINTER_EASE_MS } from '~/composables/pointerSmoothing';
 import USwitch from '@nuxt/ui/components/Switch.vue';
 import UTabs from '@nuxt/ui/components/Tabs.vue';
 import { useSettingsStore } from '~/stores/settings';
+import { useSmallScreen } from '~/composables/useSmallScreen';
 import { useSupported } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
 import {
@@ -214,6 +216,7 @@ import {
 const emit = defineEmits<{ close: [boolean] }>();
 
 const settingsStore = useSettingsStore();
+const smallScreen = useSmallScreen();
 const {
   wakeLockEnabled,
   imagesEnabled,
