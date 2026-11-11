@@ -5,6 +5,7 @@
     :style="{ cursor }"
     @wheel.prevent="onWheel"
     @pointerdown="onPointerDown"
+    @contextmenu.prevent
     @mousedown="(e) => !box.active && onMouseDown(e)"
     @pointermove="(e) => e.pointerType === 'mouse' && onMouseMove(e)"
     @mouseup="onMouseUp"
@@ -414,7 +415,9 @@ const showCardModifiers = (card: BoardCard) => {
   /* Contains the stacks' and radial menu's z-indexes, so they never rise
      above the palette, side panel or other UI outside the board. */
   isolation: isolate;
-  /* A long press is the app's, not the browser's text selection or menu. */
+  /* A long press is the app's, not the browser's text selection or menu.
+     The wrapper also cancels `contextmenu`, which a long press fires on
+     Android Chrome and a right-click fires everywhere (#138). */
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
