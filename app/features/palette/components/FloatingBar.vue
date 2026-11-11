@@ -34,6 +34,7 @@
 
     <template #content>
       <UCommandPalette
+        ref="palette"
         v-model:search-term="searchTerm"
         :groups="groups"
         @update:model-value="open = false"
@@ -49,7 +50,8 @@ import UButton from '@nuxt/ui/components/Button.vue';
 import UKbd from '@nuxt/ui/components/Kbd.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
 import { defineShortcuts } from '@nuxt/ui/composables';
-import { computed, defineAsyncComponent, ref } from 'vue';
+import { computed, defineAsyncComponent, ref, useTemplateRef } from 'vue';
+import { useCloseOnTouchOutside } from '~/composables/useCloseOnTouchOutside';
 import { useWidgetRegistry } from '~/features/widgets';
 
 // The palette (with fuse.js and a virtualizer) loads when the browser is
@@ -70,4 +72,7 @@ const registry = useWidgetRegistry();
 const groups = computed(() => registry.paletteGroups);
 
 const searchTerm = ref('');
+
+const palette = useTemplateRef<{ $el: Element }>('palette');
+useCloseOnTouchOutside(open, () => palette.value?.$el);
 </script>

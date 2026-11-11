@@ -13,6 +13,7 @@
   >
     <template #content>
       <UCommandPalette
+        ref="palette"
         v-model:search-term="searchTerm"
         :loading="status === 'pending'"
         :groups="groups"
@@ -80,7 +81,8 @@ import UCommandPalette from '@nuxt/ui/components/CommandPalette.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
 import { refDebounced } from '@vueuse/core';
 import type { Position } from '@vueuse/core';
-import { computed, ref, shallowRef } from 'vue';
+import { computed, ref, shallowRef, toRef, useTemplateRef } from 'vue';
+import { useCloseOnTouchOutside } from '~/composables/useCloseOnTouchOutside';
 import type { CommandPaletteItem } from '@nuxt/ui';
 import { useAddCard } from '..';
 import { pickImageUri } from '~/composables/useScryfall';
@@ -98,6 +100,12 @@ import {
 
 const addCardStore = useAddCard();
 const settings = useSettingsStore();
+
+const palette = useTemplateRef<{ $el: Element }>('palette');
+useCloseOnTouchOutside(
+  toRef(addCardStore, 'addCardWindowIsOpen'),
+  () => palette.value?.$el,
+);
 
 const searchTerm = ref('');
 const searchTermDebounced = refDebounced(searchTerm, 500);
