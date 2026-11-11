@@ -171,6 +171,22 @@ rendering order changes without reordering the stacks themselves. Dragging a sta
 `load()` reconciles the saved order with the saved stacks: unknown IDs are dropped, and missing stacks are added
 at the front.
 
+### Selection
+
+`useSelectionStore` (`features/battlefield/selection.ts`) holds the selected stack IDs, whether selection mode is
+on, and a group drag's offset. It isn't saved. IDs of stacks that leave the board drop out of `size` and `ids()`.
+
+- Ctrl/Cmd/Shift-click a stack toggles it. In selection mode (the corner button, or a 500 ms long press on a stack
+  with a finger) a plain tap toggles it; the stack's own buttons still work.
+- A press on the empty board draws a box instead of panning with Shift held (mouse) or in selection mode. The box
+  selects every stack it touches, by the stack sizes the board reports; it adds to the selection with a modifier
+  or in selection mode, and replaces it otherwise.
+- A click on the empty board that doesn't move clears the selection. Esc clears it, then leaves selection mode.
+  The bar at the bottom shows the count, and its X does both.
+- Dragging one of several selected stacks moves them all. The dragged stack leads; the others render
+  `groupOffset` on top of their own position and write their final positions, clamped to the board, on drop.
+  A group drag doesn't open the radial menu.
+
 ### Input mode
 
 `useInputModeStore` tracks whether the last pointer was a finger or a mouse, from `pointerdown` and `pointermove`

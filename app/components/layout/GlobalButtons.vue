@@ -6,6 +6,8 @@
 
     <div class="grow" />
 
+    <LayoutSelectButton />
+
     <LayoutTapButton />
 
     <LayoutMenu
@@ -19,6 +21,7 @@
 
 <script setup lang="ts">
 import LayoutMenu from '~/components/layout/Menu.vue';
+import LayoutSelectButton from '~/components/layout/SelectButton.vue';
 import LayoutTapButton from '~/components/layout/TapButton.vue';
 import DiscordFetch from '../../features/discordFetcher/components/SidePanel.vue';
 
