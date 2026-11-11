@@ -364,6 +364,28 @@ test('copying a card puts a second one on the board', async ({ page }) => {
   await expect(boardCards).toHaveCount(2);
 });
 
+// #130: leaving the stack for the menu hid its button, so the menu jumped to 0,0.
+test('the copy menu opens beside its button', async ({ page }) => {
+  await page.getByRole('button', { name: 'On-deck' }).click();
+  await page.getByRole('button', { name: 'Next card' }).click();
+  await page.getByRole('button', { name: 'Cast to board' }).click();
+  await expect(page.getByRole('button', { name: 'Next card' })).toBeHidden();
+
+  await page.locator('.board-card').getByRole('img').first().hover();
+  const button = page.getByRole('button', { name: 'Copy', exact: true });
+  const anchor = (await button.boundingBox())!;
+  await button.click();
+  const item = page.getByRole('menuitem', { name: 'Copy card +' });
+  await item.hover();
+
+  // The open menu hides the board from the accessibility tree.
+  await expect(page.locator('button[aria-label="Copy"]')).toBeVisible();
+  const menu = (await item.boundingBox())!;
+  expect(Math.abs(menu.x - anchor.x)).toBeLessThan(40);
+  expect(menu.y).toBeGreaterThan(anchor.y);
+  expect(menu.y - anchor.y).toBeLessThan(150);
+});
+
 // #34: unders had no UI.
 test('a card can be put under another and taken out again', async ({
   page,
