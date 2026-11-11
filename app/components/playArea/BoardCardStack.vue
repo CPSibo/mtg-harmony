@@ -40,6 +40,7 @@
 
     <div
       class="attachments"
+      :class="{ 'primary-tapped': stack.primary.tapped }"
       :style="`--total: ${stack.attachments.size}`"
     >
       <PlayAreaBoardCard
@@ -275,6 +276,18 @@ watch(myIsDragging, (value) => {
   place-items: center;
   top: var(--vertical-offset);
   margin-left: var(--actions-total-width);
+  /* The primary's width, so a wider tapped attachment overflows both sides
+     evenly and stays centred on the primary (#127). */
+  width: var(--w);
+  transition: width 180ms ease-out;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+
+  &.primary-tapped {
+    width: var(--h);
+  }
 
   /* Need to cap the height, or else the `top` makes a big, invisible chin. */
   /* TODO: This doesn't account for tapped attachments. */
