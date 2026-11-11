@@ -1,6 +1,7 @@
 <template>
   <UModal
     v-model:open="log.windowIsOpen"
+    :fullscreen="smallScreen"
     title="Event log"
     description="What happened this game and before, newest first"
     :ui="{ body: 'flex flex-col gap-3' }"
@@ -140,6 +141,7 @@ import { computed, ref, watch } from 'vue';
 import ExportLogModal from './ExportLogModal.vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import { useSettingsStore } from '~/stores/settings';
+import { useSmallScreen } from '~/composables/useSmallScreen';
 import {
   EVENT_LABELS,
   EVENT_TYPES,
@@ -158,6 +160,7 @@ const log = useEventLogStore();
 const battlefield = useBattlefieldStore();
 const settings = useSettingsStore();
 const toast = useToast();
+const smallScreen = useSmallScreen();
 
 const exportOpen = ref(false);
 const name = ref('');
