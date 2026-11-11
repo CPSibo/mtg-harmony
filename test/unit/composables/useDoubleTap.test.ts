@@ -81,6 +81,44 @@ describe('useDoubleTap', () => {
     scope.stop();
   });
 
+  // The second tap's click must not hit what the handler just opened (#140).
+  it('swallows the click that follows a touch double tap', () => {
+    const { target, scope } = setup();
+    const button = document.createElement('button');
+    document.body.append(button);
+    const onClick = vi.fn();
+    button.addEventListener('click', onClick);
+
+    tap(target);
+    tap(target);
+    button.click();
+    expect(onClick).not.toHaveBeenCalled();
+    button.click();
+    expect(onClick).toHaveBeenCalledOnce();
+
+    button.remove();
+    scope.stop();
+  });
+
+  it('stops swallowing clicks when none follows soon', () => {
+    vi.useFakeTimers();
+    const { target, scope } = setup();
+    const button = document.createElement('button');
+    document.body.append(button);
+    const onClick = vi.fn();
+    button.addEventListener('click', onClick);
+
+    tap(target);
+    tap(target);
+    vi.advanceTimersByTime(1000);
+    button.click();
+    expect(onClick).toHaveBeenCalledOnce();
+
+    button.remove();
+    scope.stop();
+    vi.useRealTimers();
+  });
+
   it('does not fire a third tap as a second double tap', () => {
     const { target, handler, scope } = setup();
     tap(target);
