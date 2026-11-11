@@ -412,6 +412,74 @@ test('a card can be put under another and taken out again', async ({
   await expect(unders).toHaveCount(0);
 });
 
+// #127: a tapped attachment slid right instead of staying centred.
+test('tapped cards stay centred on the stack', async ({ page }) => {
+  for (let i = 0; i < 2; i++) {
+    await page.getByRole('button', { name: 'On-deck' }).click();
+    await page.getByRole('button', { name: 'Next card' }).click();
+    await page.getByRole('button', { name: 'Cast to board' }).click();
+  }
+  const stacks = page.locator('.board-card-stack');
+  const details = page.getByRole('dialog', { name: 'Card details' });
+  await expect(stacks).toHaveCount(2);
+  const front = stacks.nth(1).locator('.primary-card').getByRole('img');
+  const box = (await front.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 3, box.y + box.height / 2, {
+    steps: 5,
+  });
+  await page.mouse.up();
+
+  await stacks.nth(1).locator('.primary-card').getByRole('img').dblclick();
+  await details.getByRole('button', { name: 'Attach to...' }).click();
+  await stacks.nth(0).locator('.primary-card').getByRole('img').click();
+  await expect(stacks).toHaveCount(1);
+
+  const primary = stacks.first().locator('.primary-card');
+  const attachment = stacks.first().locator('.attachment');
+  const centre = async (locator: typeof primary) => {
+    const b = (await locator.boundingBox())!;
+    return b.x + b.width / 2;
+  };
+  // Tapping eases (#124): wait until a card lies on its side.
+  const sideways = (locator: typeof primary) =>
+    expect
+      .poll(async () => {
+        const b = (await locator.boundingBox())!;
+        return b.width > b.height;
+      })
+      .toBe(true);
+
+  // The primary covers the attachment's top; open it from its bottom edge.
+  const attached = (await attachment.getByRole('img').boundingBox())!;
+  await attachment.getByRole('img').dblclick({
+    position: { x: attached.width / 2, y: attached.height - 5 },
+  });
+  await details.getByRole('button', { name: 'Tap' }).click();
+  await expect(attachment).toHaveClass(/tapped/);
+  await sideways(attachment);
+  await expect
+    .poll(
+      async () =>
+        Math.round((await centre(attachment)) - (await centre(primary))),
+      { timeout: 5000 },
+    )
+    .toBe(0);
+
+  // The primary turns in place, and the attachment stays centred on it.
+  const primaryImage = primary.getByRole('img');
+  const before = await centre(primaryImage);
+  await primaryImage.dblclick({ position: { x: 10, y: 5 } });
+  await details.getByRole('button', { name: 'Tap' }).click();
+  await expect(primary).toHaveClass(/tapped/);
+  await sideways(primaryImage);
+  expect(Math.round((await centre(primaryImage)) - before)).toBe(0);
+  expect(
+    Math.round((await centre(attachment)) - (await centre(primaryImage))),
+  ).toBe(0);
+});
+
 // #37
 test('the event log lists what happened and can cast a fetched card again', async ({
   page,
