@@ -10,6 +10,26 @@ const MAX_DISTANCE_PX = 25;
  * events. Android does fire `dblclick` for touch, so `dblclick` is ignored
  * after touch input to avoid calling `handler` twice.
  */
+/**
+ * The browser fires a `click` after the second tap's `pointerup`. If the
+ * handler opened something (a modal) under the finger, that click lands on
+ * it, so catch it before anything else sees it.
+ */
+function swallowNextClick() {
+  const swallow = (e: Event) => {
+    e.stopPropagation();
+    e.preventDefault();
+    cleanup();
+  };
+  const cleanup = () => {
+    window.removeEventListener('click', swallow, true);
+    clearTimeout(timer);
+  };
+  window.addEventListener('click', swallow, true);
+  // If no click follows (e.g. the browser dropped it), don't eat a later one.
+  const timer = setTimeout(cleanup, 500);
+}
+
 export function useDoubleTap(
   target: MaybeRefOrGetter<EventTarget | null | undefined>,
   handler: (event: MouseEvent) => void,
@@ -45,6 +65,7 @@ export function useDoubleTap(
       Math.hypot(e.clientX - last.x, e.clientY - last.y) <= MAX_DISTANCE_PX
     ) {
       last = undefined;
+      swallowNextClick();
       handler(e);
       return;
     }
