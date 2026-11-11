@@ -5,7 +5,7 @@
     :ui="{
       title: 'flex items-center gap-2',
       body: 'flex flex-col gap-6',
-      content: smallScreen ? '' : 'max-w-[50svw] min-h-[50svh]',
+      content: smallScreen ? '' : 'max-w-[max(50svw,40rem)] min-h-[50svh]',
     }"
     description="Settings are automatically saved to this device"
   >
@@ -18,169 +18,202 @@
     </template>
 
     <template #body>
+      <DefineGeneral>
+        <UFormField
+          label="Keep screen awake"
+          :description="
+            wakeLockSupported
+              ? 'Turn off to allow the device to sleep as normal'
+              : 'Not available in this browser'
+          "
+        >
+          <USwitch
+            v-model="wakeLockEnabled"
+            :disabled="!wakeLockSupported"
+          />
+        </UFormField>
+
+        <UFormField
+          label="Show card images"
+          description="Turn off to save mobile data"
+        >
+          <USwitch v-model="imagesEnabled" />
+        </UFormField>
+      </DefineGeneral>
+
+      <DefineOnDeck>
+        <UFormField
+          label="Prefetch card count"
+          description="How many cards to queue up in advance. Higher values feel more responsive but use more data"
+        >
+          <UInputNumber
+            v-model="fetchCardCount"
+            :min="minQueuedCardCount"
+            :max="50"
+          />
+        </UFormField>
+
+        <UFormField
+          label="Minimum queued cards"
+          description="Automatically fetches more card data once the queue drops below this number"
+        >
+          <UInputNumber
+            v-model="minQueuedCardCount"
+            :min="1"
+            :max="fetchCardCount"
+          />
+        </UFormField>
+
+        <UFormField
+          label="Preload card image"
+          description="Fetches next card's image early. Uses more data but makes app feel snappier"
+        >
+          <USwitch v-model="preloadImagesEnabled" />
+        </UFormField>
+      </DefineOnDeck>
+
+      <DefineField>
+        <UFormField
+          label="Grid snapping"
+          description="Snap cards to a grid of the given size. 0 to disable"
+        >
+          <UInputNumber
+            v-model="snapScale"
+            :min="0"
+          />
+        </UFormField>
+
+        <UFormField
+          label="Card outline"
+          description="Show an outline around cards on the board, which lights up on hover"
+        >
+          <USwitch v-model="cardOutlineEnabled" />
+        </UFormField>
+
+        <UFormField
+          label="Pointer smoothing"
+          description="Eases dragging and panning. May make the app feel better if you have a high refresh rate screen. Probably feels worse for touch devices. 0 to disable."
+        >
+          <div class="flex items-center gap-3">
+            <USlider
+              v-model="pointerSmoothing"
+              :min="0"
+              :max="MAX_POINTER_EASE_MS"
+              :step="5"
+              class="flex-1"
+            />
+            <span class="w-12 text-right text-sm tabular-nums">
+              {{ pointerSmoothing ? `${pointerSmoothing} ms` : 'Off' }}
+            </span>
+          </div>
+        </UFormField>
+
+        <UFormField
+          label="Attach menu delay"
+          description="How long to hold a dragged card over another before the attach and put-under menu opens."
+        >
+          <div class="flex items-center gap-3">
+            <USlider
+              v-model="dragMenuDelay"
+              :min="MIN_DRAG_MENU_DELAY_MS"
+              :max="MAX_DRAG_MENU_DELAY_MS"
+              :step="250"
+              class="flex-1"
+            />
+            <span class="w-12 text-right text-sm tabular-nums">
+              {{ (dragMenuDelay / 1000).toFixed(2).replace(/0$/, '') }} s
+            </span>
+          </div>
+        </UFormField>
+      </DefineField>
+
+      <DefineAnimation>
+        <UFormField
+          label="Cast flight"
+          description="How a cast card flies from On-deck or Add Card onto the board"
+        >
+          <USelect
+            v-model="castFlight"
+            :items="flightItems"
+            class="w-48"
+          />
+        </UFormField>
+
+        <UFormField
+          label="Landing effect"
+          description="Marks where a cast card lands"
+        >
+          <USelect
+            v-model="castLanding"
+            :items="landingItems"
+            class="w-48"
+          />
+        </UFormField>
+
+        <UFormField
+          label="Flight time"
+          description="How long the flight takes"
+        >
+          <div class="flex items-center gap-3">
+            <USlider
+              v-model="castDuration"
+              :min="MIN_CAST_DURATION_MS"
+              :max="MAX_CAST_DURATION_MS"
+              :step="50"
+              class="flex-1"
+            />
+            <span class="w-14 text-right text-sm tabular-nums">
+              {{ castDuration }} ms
+            </span>
+          </div>
+        </UFormField>
+
+        <UFormField
+          label="Card action flourish"
+          description="A small effect when cards are attached, detached, copied or removed"
+        >
+          <USwitch v-model="attachFlareEnabled" />
+        </UFormField>
+      </DefineAnimation>
+
+      <!-- Below md the tab labels get cut off, so every section is shown in one scrolling page. -->
+      <div
+        v-if="smallScreen"
+        class="flex w-full max-w-[25em] flex-col gap-8 self-center"
+      >
+        <section
+          v-for="item in items"
+          :key="item.slot"
+          class="flex flex-col gap-6"
+          :aria-labelledby="`settings-${item.slot}`"
+        >
+          <h3
+            :id="`settings-${item.slot}`"
+            class="flex items-center gap-2 border-b border-default pb-2 text-lg font-semibold"
+          >
+            <UIcon
+              :name="item.icon"
+              class="size-5"
+            />
+            {{ item.label }}
+          </h3>
+          <component :is="item.reuse" />
+        </section>
+      </div>
       <UTabs
+        v-else
         :items="items"
         variant="pill"
         size="xl"
         class="w-full"
         :ui="{ content: 'mt-4 flex flex-col gap-6 self-center max-w-[25em]' }"
       >
-        <template #general>
-          <UFormField
-            label="Keep screen awake"
-            :description="
-              wakeLockSupported
-                ? 'Turn off to allow the device to sleep as normal'
-                : 'Not available in this browser'
-            "
-          >
-            <USwitch
-              v-model="wakeLockEnabled"
-              :disabled="!wakeLockSupported"
-            />
-          </UFormField>
-
-          <UFormField
-            label="Show card images"
-            description="Turn off to save mobile data"
-          >
-            <USwitch v-model="imagesEnabled" />
-          </UFormField>
-        </template>
-
-        <template #on-deck>
-          <UFormField
-            label="Prefetch card count"
-            description="How many cards to queue up in advance. Higher values feel more responsive but use more data"
-          >
-            <UInputNumber
-              v-model="fetchCardCount"
-              :min="minQueuedCardCount"
-              :max="50"
-            />
-          </UFormField>
-
-          <UFormField
-            label="Minimum queued cards"
-            description="Automatically fetches more card data once the queue drops below this number"
-          >
-            <UInputNumber
-              v-model="minQueuedCardCount"
-              :min="1"
-              :max="fetchCardCount"
-            />
-          </UFormField>
-
-          <UFormField
-            label="Preload card image"
-            description="Fetches next card's image early. Uses more data but makes app feel snappier"
-          >
-            <USwitch v-model="preloadImagesEnabled" />
-          </UFormField>
-        </template>
-
-        <template #field>
-          <UFormField
-            label="Grid snapping"
-            description="Snap cards to a grid of the given size. 0 to disable"
-          >
-            <UInputNumber
-              v-model="snapScale"
-              :min="0"
-            />
-          </UFormField>
-
-          <UFormField
-            label="Card outline"
-            description="Show an outline around cards on the board, which lights up on hover"
-          >
-            <USwitch v-model="cardOutlineEnabled" />
-          </UFormField>
-
-          <UFormField
-            label="Pointer smoothing"
-            description="Eases dragging and panning. May make the app feel better if you have a high refresh rate screen. Probably feels worse for touch devices. 0 to disable."
-          >
-            <div class="flex items-center gap-3">
-              <USlider
-                v-model="pointerSmoothing"
-                :min="0"
-                :max="MAX_POINTER_EASE_MS"
-                :step="5"
-                class="flex-1"
-              />
-              <span class="w-12 text-right text-sm tabular-nums">
-                {{ pointerSmoothing ? `${pointerSmoothing} ms` : 'Off' }}
-              </span>
-            </div>
-          </UFormField>
-
-          <UFormField
-            label="Attach menu delay"
-            description="How long to hold a dragged card over another before the attach and put-under menu opens."
-          >
-            <div class="flex items-center gap-3">
-              <USlider
-                v-model="dragMenuDelay"
-                :min="MIN_DRAG_MENU_DELAY_MS"
-                :max="MAX_DRAG_MENU_DELAY_MS"
-                :step="250"
-                class="flex-1"
-              />
-              <span class="w-12 text-right text-sm tabular-nums">
-                {{ (dragMenuDelay / 1000).toFixed(2).replace(/0$/, '') }} s
-              </span>
-            </div>
-          </UFormField>
-        </template>
-
-        <template #animation>
-          <UFormField
-            label="Cast flight"
-            description="How a cast card flies from On-deck or Add Card onto the board"
-          >
-            <USelect
-              v-model="castFlight"
-              :items="flightItems"
-              class="w-48"
-            />
-          </UFormField>
-
-          <UFormField
-            label="Landing effect"
-            description="Marks where a cast card lands"
-          >
-            <USelect
-              v-model="castLanding"
-              :items="landingItems"
-              class="w-48"
-            />
-          </UFormField>
-
-          <UFormField
-            label="Flight time"
-            description="How long the flight takes"
-          >
-            <div class="flex items-center gap-3">
-              <USlider
-                v-model="castDuration"
-                :min="MIN_CAST_DURATION_MS"
-                :max="MAX_CAST_DURATION_MS"
-                :step="50"
-                class="flex-1"
-              />
-              <span class="w-14 text-right text-sm tabular-nums">
-                {{ castDuration }} ms
-              </span>
-            </div>
-          </UFormField>
-
-          <UFormField
-            label="Card action flourish"
-            description="A small effect when cards are attached, detached, copied or removed"
-          >
-            <USwitch v-model="attachFlareEnabled" />
-          </UFormField>
+        <template
+          v-for="item in items"
+          :key="item.slot"
+          #[item.slot]
+        >
+          <component :is="item.reuse" />
         </template>
       </UTabs>
     </template>
@@ -200,7 +233,7 @@ import USwitch from '@nuxt/ui/components/Switch.vue';
 import UTabs from '@nuxt/ui/components/Tabs.vue';
 import { useSettingsStore } from '~/stores/settings';
 import { useSmallScreen } from '~/composables/useSmallScreen';
-import { useSupported } from '@vueuse/core';
+import { createReusableTemplate, useSupported } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
 import {
   MAX_DRAG_MENU_DELAY_MS,
@@ -254,26 +287,36 @@ const { fetchCardCount, minQueuedCardCount, preloadImagesEnabled } =
 const battlefieldStore = useBattlefieldStore();
 const { snapScale } = storeToRefs(battlefieldStore);
 
+// Each section is written once and shown either in a tab or in the flat small-screen layout.
+const [DefineGeneral, ReuseGeneral] = createReusableTemplate();
+const [DefineOnDeck, ReuseOnDeck] = createReusableTemplate();
+const [DefineField, ReuseField] = createReusableTemplate();
+const [DefineAnimation, ReuseAnimation] = createReusableTemplate();
+
 const items = [
   {
     label: 'General',
     icon: 'i-lucide-sliders-horizontal',
     slot: 'general',
+    reuse: ReuseGeneral,
   },
   {
     label: 'On-deck',
     icon: 'i-lucide-scan-search',
     slot: 'on-deck',
+    reuse: ReuseOnDeck,
   },
   {
     label: 'Field',
     icon: 'i-lucide-layout-grid',
     slot: 'field',
+    reuse: ReuseField,
   },
   {
     label: 'Animation',
     icon: 'i-lucide-sparkles',
     slot: 'animation',
+    reuse: ReuseAnimation,
   },
 ];
 </script>
