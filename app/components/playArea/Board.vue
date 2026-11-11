@@ -2,9 +2,11 @@
   <div
     ref="wrapper"
     class="board-wrapper touch-none"
-    :style="{ cursor: isDragging ? 'grabbing' : 'grab' }"
+    :style="{ cursor }"
     @wheel.prevent="onWheel"
-    @mousedown="onMouseDown"
+    @pointerdown="onPointerDown"
+    @contextmenu.prevent
+    @mousedown="(e) => !box.active && onMouseDown(e)"
     @pointermove="(e) => e.pointerType === 'mouse' && onMouseMove(e)"
     @mouseup="onMouseUp"
     @mouseleave="onMouseLeave"
@@ -43,7 +45,15 @@
         />
       </div>
     </div>
+    <div
+      v-if="boxRect"
+      class="selection-box"
+      aria-hidden="true"
+      :style="boxRect"
+    />
   </div>
+
+  <PlayAreaSelectionBar />
 
   <PlayAreaCardDetails
     v-model:open="cardDetailsIsOpen"
@@ -60,20 +70,27 @@
 <script setup lang="ts">
 import PlayAreaBoardCardStack from '~/components/playArea/BoardCardStack.vue';
 import PlayAreaDragRadialMenu from '~/components/playArea/DragRadialMenu.vue';
+import PlayAreaSelectionBar from '~/components/playArea/SelectionBar.vue';
 import { useBlockBrowserZoom } from '~/composables/useBlockBrowserZoom';
 import { usePanAndZoom } from '~/composables/usePanAndZoom';
 import { storeToRefs } from 'pinia';
-import { useWindowSize } from '@vueuse/core';
+import { useEventListener, useWindowSize } from '@vueuse/core';
 import {
   computed,
   defineAsyncComponent,
   onMounted,
   onUnmounted,
   ref,
+  shallowRef,
   useTemplateRef,
   watchEffect,
 } from 'vue';
-import { dragMenu, useBattlefieldStore } from '~/features/battlefield';
+import {
+  BOARD_SIZE,
+  dragMenu,
+  useBattlefieldStore,
+  useSelectionStore,
+} from '~/features/battlefield';
 import { useSettingsStore } from '~/stores/settings';
 import { gridLevels } from '~/utils/gridLevels';
 import type { BoardCard } from '~/types/PlayArea';
@@ -92,6 +109,7 @@ window.requestIdleCallback?.(() => {
 
 const battlefield = useBattlefieldStore();
 const settings = useSettingsStore();
+const selection = useSelectionStore();
 const { center: centerState } = storeToRefs(battlefield);
 
 const wrapperEl = useTemplateRef('wrapper');
@@ -112,7 +130,7 @@ const {
   onTouchMove,
   onTouchEnd,
 } = usePanAndZoom({
-  size: { width: 5000, height: 5000 },
+  size: BOARD_SIZE,
   onEnd: () => {
     // Performance consideration.
     // Watching the center directly does bad
@@ -124,6 +142,102 @@ const {
 });
 
 const anyCardIsDragging = ref(false);
+
+// ─── Box selection and clearing (#138) ────────────────────────────────────────
+//
+// A press on the empty board draws a selection box with Shift held (mouse) or
+// in selection mode, instead of panning. Any other press there that doesn't
+// move clears the selection.
+
+/** Screen pixels a press may move and still count as a click. */
+const CLICK_SLOP = 6;
+
+// Only the handlers read the press; the box's corner is rendered.
+const box = { active: false, pointerId: -1, additive: false };
+let press: { id: number; x: number; y: number; moved: boolean } | null = null;
+const boxStart = { x: 0, y: 0 };
+const boxEnd = shallowRef<{ x: number; y: number } | null>(null);
+
+const boxRect = computed(() => {
+  const end = boxEnd.value;
+  if (!end) return undefined;
+  const left = Math.min(boxStart.x, end.x);
+  const top = Math.min(boxStart.y, end.y);
+  return {
+    left: `${left}px`,
+    top: `${top}px`,
+    width: `${Math.abs(end.x - boxStart.x)}px`,
+    height: `${Math.abs(end.y - boxStart.y)}px`,
+  };
+});
+
+const cursor = computed(() => {
+  if (isDragging.value) return 'grabbing';
+  return selection.mode ? 'crosshair' : 'grab';
+});
+
+function onPointerDown(e: PointerEvent) {
+  if (e.button !== 0 || battlefield.isAttaching || press || box.active) return;
+  const target = e.target as Element | null;
+  if (target?.closest('[data-stack-id], [data-drag-menu-option]')) return;
+  press = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
+  if ((e.pointerType === 'mouse' && e.shiftKey) || selection.mode) {
+    box.active = true;
+    box.pointerId = e.pointerId;
+    box.additive = e.shiftKey || e.ctrlKey || e.metaKey || selection.mode;
+    boxStart.x = e.clientX;
+    boxStart.y = e.clientY;
+  }
+  window.addEventListener('pointermove', onPressMove);
+  window.addEventListener('pointerup', onPressEnd);
+  window.addEventListener('pointercancel', onPressEnd);
+}
+
+function onPressMove(e: PointerEvent) {
+  if (!press || e.pointerId !== press.id) return;
+  if (Math.hypot(e.clientX - press.x, e.clientY - press.y) > CLICK_SLOP)
+    press.moved = true;
+  if (box.active && press.moved) boxEnd.value = { x: e.clientX, y: e.clientY };
+}
+
+function onPressEnd(e: PointerEvent) {
+  if (!press || e.pointerId !== press.id) return;
+  window.removeEventListener('pointermove', onPressMove);
+  window.removeEventListener('pointerup', onPressEnd);
+  window.removeEventListener('pointercancel', onPressEnd);
+  const { moved } = press;
+  press = null;
+  const end = boxEnd.value;
+  boxEnd.value = null;
+  const wasBox = box.active;
+  box.active = false;
+  if (e.type !== 'pointerup') return;
+  if (wasBox && moved && end) selectBox(end);
+  else if (!moved && !e.shiftKey && !e.ctrlKey && !e.metaKey) selection.clear();
+}
+
+function selectBox(end: { x: number; y: number }) {
+  const a = battlefield.boardPointFromScreen(boxStart);
+  const b = battlefield.boardPointFromScreen(end);
+  if (!a || !b) return;
+  selection.selectInRect(
+    {
+      x: Math.min(a.x, b.x),
+      y: Math.min(a.y, b.y),
+      width: Math.abs(b.x - a.x),
+      height: Math.abs(b.y - a.y),
+    },
+    box.additive,
+  );
+}
+
+// Esc clears the selection, then leaves selection mode. Dialogs handle their
+// own Esc first.
+useEventListener(window, 'keydown', (e: KeyboardEvent) => {
+  if (e.key !== 'Escape' || e.defaultPrevented) return;
+  if (!selection.size && !selection.mode) return;
+  selection.escape();
+});
 
 // CSS variables only: the backdrop's gradients scale and move in CSS. The
 // grid's finest level is the snap grid; coarser levels take over as you zoom
@@ -180,18 +294,19 @@ battlefield.setCenter(center());
 function guardedTouchStart(e: TouchEvent) {
   if (anyCardIsDragging.value) return;
   e.preventDefault();
+  if (box.active) return;
   onTouchStart(e);
 }
 
 function guardedTouchMove(e: TouchEvent) {
   // Always preventDefault on move to block browser scroll / overscroll bounce.
   e.preventDefault();
-  if (anyCardIsDragging.value) return;
+  if (anyCardIsDragging.value || box.active) return;
   onTouchMove(e);
 }
 
 function guardedTouchEnd(e: TouchEvent) {
-  if (anyCardIsDragging.value) return;
+  if (anyCardIsDragging.value || box.active) return;
   onTouchEnd(e);
   // No preventDefault here — we want the browser to synthesise
   // click/tap events so UButton and other child controls work.
@@ -249,6 +364,14 @@ const showCardModifiers = (card: BoardCard) => {
   contain: strict; /* Disable CLS hints for children. */
 }
 
+.selection-box {
+  position: absolute;
+  pointer-events: none;
+  border: 1px dashed var(--ui-primary);
+  background: color-mix(in oklab, var(--ui-primary) 15%, transparent);
+  border-radius: 2px;
+}
+
 .board-backdrop {
   --line: color-mix(in oklab, var(--ui-border-inverted) 8%, transparent);
   --minor-line: color-mix(
@@ -292,7 +415,9 @@ const showCardModifiers = (card: BoardCard) => {
   /* Contains the stacks' and radial menu's z-indexes, so they never rise
      above the palette, side panel or other UI outside the board. */
   isolation: isolate;
-  /* A long press is the app's, not the browser's text selection or menu. */
+  /* A long press is the app's, not the browser's text selection or menu.
+     The wrapper also cancels `contextmenu`, which a long press fires on
+     Android Chrome and a right-click fires everywhere (#138). */
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;

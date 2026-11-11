@@ -12,6 +12,9 @@ const MIN_VISIBLE_SHARE = 0.75;
 /** The step between layers of the spiral, in board pixels. */
 const LAYER_OFFSET = 40;
 
+/** The board canvas, in board pixels. */
+export const BOARD_SIZE = Object.freeze({ width: 5000, height: 5000 });
+
 export function overlaps(a: Rect, b: Rect) {
   return (
     a.x < b.x + b.width &&
