@@ -252,6 +252,48 @@ test('a card found through Add Card goes on the board', async ({ page }) => {
     name: card.name,
   });
   await expect(boardCard).toBeVisible();
+  await expect(addCard).toBeHidden();
+  await expect(page.getByRole('option', { name: /Add card/i })).toBeHidden();
+});
+
+test.describe('dragging an Add Card result', () => {
+  async function dragResult(page: Page, to: { x: number; y: number }) {
+    await page.keyboard.press('/');
+    await page.getByRole('option', { name: /Add card/i }).click();
+    const addCard = page.getByRole('dialog', { name: 'Add card' });
+    await addCard.getByRole('textbox').fill('ooze');
+    const result = addCard.getByRole('img', { name: card.name }).first();
+    const box = (await result.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(to.x - 50, to.y, { steps: 5 });
+    await page.mouse.move(to.x, to.y, { steps: 5 });
+    await page.mouse.up();
+    return addCard;
+  }
+
+  test('casts it once, where it is dropped on the board', async ({ page }) => {
+    const drop = { x: 1000, y: 550 };
+
+    const addCard = await dragResult(page, drop);
+
+    // One card: the click after the drag must not cast it again.
+    const placed = page.locator('.board-card-stack .primary-card');
+    await expect(placed).toHaveCount(1);
+    const box = (await placed.boundingBox())!;
+    expect(Math.abs(box.x + box.width / 2 - drop.x)).toBeLessThan(15);
+    expect(Math.abs(box.y + box.height / 2 - drop.y)).toBeLessThan(15);
+    await expect(addCard).toBeHidden();
+    // The root palette closes too, as it does after a tap.
+    await expect(page.getByRole('option', { name: /Add card/i })).toBeHidden();
+  });
+
+  test('cancels when dropped back on the window', async ({ page }) => {
+    const addCard = await dragResult(page, { x: 640, y: 60 });
+
+    await expect(addCard).toBeVisible();
+    await expect(page.locator('.board-card-stack')).toHaveCount(0);
+  });
 });
 
 test('Add Card prompts before searching and says when nothing matches', async ({

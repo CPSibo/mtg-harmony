@@ -1,6 +1,7 @@
 <template>
   <div
     ref="boardCard"
+    :data-card-id="card.id"
     class="board-card origin-top-left flex gap-1"
     :class="{ tapped: card.tapped }"
   >
@@ -77,6 +78,7 @@
 </template>
 
 <script setup lang="ts">
+import { useMoveAnimation } from '~/features/castAnimation';
 // Nuxt UI's plain-Vue Icon; components/Icon.vue is the Nuxt-only variant.
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
 import { useElementHover } from '@vueuse/core';
@@ -99,6 +101,7 @@ const stack = computed(() => props.card.stack);
 
 const battlefield = useBattlefieldStore();
 const settings = useSettingsStore();
+const animateMove = useMoveAnimation();
 
 const isValidAttachmentTarget = computed(() => {
   return battlefield.isValidAttachmentTarget(props.card);
@@ -114,7 +117,10 @@ const tryAttach = (ev: Event) => {
   ev.stopPropagation();
   ev.preventDefault();
 
+  const moving = battlefield.cardToAttachId;
+  const play = animateMove(moving ? [moving] : []);
   battlefield.finishAttaching(stack.value);
+  play(stack.value.primary.id, true);
 };
 
 const cardImageSection = useTemplateRef('cardImageSection');
@@ -128,11 +134,15 @@ const isHovered = useElementHover(cardImageSection);
     height: var(--h);
     position: relative;
 
+    /* The outline is drawn by the image, so it turns with the card; the
+       wrapper only sets the colour and takes up the space. */
     box-sizing: border-box;
-    overflow: hidden;
+    border-width: 0;
 
-    border-width: 2px;
-    border-style: solid;
+    /* Tap and untap ease rather than snap (#124). */
+    transition:
+      width 180ms ease-out,
+      height 180ms ease-out;
 
     .card-image {
       width: var(--scaled-short);
@@ -142,14 +152,28 @@ const isHovered = useElementHover(cardImageSection);
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%) rotate(0deg);
+      transition: transform 180ms ease-out;
 
-      background-origin: center;
+      box-sizing: content-box;
+      overflow: hidden;
+      border: var(--border-width) solid;
+      border-color: inherit;
+      border-radius: inherit;
+
+      background-origin: padding-box;
       background-color: black;
       background-attachment: local;
       background-repeat: no-repeat;
-      background-clip: border-box;
+      background-clip: padding-box;
       background-position: center center;
       background-size: var(--scaled-short) var(--scaled-long);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card-image-wrapper,
+    .card-image-wrapper .card-image {
+      transition: none;
     }
   }
 

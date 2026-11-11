@@ -2,7 +2,7 @@
   <div
     ref="stack"
     :data-stack-id="stack.id"
-    :style="style"
+    :style="[style, { zIndex: battlefield.stackZIndex.get(stack.id) ?? 0 }]"
     class="board-card-stack origin-top-left absolute top-0 left-0"
     :class="{ dragging: myIsDragging }"
   >
@@ -57,6 +57,7 @@
 </template>
 
 <script setup lang="ts">
+import { useMoveAnimation } from '~/features/castAnimation';
 import PlayAreaBoardCard from '~/components/playArea/BoardCard.vue';
 import PlayAreaBoardCardStackActions from '~/components/playArea/BoardCardStackActions.vue';
 import { useBoardDraggable } from '~/composables/useScaledDraggable';
@@ -87,6 +88,7 @@ const emits = defineEmits<{
 
 const battlefield = useBattlefieldStore();
 const settings = useSettingsStore();
+const animateMove = useMoveAnimation();
 const { snapScale } = storeToRefs(battlefield);
 
 const stackEl = useTemplateRef('stack');
@@ -95,6 +97,17 @@ const { style, isDragging: myIsDragging } = useBoardDraggable(stackEl, {
   // Read when a drag moves, so zooming doesn't re-render every stack.
   scale: () => battlefield.boardScale(),
   snapScale: snapScale,
+  // Snap the primary card's corner, not the stack's, so its edges sit on the
+  // grid lines whatever the action buttons and unders add around it (#116).
+  snapOffset: () => {
+    const stack = stackEl.value;
+    const card = stack?.querySelector('.primary-card');
+    if (!stack || !card) return { x: 0, y: 0 };
+    const s = battlefield.boardScale();
+    const a = stack.getBoundingClientRect();
+    const b = card.getBoundingClientRect();
+    return { x: (b.left - a.left) / s, y: (b.top - a.top) / s };
+  },
   containerElement: props.board,
   initialValue: {
     x: props.stack.position.x,
@@ -111,9 +124,13 @@ const { style, isDragging: myIsDragging } = useBoardDraggable(stackEl, {
       picked && e.type === 'pointerup'
         ? battlefield.stacks.find((s) => s.id === picked.stackId)
         : undefined;
-    if (picked && target)
-      battlefield.dropCardOn(props.stack.primary, target, picked.mode);
-    else battlefield.setStackPosition(props.stack, position);
+    if (picked && target) {
+      const card = props.stack.primary;
+      // Measured where it was dropped (#124).
+      const play = animateMove([card.id]);
+      battlefield.dropCardOn(card, target, picked.mode);
+      play(target.primary.id, true);
+    } else battlefield.setStackPosition(props.stack, position);
   },
 });
 
@@ -224,6 +241,12 @@ watch(myIsDragging, (value) => {
   left: var(--actions-total-width);
   width: var(--w);
   z-index: -1;
+  /* Keeps unders centred while the primary taps (#124). */
+  transition: width 180ms ease-out;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
 
   &.primary-tapped {
     width: var(--h);

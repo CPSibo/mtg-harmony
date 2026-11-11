@@ -157,7 +157,9 @@ describe('battlefield store', () => {
 
       board.startAttaching(aura);
       expect(board.isAttaching).toBe(true);
+      expect(board.cardToAttachId).toBe(aura.id);
       board.finishAttaching(board.stacks[0]!);
+      expect(board.cardToAttachId).toBeNull();
 
       const host = board.stacks[0]!;
       expect(names(board.stacks)).toEqual(['Host']);
@@ -380,6 +382,34 @@ describe('battlefield store', () => {
       board.setFaceNumber(card, 3);
 
       expect(card.faceNumber).toBe(3);
+    });
+
+    it('swaps a card to another printing, keeping its state (#114)', async () => {
+      const board = useBattlefieldStore();
+      const log = useEventLogStore();
+      board.addStackByCard(makeCard({ name: 'Bolt', tapped: true }));
+      const card = board.stacks[0]!.primary;
+      const id = card.id;
+      card.faceNumber = 2;
+      const entriesBefore = log.entries.length;
+      const printing = makeScryfallCard({
+        name: 'Bolt',
+        image_uris: { border_crop: 'https://img.example/old-art.jpg' },
+        scryfall_uri: 'https://scryfall.com/card/lea/161',
+      });
+
+      board.swapPrinting(card, printing);
+      await nextTick();
+
+      expect(card.id).toBe(id);
+      expect(card.scryfallInfo.id).toBe(printing.id);
+      expect(Object.isFrozen(card.scryfallInfo)).toBe(true);
+      expect(card.image_uri).toBe('https://img.example/old-art.jpg');
+      expect(card.scryfall_uri).toBe('https://scryfall.com/card/lea/161');
+      expect(card.tapped).toBe(true);
+      expect(card.faceNumber).toBe(2);
+      expect(card.stack).toBe(board.stacks[0]);
+      expect(log.entries.length).toBe(entriesBefore);
     });
 
     it('clears modifiers', () => {

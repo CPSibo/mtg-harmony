@@ -26,6 +26,7 @@ export function cardData(card: ScryfallCard): ScryfallCard {
     );
   const data = pick({
     id: card.id,
+    oracle_id: card.oracle_id,
     name: card.name,
     mana_cost: card.mana_cost,
     type_line: card.type_line,

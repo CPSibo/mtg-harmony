@@ -113,18 +113,18 @@
             {
               label: 'Copy card',
               icon: 'i-lucide-copy',
-              onSelect: () => battlefield.copyCard(card!, 'card'),
+              onSelect: () => copyCard(card!, 'card'),
               color: 'primary',
             },
             {
               label: 'Copy card + counters',
               icon: 'i-lucide-copy-plus',
-              onSelect: () => battlefield.copyCard(card!, 'counters'),
+              onSelect: () => copyCard(card!, 'counters'),
             },
             {
               label: 'Copy everything',
               icon: 'i-lucide-square-stack',
-              onSelect: () => battlefield.copyCard(card!, 'stack'),
+              onSelect: () => copyCard(card!, 'stack'),
             },
           ]"
           :content="{
@@ -143,6 +143,16 @@
             Copy
           </UButton>
         </UDropdownMenu>
+
+        <UButton
+          icon="i-lucide-images"
+          color="neutral"
+          variant="ghost"
+          size="xl"
+          @click="openSwapArt"
+        >
+          Swap art
+        </UButton>
 
         <UButton
           icon="i-lucide-trash"
@@ -175,6 +185,12 @@
     :card="props.card"
     @canceled="confirmRemovedCanceled"
   />
+
+  <SwapArtModal
+    v-if="swapArtLoaded && props.card"
+    v-model:open="showSwapArt"
+    :card="props.card"
+  />
 </template>
 
 <script setup lang="ts">
@@ -186,8 +202,9 @@ import USeparator from '@nuxt/ui/components/Separator.vue';
 import PlayAreaRemoveCardModal from '~/components/playArea/RemoveCardModal.vue';
 import SharedCardText from '~/components/shared/CardText.vue';
 import { useSettingsStore } from '~/stores/settings';
-import { computed, ref } from 'vue';
+import { computed, defineAsyncComponent, ref } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
+import { useCopyAnimation, useMoveAnimation } from '~/features/castAnimation';
 import type { BoardCard } from '~/types/PlayArea';
 
 const open = defineModel<boolean>('open', { default: false });
@@ -204,6 +221,19 @@ const battlefield = useBattlefieldStore();
 const settings = useSettingsStore();
 
 const showConfirmRemove = ref(false);
+
+// Loads on first use: most games never swap art.
+const SwapArtModal = defineAsyncComponent(
+  () => import('~/features/swapArt/components/SwapArtModal.vue'),
+);
+const swapArtLoaded = ref(false);
+const showSwapArt = ref(false);
+
+const openSwapArt = () => {
+  swapArtLoaded.value = true;
+  showSwapArt.value = true;
+  open.value = false;
+};
 
 // Cancelling the removal goes back to the details.
 const confirmRemovedCanceled = () => {
@@ -247,13 +277,25 @@ const startAttaching = () => {
   open.value = false;
 };
 
+const animateMove = useMoveAnimation();
+const copyCard = useCopyAnimation();
+
 const tryDetach = () => {
-  battlefield.detach(props.card!);
+  const card = props.card!;
+  const play = animateMove([card.id]);
+  const hostId = card.stack?.primary.id ?? null;
+  battlefield.detach(card);
+  play(hostId, false);
   open.value = false;
 };
 
 const explodeStack = () => {
-  battlefield.explodeStack(props.card!.stack!);
+  const stack = props.card!.stack!;
+  const play = animateMove(
+    [...stack.attachments, ...stack.unders].map((c) => c.id),
+  );
+  battlefield.explodeStack(stack);
+  play(stack.primary.id, false);
   open.value = false;
 };
 

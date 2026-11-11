@@ -59,10 +59,10 @@ import UButton from '@nuxt/ui/components/Button.vue';
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
 import { computed } from 'vue';
-import { useBattlefieldStore } from '~/features/battlefield';
+import { useRemoveAnimation } from '~/features/castAnimation';
 import type { BoardCard } from '~/types/PlayArea';
 
-const battlefield = useBattlefieldStore();
+const removeWithAnimation = useRemoveAnimation();
 
 const showConfirmRemove = defineModel({ type: Boolean, default: false });
 
@@ -92,7 +92,7 @@ const removeCard = () => {
   showConfirmRemove.value = false;
   if (!props.card) return;
 
-  battlefield.removeCard(props.card);
+  void removeWithAnimation(props.card);
 
   emit('removed');
 };
