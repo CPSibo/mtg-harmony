@@ -57,6 +57,38 @@ test('/ opens the command palette', async ({ page }) => {
   await expect(page.getByRole('option', { name: /Add card/i })).toBeVisible();
 });
 
+// The board cancels touchstart to pan, which stops the click Reka waits for
+// before dismissing on touch (#135).
+test.describe('on a touch screen', () => {
+  test.use({ hasTouch: true });
+
+  test('a tap on the board closes the palette', async ({ page }) => {
+    await page.keyboard.press('/');
+    const option = page.getByRole('option', { name: /Add card/i });
+    await expect(option).toBeVisible();
+
+    await page.touchscreen.tap(640, 600);
+
+    await expect(option).toBeHidden();
+  });
+
+  test('a tap on a card stack closes Add Card', async ({ page }) => {
+    await page.keyboard.press('/');
+    await page.getByRole('option', { name: /Add card/i }).click();
+    const addCard = page.getByRole('dialog', { name: 'Add card' });
+    await addCard.getByRole('textbox').fill('ooze');
+    await addCard.getByRole('img', { name: card.name }).first().click();
+    const stack = page.locator('.board-card-stack .primary-card');
+    await expect(stack).toHaveCount(1);
+    await expect(addCard).toBeVisible();
+
+    const box = (await stack.boundingBox())!;
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+
+    await expect(addCard).toBeHidden();
+  });
+});
+
 test('a card fetched On-deck can be cast to the board', async ({ page }) => {
   await page.getByRole('button', { name: 'On-deck' }).click();
   await page.getByRole('button', { name: 'Next card' }).click();
