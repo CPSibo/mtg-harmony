@@ -24,7 +24,6 @@
             : undefined
         "
         title="Double tap to open"
-        @dblclick="emits('showCardDetails', card)"
         @click="tryAttach"
         @touchend="tryAttach"
       >
@@ -82,6 +81,7 @@ import { useMoveAnimation } from '~/features/castAnimation';
 // Nuxt UI's plain-Vue Icon; components/Icon.vue is the Nuxt-only variant.
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
 import { useElementHover } from '@vueuse/core';
+import { useDoubleTap } from '~/composables/useDoubleTap';
 import SharedCardText from '~/components/shared/CardText.vue';
 import { useSettingsStore } from '~/stores/settings';
 import { computed, useTemplateRef } from 'vue';
@@ -125,6 +125,7 @@ const tryAttach = (ev: Event) => {
 
 const cardImageSection = useTemplateRef('cardImageSection');
 const isHovered = useElementHover(cardImageSection);
+useDoubleTap(cardImageSection, () => emits('showCardDetails', props.card));
 </script>
 
 <style lang="css" scoped>
