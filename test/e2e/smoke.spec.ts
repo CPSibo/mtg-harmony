@@ -413,7 +413,7 @@ test('a card can be put under another and taken out again', async ({
 });
 
 // #127: a tapped attachment slid right instead of staying centred.
-test('a tapped attachment stays centred on the stack', async ({ page }) => {
+test('tapped cards stay centred on the stack', async ({ page }) => {
   for (let i = 0; i < 2; i++) {
     await page.getByRole('button', { name: 'On-deck' }).click();
     await page.getByRole('button', { name: 'Next card' }).click();
@@ -467,18 +467,17 @@ test('a tapped attachment stays centred on the stack', async ({ page }) => {
     )
     .toBe(0);
 
-  // Still centred once the primary taps too.
-  await primary.getByRole('img').dblclick({ position: { x: 10, y: 5 } });
+  // The primary turns in place, and the attachment stays centred on it.
+  const primaryImage = primary.getByRole('img');
+  const before = await centre(primaryImage);
+  await primaryImage.dblclick({ position: { x: 10, y: 5 } });
   await details.getByRole('button', { name: 'Tap' }).click();
   await expect(primary).toHaveClass(/tapped/);
-  await sideways(primary);
-  await expect
-    .poll(
-      async () =>
-        Math.round((await centre(attachment)) - (await centre(primary))),
-      { timeout: 5000 },
-    )
-    .toBe(0);
+  await sideways(primaryImage);
+  expect(Math.round((await centre(primaryImage)) - before)).toBe(0);
+  expect(
+    Math.round((await centre(attachment)) - (await centre(primaryImage))),
+  ).toBe(0);
 });
 
 // #37

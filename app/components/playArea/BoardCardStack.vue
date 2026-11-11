@@ -7,10 +7,7 @@
     :class="{ dragging: myIsDragging }"
   >
     <!-- Cards under the primary peek out above it, newest on top. -->
-    <div
-      class="unders"
-      :class="{ 'primary-tapped': stack.primary.tapped }"
-    >
+    <div class="unders">
       <PlayAreaBoardCard
         v-for="(card, index) in stack.unders"
         :key="card.id"
@@ -22,7 +19,10 @@
       />
     </div>
 
-    <div class="primary-card-wrapper flex flex-row">
+    <div
+      class="primary-card-wrapper flex flex-row"
+      :class="{ 'primary-tapped': stack.primary.tapped }"
+    >
       <PlayAreaBoardCardStackActions
         :stack="stack"
         @show-card-details="emits('showCardDetails', $event)"
@@ -40,7 +40,6 @@
 
     <div
       class="attachments"
-      :class="{ 'primary-tapped': stack.primary.tapped }"
       :style="`--total: ${stack.attachments.size}`"
     >
       <PlayAreaBoardCard
@@ -235,6 +234,31 @@ watch(myIsDragging, (value) => {
   z-index: 1;
 }
 
+/* A tapped primary turns in place: it keeps its untapped width, overhanging
+   both sides evenly, so it stays centred on the stack (#127). It still gives
+   up the height it no longer covers, so the attachments ride up under it. */
+.board-card-stack .primary-card.tapped :deep(.card-image-wrapper) {
+  width: var(--w);
+}
+
+/* Counters step right past the overhang. */
+.board-card-stack .primary-card.tapped :deep(.modifiers) {
+  left: calc(100% + (var(--h) - var(--w)) / 2 + 0.3em);
+}
+
+/* The actions step left by the overhang so the tapped card doesn't cover them. */
+.primary-card-wrapper :deep(.stack-actions) {
+  transition: translate 180ms ease-out;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.primary-card-wrapper.primary-tapped :deep(.stack-actions) {
+  translate: calc((var(--w) - var(--h)) / 2) 0;
+}
+
 /* Behind the primary and the attachments, centred on the primary's width. */
 .unders {
   position: absolute;
@@ -242,16 +266,6 @@ watch(myIsDragging, (value) => {
   left: var(--actions-total-width);
   width: var(--w);
   z-index: -1;
-  /* Keeps unders centred while the primary taps (#124). */
-  transition: width 180ms ease-out;
-
-  @media (prefers-reduced-motion: reduce) {
-    transition: none;
-  }
-
-  &.primary-tapped {
-    width: var(--h);
-  }
 
   > .board-card {
     position: absolute;
@@ -279,15 +293,6 @@ watch(myIsDragging, (value) => {
   /* The primary's width, so a wider tapped attachment overflows both sides
      evenly and stays centred on the primary (#127). */
   width: var(--w);
-  transition: width 180ms ease-out;
-
-  @media (prefers-reduced-motion: reduce) {
-    transition: none;
-  }
-
-  &.primary-tapped {
-    width: var(--h);
-  }
 
   /* Need to cap the height, or else the `top` makes a big, invisible chin. */
   /* TODO: This doesn't account for tapped attachments. */
