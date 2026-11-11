@@ -17,16 +17,16 @@ function stubMatchMedia(width: number) {
 describe('useSmallScreen', () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it('is true below the sm breakpoint', () => {
-    stubMatchMedia(375);
+  it('is true at md and below', () => {
+    stubMatchMedia(1023);
     const scope = effectScope();
     const small = scope.run(() => useSmallScreen())!;
     expect(small.value).toBe(true);
     scope.stop();
   });
 
-  it('is false from the sm breakpoint up', () => {
-    stubMatchMedia(640);
+  it('is false from the lg breakpoint up', () => {
+    stubMatchMedia(1024);
     const scope = effectScope();
     const small = scope.run(() => useSmallScreen())!;
     expect(small.value).toBe(false);
