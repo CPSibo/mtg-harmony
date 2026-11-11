@@ -146,6 +146,36 @@ describe('battlefield store', () => {
 
       expect(names(board.orderedStacks)).toEqual(['A', 'B']);
     });
+
+    it('keeps an exploded stack in front, its cards just beneath it (#126)', () => {
+      const board = boardWithAttachments(2);
+      board.addStackByCard(makeCard({ name: 'Neighbour' }));
+      board.bringToFront(
+        board.stacks.find((s) => s.primary.name === 'Neighbour')!,
+      );
+
+      board.explodeStack(board.stacks[0]!);
+
+      expect(names(board.orderedStacks)).toEqual([
+        'Neighbour',
+        'Aura 0',
+        'Aura 1',
+        'Host',
+      ]);
+    });
+
+    it('keeps a stack in front of a card detached from it (#126)', () => {
+      const board = boardWithUnders(1);
+      board.addStackByCard(makeCard({ name: 'Neighbour' }));
+
+      board.detach([...board.stacks[0]!.unders][0]!);
+
+      expect(names(board.orderedStacks)).toEqual([
+        'Neighbour',
+        'Under 0',
+        'Host',
+      ]);
+    });
   });
 
   describe('attaching', () => {
