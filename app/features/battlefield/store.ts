@@ -370,6 +370,9 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
       newStacks.underStacks.push(newStack);
     }
 
+    // Its cards land on top, so lift the stack back above them (#126).
+    bringToFront(stack);
+
     return newStacks;
   }
 
@@ -527,6 +530,8 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
         y: stack.position.y + UNDER_TAKE_OUT_OFFSET,
       };
     }
+    // The detached card lands on top; keep its old stack above it (#126).
+    bringToFront(stack);
   }
 
   function clearStacks() {
