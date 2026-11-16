@@ -57,6 +57,38 @@ test('/ opens the command palette', async ({ page }) => {
   await expect(page.getByRole('option', { name: /Add card/i })).toBeVisible();
 });
 
+// The board cancels touchstart to pan, which stops the click Reka waits for
+// before dismissing on touch (#135).
+test.describe('on a touch screen', () => {
+  test.use({ hasTouch: true });
+
+  test('a tap on the board closes the palette', async ({ page }) => {
+    await page.keyboard.press('/');
+    const option = page.getByRole('option', { name: /Add card/i });
+    await expect(option).toBeVisible();
+
+    await page.touchscreen.tap(640, 600);
+
+    await expect(option).toBeHidden();
+  });
+
+  test('a tap on a card stack closes Add Card', async ({ page }) => {
+    await page.keyboard.press('/');
+    await page.getByRole('option', { name: /Add card/i }).click();
+    const addCard = page.getByRole('dialog', { name: 'Add card' });
+    await addCard.getByRole('textbox').fill('ooze');
+    await addCard.getByRole('img', { name: card.name }).first().click();
+    const stack = page.locator('.board-card-stack .primary-card');
+    await expect(stack).toHaveCount(1);
+    await expect(addCard).toBeVisible();
+
+    const box = (await stack.boundingBox())!;
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+
+    await expect(addCard).toBeHidden();
+  });
+});
+
 test('a card fetched On-deck can be cast to the board', async ({ page }) => {
   await page.getByRole('button', { name: 'On-deck' }).click();
   await page.getByRole('button', { name: 'Next card' }).click();
@@ -364,6 +396,28 @@ test('copying a card puts a second one on the board', async ({ page }) => {
   await expect(boardCards).toHaveCount(2);
 });
 
+// #130: leaving the stack for the menu hid its button, so the menu jumped to 0,0.
+test('the copy menu opens beside its button', async ({ page }) => {
+  await page.getByRole('button', { name: 'On-deck' }).click();
+  await page.getByRole('button', { name: 'Next card' }).click();
+  await page.getByRole('button', { name: 'Cast to board' }).click();
+  await expect(page.getByRole('button', { name: 'Next card' })).toBeHidden();
+
+  await page.locator('.board-card').getByRole('img').first().hover();
+  const button = page.getByRole('button', { name: 'Copy', exact: true });
+  const anchor = (await button.boundingBox())!;
+  await button.click();
+  const item = page.getByRole('menuitem', { name: 'Copy card +' });
+  await item.hover();
+
+  // The open menu hides the board from the accessibility tree.
+  await expect(page.locator('button[aria-label="Copy"]')).toBeVisible();
+  const menu = (await item.boundingBox())!;
+  expect(Math.abs(menu.x - anchor.x)).toBeLessThan(40);
+  expect(menu.y).toBeGreaterThan(anchor.y);
+  expect(menu.y - anchor.y).toBeLessThan(150);
+});
+
 // #34: unders had no UI.
 test('a card can be put under another and taken out again', async ({
   page,
@@ -410,6 +464,74 @@ test('a card can be put under another and taken out again', async ({
 
   await expect(stacks).toHaveCount(2);
   await expect(unders).toHaveCount(0);
+});
+
+// #127: a tapped attachment slid right instead of staying centred.
+test('tapped cards stay centred on the stack', async ({ page }) => {
+  for (let i = 0; i < 2; i++) {
+    await page.getByRole('button', { name: 'On-deck' }).click();
+    await page.getByRole('button', { name: 'Next card' }).click();
+    await page.getByRole('button', { name: 'Cast to board' }).click();
+  }
+  const stacks = page.locator('.board-card-stack');
+  const details = page.getByRole('dialog', { name: 'Card details' });
+  await expect(stacks).toHaveCount(2);
+  const front = stacks.nth(1).locator('.primary-card').getByRole('img');
+  const box = (await front.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 3, box.y + box.height / 2, {
+    steps: 5,
+  });
+  await page.mouse.up();
+
+  await stacks.nth(1).locator('.primary-card').getByRole('img').dblclick();
+  await details.getByRole('button', { name: 'Attach to...' }).click();
+  await stacks.nth(0).locator('.primary-card').getByRole('img').click();
+  await expect(stacks).toHaveCount(1);
+
+  const primary = stacks.first().locator('.primary-card');
+  const attachment = stacks.first().locator('.attachment');
+  const centre = async (locator: typeof primary) => {
+    const b = (await locator.boundingBox())!;
+    return b.x + b.width / 2;
+  };
+  // Tapping eases (#124): wait until a card lies on its side.
+  const sideways = (locator: typeof primary) =>
+    expect
+      .poll(async () => {
+        const b = (await locator.boundingBox())!;
+        return b.width > b.height;
+      })
+      .toBe(true);
+
+  // The primary covers the attachment's top; open it from its bottom edge.
+  const attached = (await attachment.getByRole('img').boundingBox())!;
+  await attachment.getByRole('img').dblclick({
+    position: { x: attached.width / 2, y: attached.height - 5 },
+  });
+  await details.getByRole('button', { name: 'Tap' }).click();
+  await expect(attachment).toHaveClass(/tapped/);
+  await sideways(attachment);
+  await expect
+    .poll(
+      async () =>
+        Math.round((await centre(attachment)) - (await centre(primary))),
+      { timeout: 5000 },
+    )
+    .toBe(0);
+
+  // The primary turns in place, and the attachment stays centred on it.
+  const primaryImage = primary.getByRole('img');
+  const before = await centre(primaryImage);
+  await primaryImage.dblclick({ position: { x: 10, y: 5 } });
+  await details.getByRole('button', { name: 'Tap' }).click();
+  await expect(primary).toHaveClass(/tapped/);
+  await sideways(primaryImage);
+  expect(Math.round((await centre(primaryImage)) - before)).toBe(0);
+  expect(
+    Math.round((await centre(attachment)) - (await centre(primaryImage))),
+  ).toBe(0);
 });
 
 // #37

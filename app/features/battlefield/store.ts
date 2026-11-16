@@ -1,3 +1,4 @@
+import { showsImage } from '~/features/battlefield/cardFaces';
 import { useLocalStorage } from '~/composables/useLocalStorage';
 import { pickImageUri } from '~/composables/useScryfall';
 import { defineStore } from 'pinia';
@@ -370,6 +371,9 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
       newStacks.underStacks.push(newStack);
     }
 
+    // Its cards land on top, so lift the stack back above them (#126).
+    bringToFront(stack);
+
     return newStacks;
   }
 
@@ -395,6 +399,24 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
   /** Flips a card between tapped and untapped. */
   function toggleTapped(card: BoardCard) {
     card.tapped = !card.tapped;
+  }
+
+  /** Flips a card over, between its front and its back. */
+  function toggleFlipped(card: BoardCard) {
+    card.flipped = !card.flipped;
+  }
+
+  /**
+   * Pins a card to whichever of art or text it isn't showing now, so it stays
+   * that way when the setting changes (#150).
+   */
+  function toggleShownAs(card: BoardCard, imagesEnabled: boolean) {
+    card.shownAs = showsImage(card, imagesEnabled) ? 'text' : 'art';
+  }
+
+  /** Turns a card 180� and back (Kamigawa flip cards). */
+  function toggleTurned(card: BoardCard) {
+    card.turned = !card.turned;
   }
 
   /** Sets the number shown on a card's face (0 hides it). */
@@ -527,6 +549,8 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
         y: stack.position.y + UNDER_TAKE_OUT_OFFSET,
       };
     }
+    // The detached card lands on top; keep its old stack above it (#126).
+    bringToFront(stack);
   }
 
   function clearStacks() {
@@ -600,6 +624,9 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
 
     untapAll,
     toggleTapped,
+    toggleFlipped,
+    toggleShownAs,
+    toggleTurned,
     setFaceNumber,
     clearModifiers,
 

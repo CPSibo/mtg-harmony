@@ -268,11 +268,10 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     }
   }
 
+  // Not cancelled: the board listens passively so taps still become clicks.
+  // Also takes touchcancel, so a touch the browser drops isn't left behind
+  // to turn the next one-finger pan into a pinch.
   function onTouchEnd(e: TouchEvent) {
-    if (!isEnabled.value) return;
-
-    e.preventDefault();
-
     for (const touch of e.changedTouches) {
       activeTouches.delete(touch.identifier);
     }
@@ -316,5 +315,6 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     onTouchStart,
     onTouchMove,
     onTouchEnd,
+    onTouchCancel: onTouchEnd,
   };
 }

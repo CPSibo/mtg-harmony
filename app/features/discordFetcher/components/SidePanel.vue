@@ -30,8 +30,10 @@
           v-if="loading"
           class="mtg-card-display vertical"
         />
-        <img
+        <SharedCardImage
           v-else-if="!!card?.image_uri && settings.imagesEnabled"
+          :landscape="isLandscape(card)"
+          frame-class="w-full"
           :src="card?.image_uri"
           :alt="card?.name ?? 'Missing card'"
           class="mtg-card-display vertical cursor-grab touch-none select-none"
@@ -133,6 +135,8 @@
 </template>
 
 <script setup lang="ts">
+import SharedCardImage from '~/components/shared/CardImage.vue';
+import { isLandscape } from '~/features/battlefield/cardFaces';
 import UButton from '@nuxt/ui/components/Button.vue';
 // Nuxt UI's plain-Vue Icon; components/Icon.vue is the Nuxt-only variant.
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';

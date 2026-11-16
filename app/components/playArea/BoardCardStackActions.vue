@@ -1,7 +1,7 @@
 <template>
   <div
     class="stack-actions flex-col gap-4 flex"
-    :class="{ 'is-touch': isTouch }"
+    :class="{ 'is-touch': isTouch, 'is-menu-open': copyMenuOpen }"
   >
     <UButton
       :ui="{ base: 'bg-primary/80 text-black' }"
@@ -29,6 +29,7 @@
     />
 
     <UDropdownMenu
+      v-model:open="copyMenuOpen"
       :items="[
         {
           label: 'Copy card',
@@ -106,6 +107,9 @@ const battlefield = useBattlefieldStore();
 const copyCard = useCopyAnimation();
 
 const showConfirmRemove = ref(false);
+// The menu renders in a portal, so opening it ends the stack's hover. Without this the
+// buttons hide, the menu's anchor collapses to 0×0 and the menu jumps to the top-left.
+const copyMenuOpen = ref(false);
 </script>
 
 <style lang="scss" scoped>
@@ -115,7 +119,7 @@ const showConfirmRemove = ref(false);
   z-index: 1;
   position: relative;
 
-  &:not(.is-touch) * {
+  &:not(.is-touch):not(.is-menu-open) * {
     display: none;
   }
 }

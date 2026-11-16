@@ -13,6 +13,7 @@
   >
     <template #content>
       <UCommandPalette
+        ref="palette"
         v-model:search-term="searchTerm"
         :loading="status === 'pending'"
         :groups="groups"
@@ -29,8 +30,10 @@
         <!-- Tap a result to cast it to a free spot, or drag it onto the
              board to cast it there, like On-deck (#113). -->
         <template #item-leading="{ item }">
-          <img
+          <SharedCardImage
             v-if="item.imageUri"
+            :landscape="item.landscape"
+            frame-class="w-[min(425px,80vw)]"
             :src="item.imageUri"
             :alt="item.label"
             loading="lazy"
@@ -76,11 +79,14 @@
 </template>
 
 <script setup lang="ts">
+import SharedCardImage from '~/components/shared/CardImage.vue';
+import { isLandscapeFace } from '~/features/battlefield/cardFaces';
 import UCommandPalette from '@nuxt/ui/components/CommandPalette.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
 import { refDebounced } from '@vueuse/core';
 import type { Position } from '@vueuse/core';
-import { computed, ref, shallowRef } from 'vue';
+import { computed, ref, shallowRef, toRef, useTemplateRef } from 'vue';
+import { useCloseOnTouchOutside } from '~/composables/useCloseOnTouchOutside';
 import type { CommandPaletteItem } from '@nuxt/ui';
 import { useAddCard } from '..';
 import { pickImageUri } from '~/composables/useScryfall';
@@ -99,6 +105,12 @@ import {
 const addCardStore = useAddCard();
 const settings = useSettingsStore();
 
+const palette = useTemplateRef<{ $el: Element }>('palette');
+useCloseOnTouchOutside(
+  toRef(addCardStore, 'addCardWindowIsOpen'),
+  () => palette.value?.$el,
+);
+
 const searchTerm = ref('');
 const searchTermDebounced = refDebounced(searchTerm, 500);
 
@@ -116,6 +128,7 @@ const mappedCards = computed(() => {
       id: card.id,
       label: card.name,
       imageUri: settings.imagesEnabled ? pickImageUri(card) : null,
+      landscape: isLandscapeFace(card),
     })) || []
   );
 });

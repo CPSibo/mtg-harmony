@@ -2,24 +2,46 @@
   <UModal
     v-if="!!card"
     v-model:open="open"
-    :ui="{ content: 'flex flex-row gap-3 p-6' }"
+    :ui="{
+      content: [
+        'flex flex-row gap-3 p-6',
+        // Wider for a sideways card, which the image then fills, and for
+        // text-only cards, which otherwise get squeezed by the buttons.
+        (landscape || !showImage) && 'sm:max-w-2xl',
+      ],
+    }"
     title="Card details"
     description="Actions and info about this card"
   >
     <template #content>
-      <div>
-        <img
-          v-if="settings.imagesEnabled"
-          :src="card.image_uri"
+      <!-- A sideways image fills what the buttons leave, giving way so they
+           always fit. -->
+      <div
+        :class="[
+          'flex max-h-[90svh] flex-col gap-3 overflow-y-auto',
+          { 'min-w-0 flex-1': landscape || !showImage },
+        ]"
+      >
+        <SharedCardImage
+          v-if="showImage"
+          :landscape="landscape"
+          frame-class="w-full"
+          :src="shownImageUri(card)"
           :alt="card.name"
           class="max-h-[80svh] mtg-card-display"
+        />
+        <!-- As wide as the image, never wider. -->
+        <SharedOracleText
+          v-if="showImage && faces.length"
+          :faces="faces"
+          class="w-0 min-w-full"
         />
         <SharedCardText
           v-else
           :card="card.scryfallInfo"
           role="img"
           :aria-label="card.name"
-          class="w-72"
+          class="w-72 max-w-full shrink-0"
         />
       </div>
 
@@ -34,6 +56,37 @@
             :class="['ms', `ms-${card.tapped ? 'untap' : 'tap'}`, 'ms-2x']"
           />
           {{ card.tapped ? 'Untap' : 'Tap' }}
+        </UButton>
+
+        <UButton
+          icon="i-lucide-flip-horizontal-2"
+          color="neutral"
+          variant="soft"
+          size="xl"
+          @click="flipOver"
+        >
+          Flip over
+        </UButton>
+
+        <UButton
+          :icon="showImage ? 'i-lucide-text' : 'i-lucide-image'"
+          color="neutral"
+          variant="soft"
+          size="xl"
+          @click="battlefield.toggleShownAs(card!, settings.imagesEnabled)"
+        >
+          {{ showImage ? 'Show text' : 'Show art' }}
+        </UButton>
+
+        <UButton
+          v-if="canTurn(card)"
+          icon="i-lucide-rotate-cw"
+          color="neutral"
+          variant="soft"
+          size="xl"
+          @click="turn"
+        >
+          Flip 180°
         </UButton>
 
         <UButton
@@ -201,9 +254,18 @@ import UModal from '@nuxt/ui/components/Modal.vue';
 import USeparator from '@nuxt/ui/components/Separator.vue';
 import PlayAreaRemoveCardModal from '~/components/playArea/RemoveCardModal.vue';
 import SharedCardText from '~/components/shared/CardText.vue';
+import SharedOracleText from '~/components/shared/OracleText.vue';
 import { useSettingsStore } from '~/stores/settings';
 import { computed, defineAsyncComponent, ref } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
+import SharedCardImage from '~/components/shared/CardImage.vue';
+import {
+  canTurn,
+  isLandscape,
+  shownFaces,
+  shownImageUri,
+  showsImage,
+} from '~/features/battlefield/cardFaces';
 import { useCopyAnimation, useMoveAnimation } from '~/features/castAnimation';
 import type { BoardCard } from '~/types/PlayArea';
 
@@ -247,6 +309,25 @@ const toggleTap = () => {
 
   open.value = false;
 };
+
+const flipOver = () => {
+  if (!props.card) return;
+  battlefield.toggleFlipped(props.card);
+};
+
+const turn = () => {
+  if (!props.card) return;
+  battlefield.toggleTurned(props.card);
+  open.value = false;
+};
+
+const faces = computed(() => (props.card ? shownFaces(props.card) : []));
+
+const showImage = computed(
+  () => !!props.card && showsImage(props.card, settings.imagesEnabled),
+);
+
+const landscape = computed(() => !!props.card && isLandscape(props.card));
 
 const hasAttachments = computed(() => {
   if (!props.card || !props.card.stack?.primary) return false;

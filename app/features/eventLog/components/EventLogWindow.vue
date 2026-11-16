@@ -1,6 +1,7 @@
 <template>
   <UModal
     v-model:open="log.windowIsOpen"
+    :fullscreen="smallScreen"
     title="Event log"
     description="What happened this game and before, newest first"
     :ui="{ body: 'flex flex-col gap-3' }"
@@ -60,10 +61,12 @@
           class="flex items-center gap-3 py-2"
           :class="{ 'bg-elevated/50': entry.type === 'gameMarker' }"
         >
-          <img
+          <SharedCardImage
             v-if="
               'card' in entry && entry.card.imageUri && settings.imagesEnabled
             "
+            :landscape="entry.card.landscape"
+            frame-class="w-11"
             :src="entry.card.imageUri"
             alt=""
             class="w-8 rounded-sm mtg-card-display"
@@ -128,6 +131,7 @@
 </template>
 
 <script setup lang="ts">
+import SharedCardImage from '~/components/shared/CardImage.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
 import UInput from '@nuxt/ui/components/Input.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
@@ -140,6 +144,7 @@ import { computed, ref, watch } from 'vue';
 import ExportLogModal from './ExportLogModal.vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import { useSettingsStore } from '~/stores/settings';
+import { useSmallScreen } from '~/composables/useSmallScreen';
 import {
   EVENT_LABELS,
   EVENT_TYPES,
@@ -158,6 +163,7 @@ const log = useEventLogStore();
 const battlefield = useBattlefieldStore();
 const settings = useSettingsStore();
 const toast = useToast();
+const smallScreen = useSmallScreen();
 
 const exportOpen = ref(false);
 const name = ref('');

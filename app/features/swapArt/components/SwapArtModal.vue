@@ -41,8 +41,10 @@
             :title="`${printing.set.toUpperCase()} #${printing.collectorNumber}`"
             @click="choose(printing)"
           >
-            <img
+            <SharedCardImage
               v-if="settings.imagesEnabled && imageOf(printing)"
+              :landscape="isLandscapeFace(printing.card)"
+              frame-class="w-full"
               :src="imageOf(printing)!"
               :alt="`${card.name} (${printing.set.toUpperCase()})`"
               loading="lazy"
@@ -67,6 +69,8 @@
 </template>
 
 <script setup lang="ts">
+import SharedCardImage from '~/components/shared/CardImage.vue';
+import { isLandscapeFace } from '~/features/battlefield/cardFaces';
 import UInput from '@nuxt/ui/components/Input.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
 import UPagination from '@nuxt/ui/components/Pagination.vue';

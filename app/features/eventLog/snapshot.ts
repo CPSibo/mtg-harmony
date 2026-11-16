@@ -1,4 +1,5 @@
 import { pickImageUri } from '~/composables/useScryfall';
+import { isLandscapeFace } from '~/features/battlefield/cardFaces';
 import type { BoardCard } from '~/types/PlayArea';
 import type { ScryfallCard } from '~/types/Scryfall';
 import type { LoggedCard, LoggedCardText } from './types';
@@ -29,6 +30,7 @@ export function snapshotCard(card: BoardCard | ScryfallCard): LoggedCard {
       scryfallId: card.scryfallInfo.id,
       name: card.name,
       imageUri: card.image_uri,
+      landscape: isLandscapeFace(card.scryfallInfo) || undefined,
       scryfallUri: card.scryfall_uri,
       text: textOf(card.scryfallInfo),
     };
@@ -37,6 +39,7 @@ export function snapshotCard(card: BoardCard | ScryfallCard): LoggedCard {
     scryfallId: card.id,
     name: card.name,
     imageUri: pickImageUri(card) ?? '',
+    landscape: isLandscapeFace(card) || undefined,
     scryfallUri: card.scryfall_uri,
     text: textOf(card),
   };

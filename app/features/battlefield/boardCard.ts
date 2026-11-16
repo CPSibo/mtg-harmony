@@ -33,6 +33,10 @@ export function cardData(card: ScryfallCard): ScryfallCard {
     oracle_text: card.oracle_text,
     power: card.power,
     toughness: card.toughness,
+    layout: card.layout,
+    keywords: card.keywords?.length
+      ? Object.freeze([...card.keywords])
+      : undefined,
     card_faces: card.card_faces && Object.freeze(card.card_faces.map(front)),
     image_status: card.image_status,
     image_uris: images(card.image_uris),
@@ -94,6 +98,9 @@ export function copyBoardCard(card: BoardCard, keepState: boolean): BoardCard {
     ...copy,
     tapped: card.tapped,
     faceNumber: card.faceNumber,
+    flipped: card.flipped,
+    turned: card.turned,
+    shownAs: card.shownAs,
     modifiers: new Set([...card.modifiers].map((m) => ({ ...m }))),
   };
 }
