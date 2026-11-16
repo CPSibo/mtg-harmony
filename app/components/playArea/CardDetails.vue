@@ -2,16 +2,24 @@
   <UModal
     v-if="!!card"
     v-model:open="open"
-    :ui="{ content: 'flex flex-row gap-3 p-6' }"
+    :ui="{
+      content: [
+        'flex flex-row gap-3 p-6',
+        // Wider for a sideways card, which the image then fills.
+        landscape && settings.imagesEnabled && 'sm:max-w-2xl',
+      ],
+    }"
     title="Card details"
     description="Actions and info about this card"
   >
     <template #content>
-      <div>
+      <!-- A sideways image fills what the buttons leave, giving way so they
+           always fit. -->
+      <div :class="{ 'min-w-0 flex-1': landscape }">
         <SharedCardImage
           v-if="settings.imagesEnabled"
-          :landscape="isLandscape(card)"
-          frame-class="w-[min(50vw,32rem)]"
+          :landscape="landscape"
+          frame-class="w-full"
           :src="shownImageUri(card)"
           :alt="card.name"
           class="max-h-[80svh] mtg-card-display"
@@ -287,6 +295,8 @@ const turn = () => {
   battlefield.toggleTurned(props.card);
   open.value = false;
 };
+
+const landscape = computed(() => !!props.card && isLandscape(props.card));
 
 const hasAttachments = computed(() => {
   if (!props.card || !props.card.stack?.primary) return false;
