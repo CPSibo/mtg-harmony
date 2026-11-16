@@ -36,6 +36,8 @@ export interface BoardCard {
   flipped?: boolean;
   /** Turned 180� (Kamigawa flip cards). */
   turned?: boolean;
+  /** Shows text if images are on, or art if they're off (#150). */
+  imageSwapped?: boolean;
 }
 
 export interface Modifier {

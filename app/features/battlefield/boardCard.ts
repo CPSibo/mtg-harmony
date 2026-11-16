@@ -100,6 +100,7 @@ export function copyBoardCard(card: BoardCard, keepState: boolean): BoardCard {
     faceNumber: card.faceNumber,
     flipped: card.flipped,
     turned: card.turned,
+    imageSwapped: card.imageSwapped,
     modifiers: new Set([...card.modifiers].map((m) => ({ ...m }))),
   };
 }

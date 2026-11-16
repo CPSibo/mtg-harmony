@@ -405,6 +405,11 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     card.flipped = !card.flipped;
   }
 
+  /** Swaps a card between art and text, counter to the setting (#150). */
+  function toggleImageSwapped(card: BoardCard) {
+    card.imageSwapped = !card.imageSwapped;
+  }
+
   /** Turns a card 180� and back (Kamigawa flip cards). */
   function toggleTurned(card: BoardCard) {
     card.turned = !card.turned;
@@ -616,6 +621,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     untapAll,
     toggleTapped,
     toggleFlipped,
+    toggleImageSwapped,
     toggleTurned,
     setFaceNumber,
     clearModifiers,

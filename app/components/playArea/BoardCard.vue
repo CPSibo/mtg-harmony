@@ -20,16 +20,14 @@
         role="img"
         :aria-label="card.name"
         :style="
-          settings.imagesEnabled
-            ? { backgroundImage: `url('${imageUri}')` }
-            : undefined
+          showImage ? { backgroundImage: `url('${imageUri}')` } : undefined
         "
         title="Double tap to open"
         @click="tryAttach"
         @touchend="tryAttach"
       >
         <SharedCardText
-          v-if="!settings.imagesEnabled"
+          v-if="!showImage"
           :card="card.scryfallInfo"
           class="size-full"
         />
@@ -87,7 +85,11 @@ import SharedCardText from '~/components/shared/CardText.vue';
 import { useSettingsStore } from '~/stores/settings';
 import { computed, useTemplateRef } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
-import { isLandscape, shownImageUri } from '~/features/battlefield/cardFaces';
+import {
+  isLandscape,
+  shownImageUri,
+  showsImage,
+} from '~/features/battlefield/cardFaces';
 import type { BoardCard } from '~/types/PlayArea';
 
 const props = defineProps<{
@@ -105,6 +107,9 @@ const battlefield = useBattlefieldStore();
 const settings = useSettingsStore();
 const animateMove = useMoveAnimation();
 
+const showImage = computed(() =>
+  showsImage(props.card, settings.imagesEnabled),
+);
 const imageUri = computed(() => shownImageUri(props.card));
 const landscape = computed(() => isLandscape(props.card));
 // Lies on its long side: a landscape card untapped, or any other card tapped.
