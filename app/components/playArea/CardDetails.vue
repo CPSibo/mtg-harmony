@@ -8,8 +8,10 @@
   >
     <template #content>
       <div>
-        <img
+        <SharedCardImage
           v-if="settings.imagesEnabled"
+          :landscape="isLandscape(card)"
+          frame-class="w-[min(50vw,32rem)]"
           :src="shownImageUri(card)"
           :alt="card.name"
           class="max-h-[80svh] mtg-card-display"
@@ -225,7 +227,12 @@ import SharedCardText from '~/components/shared/CardText.vue';
 import { useSettingsStore } from '~/stores/settings';
 import { computed, defineAsyncComponent, ref } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
-import { canTurn, shownImageUri } from '~/features/battlefield/cardFaces';
+import SharedCardImage from '~/components/shared/CardImage.vue';
+import {
+  canTurn,
+  isLandscape,
+  shownImageUri,
+} from '~/features/battlefield/cardFaces';
 import { useCopyAnimation, useMoveAnimation } from '~/features/castAnimation';
 import type { BoardCard } from '~/types/PlayArea';
 

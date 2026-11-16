@@ -3,10 +3,12 @@ import {
   STANDARD_BACK_URI,
   canTurn,
   isLandscape,
+  isLandscapeFace,
   shownImageUri,
 } from '~/features/battlefield/cardFaces';
 import { makeCard, makeScryfallCard } from '../../fixtures/cards';
 import { cardData } from '~/features/battlefield/boardCard';
+import { snapshotCard } from '~/features/eventLog/snapshot';
 import type { ScryfallCard } from '~/types/Scryfall';
 
 const card = (overrides: Partial<ScryfallCard>) =>
@@ -99,5 +101,22 @@ describe('canTurn', () => {
   it('is true only for Kamigawa flip cards', () => {
     expect(canTurn(card({ layout: 'flip' }))).toBe(true);
     expect(canTurn(card({ layout: 'normal' }))).toBe(false);
+  });
+});
+
+describe('isLandscapeFace', () => {
+  it('reads Scryfall data directly, front by default', () => {
+    const c = dfc('Battle — Siege', 'Creature — Elemental');
+    expect(isLandscapeFace(c.scryfallInfo)).toBe(true);
+    expect(isLandscapeFace(c.scryfallInfo, true)).toBe(false);
+  });
+});
+
+describe('snapshotCard', () => {
+  it('marks landscape cards so the log can turn their image', () => {
+    expect(snapshotCard(dfc('Battle — Siege', 'Creature')).landscape).toBe(
+      true,
+    );
+    expect(snapshotCard(makeCard()).landscape).toBeUndefined();
   });
 });

@@ -34,8 +34,12 @@ const LANDSCAPE_TYPES = /\b(Battle|Room)\b/;
  * type line: battle fronts, Rooms, classic split cards and planes. Aftermath split cards are printed upright.
  */
 export function isLandscape(card: BoardCard): boolean {
-  const info = card.scryfallInfo;
-  if (card.flipped) {
+  return isLandscapeFace(card.scryfallInfo, card.flipped);
+}
+
+/** `isLandscape` for Scryfall data: its front, or with `flipped`, its back. */
+export function isLandscapeFace(info: ScryfallCard, flipped = false): boolean {
+  if (flipped) {
     const back = backFace(info);
     return !!back && LANDSCAPE_TYPES.test(back.type_line ?? '');
   }

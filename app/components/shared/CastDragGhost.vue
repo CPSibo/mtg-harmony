@@ -2,8 +2,17 @@
   <!-- What follows the pointer while dragging a card onto the board. -->
   <Teleport to="body">
     <template v-if="at">
+      <SharedCardImage
+        v-if="imageUri && settings.imagesEnabled && landscape"
+        landscape
+        frame-class="drag-ghost"
+        :frame-style="{ ...style, width: `${(width * 17) / 12}px` }"
+        :src="imageUri"
+        alt=""
+        aria-hidden="true"
+      />
       <img
-        v-if="imageUri && settings.imagesEnabled"
+        v-else-if="imageUri && settings.imagesEnabled"
         :src="imageUri"
         alt=""
         aria-hidden="true"
@@ -22,6 +31,8 @@
 </template>
 
 <script setup lang="ts">
+import SharedCardImage from '~/components/shared/CardImage.vue';
+import { isLandscapeFace } from '~/features/battlefield/cardFaces';
 import type { Position } from '@vueuse/core';
 import { computed } from 'vue';
 import SharedCardText from '~/components/shared/CardText.vue';
@@ -37,6 +48,7 @@ const props = defineProps<{
 }>();
 
 const settings = useSettingsStore();
+const landscape = computed(() => isLandscapeFace(props.card));
 
 const style = computed(() => ({
   left: `${props.at?.x ?? 0}px`,
