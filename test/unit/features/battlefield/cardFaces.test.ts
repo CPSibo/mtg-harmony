@@ -159,13 +159,17 @@ describe('shownFaces', () => {
 });
 
 describe('showsImage', () => {
-  it('follows the setting unless the card is swapped', () => {
+  it('follows the setting unless the card chose art or text', () => {
     const plain = makeCard();
     expect(showsImage(plain, true)).toBe(true);
     expect(showsImage(plain, false)).toBe(false);
 
-    const swapped = makeCard({ imageSwapped: true });
-    expect(showsImage(swapped, true)).toBe(false);
-    expect(showsImage(swapped, false)).toBe(true);
+    const text = makeCard({ shownAs: 'text' });
+    expect(showsImage(text, true)).toBe(false);
+    expect(showsImage(text, false)).toBe(false);
+
+    const art = makeCard({ shownAs: 'art' });
+    expect(showsImage(art, true)).toBe(true);
+    expect(showsImage(art, false)).toBe(true);
   });
 });

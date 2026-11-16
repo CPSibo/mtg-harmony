@@ -73,7 +73,7 @@
           color="neutral"
           variant="soft"
           size="xl"
-          @click="battlefield.toggleImageSwapped(card!)"
+          @click="battlefield.toggleShownAs(card!, settings.imagesEnabled)"
         >
           {{ showImage ? 'Show text' : 'Show art' }}
         </UButton>

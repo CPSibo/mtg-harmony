@@ -404,15 +404,18 @@ describe('battlefield store', () => {
       expect(card.tapped).toBe(false);
     });
 
-    it('swaps a card between art and text, counter to the setting', () => {
+    it('pins a card to the opposite of what it shows', () => {
       const board = useBattlefieldStore();
       board.addStackByCard(makeCard());
       const card = board.stacks[0]!.primary;
 
-      board.toggleImageSwapped(card);
-      expect(card.imageSwapped).toBe(true);
-      board.toggleImageSwapped(card);
-      expect(card.imageSwapped).toBe(false);
+      board.toggleShownAs(card, true);
+      expect(card.shownAs).toBe('text');
+      board.toggleShownAs(card, true);
+      expect(card.shownAs).toBe('art');
+      // Already art: the setting no longer matters.
+      board.toggleShownAs(card, false);
+      expect(card.shownAs).toBe('text');
     });
 
     it('flips a card over and back', () => {
@@ -617,7 +620,7 @@ describe('copying cards', () => {
     host.primary.tapped = true;
     host.primary.faceNumber = 3;
     host.primary.flipped = true;
-    host.primary.imageSwapped = true;
+    host.primary.shownAs = 'text';
     host.primary.modifiers.add({ modifier: flying, count: 2 });
     const under = makeCard({ name: 'Under 0', tapped: true });
     host.unders.add(under);
@@ -652,7 +655,7 @@ describe('copying cards', () => {
       tapped: true,
       faceNumber: 3,
       flipped: true,
-      imageSwapped: true,
+      shownAs: 'text',
     });
     expect([...copy.primary.modifiers]).toEqual([
       { modifier: flying, count: 2 },

@@ -15,9 +15,9 @@ function backFace(info: ScryfallCard): ScryfallCardFace | undefined {
   return back?.image_uris ? back : undefined;
 }
 
-/** Whether the card shows its art: the setting, unless the card swaps it. */
+/** Whether the card shows its art: its own choice, else the setting. */
 export function showsImage(card: BoardCard, imagesEnabled: boolean): boolean {
-  return imagesEnabled !== !!card.imageSwapped;
+  return card.shownAs ? card.shownAs === 'art' : imagesEnabled;
 }
 
 /** The image the card shows: its front, its back face, or the standard back. */
