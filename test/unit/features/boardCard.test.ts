@@ -34,6 +34,15 @@ describe('createBoardCard', () => {
     expect(a.scryfallInfo.id).toBe(scryfallCard.id);
   });
 
+  it('keeps the layout and keywords, which set how the card lies', () => {
+    const { scryfallInfo } = createBoardCard(
+      makeScryfallCard({ layout: 'split', keywords: ['Aftermath'] }),
+    );
+
+    expect(scryfallInfo.layout).toBe('split');
+    expect(scryfallInfo.keywords).toEqual(['Aftermath']);
+  });
+
   it('keeps only the Scryfall fields the app uses', () => {
     const scryfallCard = {
       ...makeScryfallCard({

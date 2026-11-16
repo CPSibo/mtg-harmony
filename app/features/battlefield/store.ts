@@ -400,6 +400,16 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     card.tapped = !card.tapped;
   }
 
+  /** Flips a card over, between its front and its back. */
+  function toggleFlipped(card: BoardCard) {
+    card.flipped = !card.flipped;
+  }
+
+  /** Turns a card 180� and back (Kamigawa flip cards). */
+  function toggleTurned(card: BoardCard) {
+    card.turned = !card.turned;
+  }
+
   /** Sets the number shown on a card's face (0 hides it). */
   function setFaceNumber(card: BoardCard, value: number) {
     card.faceNumber = value;
@@ -605,6 +615,8 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
 
     untapAll,
     toggleTapped,
+    toggleFlipped,
+    toggleTurned,
     setFaceNumber,
     clearModifiers,
 

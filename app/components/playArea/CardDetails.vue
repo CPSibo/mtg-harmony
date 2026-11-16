@@ -10,7 +10,7 @@
       <div>
         <img
           v-if="settings.imagesEnabled"
-          :src="card.image_uri"
+          :src="shownImageUri(card)"
           :alt="card.name"
           class="max-h-[80svh] mtg-card-display"
         />
@@ -34,6 +34,27 @@
             :class="['ms', `ms-${card.tapped ? 'untap' : 'tap'}`, 'ms-2x']"
           />
           {{ card.tapped ? 'Untap' : 'Tap' }}
+        </UButton>
+
+        <UButton
+          icon="i-lucide-flip-horizontal-2"
+          color="neutral"
+          variant="soft"
+          size="xl"
+          @click="flipOver"
+        >
+          Flip over
+        </UButton>
+
+        <UButton
+          v-if="canTurn(card)"
+          icon="i-lucide-rotate-cw"
+          color="neutral"
+          variant="soft"
+          size="xl"
+          @click="turn"
+        >
+          Flip 180�
         </UButton>
 
         <UButton
@@ -204,6 +225,7 @@ import SharedCardText from '~/components/shared/CardText.vue';
 import { useSettingsStore } from '~/stores/settings';
 import { computed, defineAsyncComponent, ref } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
+import { canTurn, shownImageUri } from '~/features/battlefield/cardFaces';
 import { useCopyAnimation, useMoveAnimation } from '~/features/castAnimation';
 import type { BoardCard } from '~/types/PlayArea';
 
@@ -245,6 +267,17 @@ const toggleTap = () => {
 
   battlefield.toggleTapped(props.card);
 
+  open.value = false;
+};
+
+const flipOver = () => {
+  if (!props.card) return;
+  battlefield.toggleFlipped(props.card);
+};
+
+const turn = () => {
+  if (!props.card) return;
+  battlefield.toggleTurned(props.card);
   open.value = false;
 };
 

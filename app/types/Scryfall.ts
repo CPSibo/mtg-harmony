@@ -30,6 +30,9 @@ export interface ScryfallCard {
   oracle_text?: string;
   power?: string;
   toughness?: string;
+  /** How the card is printed: normal, split, flip, transform, modal_dfc, planar� */
+  layout?: string;
+  keywords?: string[];
   /** Each face of a double-faced, split or adventure card. */
   card_faces?: ScryfallCardFace[];
   image_status: ImageStatus;
