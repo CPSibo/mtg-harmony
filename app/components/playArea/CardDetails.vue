@@ -15,7 +15,12 @@
     <template #content>
       <!-- A sideways image fills what the buttons leave, giving way so they
            always fit. -->
-      <div :class="{ 'min-w-0 flex-1': landscape }">
+      <div
+        :class="[
+          'flex max-h-[90svh] flex-col gap-3 overflow-y-auto',
+          { 'min-w-0 flex-1': landscape },
+        ]"
+      >
         <SharedCardImage
           v-if="settings.imagesEnabled"
           :landscape="landscape"
@@ -23,6 +28,12 @@
           :src="shownImageUri(card)"
           :alt="card.name"
           class="max-h-[80svh] mtg-card-display"
+        />
+        <!-- As wide as the image, never wider. -->
+        <SharedOracleText
+          v-if="settings.imagesEnabled && faces.length"
+          :faces="faces"
+          class="w-0 min-w-full"
         />
         <SharedCardText
           v-else
@@ -232,6 +243,7 @@ import UModal from '@nuxt/ui/components/Modal.vue';
 import USeparator from '@nuxt/ui/components/Separator.vue';
 import PlayAreaRemoveCardModal from '~/components/playArea/RemoveCardModal.vue';
 import SharedCardText from '~/components/shared/CardText.vue';
+import SharedOracleText from '~/components/shared/OracleText.vue';
 import { useSettingsStore } from '~/stores/settings';
 import { computed, defineAsyncComponent, ref } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
@@ -239,6 +251,7 @@ import SharedCardImage from '~/components/shared/CardImage.vue';
 import {
   canTurn,
   isLandscape,
+  shownFaces,
   shownImageUri,
 } from '~/features/battlefield/cardFaces';
 import { useCopyAnimation, useMoveAnimation } from '~/features/castAnimation';
@@ -295,6 +308,8 @@ const turn = () => {
   battlefield.toggleTurned(props.card);
   open.value = false;
 };
+
+const faces = computed(() => (props.card ? shownFaces(props.card) : []));
 
 const landscape = computed(() => !!props.card && isLandscape(props.card));
 

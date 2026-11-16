@@ -53,3 +53,15 @@ export function isLandscapeFace(info: ScryfallCard, flipped = false): boolean {
 export function canTurn(card: BoardCard): boolean {
   return card.scryfallInfo.layout === 'flip';
 }
+
+/**
+ * The faces whose text the card shows. A double-faced card shows the face
+ * that's up; split, adventure and flip cards print all their halves on one
+ * side. A face-down single-faced card shows only the standard back: none.
+ */
+export function shownFaces(card: BoardCard): ScryfallCardFace[] {
+  const info = card.scryfallInfo;
+  if (backFace(info)) return [info.card_faces![card.flipped ? 1 : 0]!];
+  if (card.flipped) return [];
+  return info.card_faces?.length ? [...info.card_faces] : [info];
+}
