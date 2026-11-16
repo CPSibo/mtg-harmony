@@ -6,6 +6,7 @@ import {
   isLandscapeFace,
   shownFaces,
   shownImageUri,
+  showsImage,
 } from '~/features/battlefield/cardFaces';
 import { makeCard, makeScryfallCard } from '../../fixtures/cards';
 import { cardData } from '~/features/battlefield/boardCard';
@@ -154,5 +155,21 @@ describe('shownFaces', () => {
       ],
     });
     expect(shownFaces(c).map((f) => f.name)).toEqual(['Fire', 'Ice']);
+  });
+});
+
+describe('showsImage', () => {
+  it('follows the setting unless the card chose art or text', () => {
+    const plain = makeCard();
+    expect(showsImage(plain, true)).toBe(true);
+    expect(showsImage(plain, false)).toBe(false);
+
+    const text = makeCard({ shownAs: 'text' });
+    expect(showsImage(text, true)).toBe(false);
+    expect(showsImage(text, false)).toBe(false);
+
+    const art = makeCard({ shownAs: 'art' });
+    expect(showsImage(art, true)).toBe(true);
+    expect(showsImage(art, false)).toBe(true);
   });
 });

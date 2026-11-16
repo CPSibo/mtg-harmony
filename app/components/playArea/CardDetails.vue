@@ -7,7 +7,7 @@
         'flex flex-row gap-3 p-6',
         // Wider for a sideways card, which the image then fills, and for
         // text-only cards, which otherwise get squeezed by the buttons.
-        (landscape || !settings.imagesEnabled) && 'sm:max-w-2xl',
+        (landscape || !showImage) && 'sm:max-w-2xl',
       ],
     }"
     title="Card details"
@@ -19,11 +19,11 @@
       <div
         :class="[
           'flex max-h-[90svh] flex-col gap-3 overflow-y-auto',
-          { 'min-w-0 flex-1': landscape || !settings.imagesEnabled },
+          { 'min-w-0 flex-1': landscape || !showImage },
         ]"
       >
         <SharedCardImage
-          v-if="settings.imagesEnabled"
+          v-if="showImage"
           :landscape="landscape"
           frame-class="w-full"
           :src="shownImageUri(card)"
@@ -32,7 +32,7 @@
         />
         <!-- As wide as the image, never wider. -->
         <SharedOracleText
-          v-if="settings.imagesEnabled && faces.length"
+          v-if="showImage && faces.length"
           :faces="faces"
           class="w-0 min-w-full"
         />
@@ -66,6 +66,16 @@
           @click="flipOver"
         >
           Flip over
+        </UButton>
+
+        <UButton
+          :icon="showImage ? 'i-lucide-text' : 'i-lucide-image'"
+          color="neutral"
+          variant="soft"
+          size="xl"
+          @click="battlefield.toggleShownAs(card!, settings.imagesEnabled)"
+        >
+          {{ showImage ? 'Show text' : 'Show art' }}
         </UButton>
 
         <UButton
@@ -254,6 +264,7 @@ import {
   isLandscape,
   shownFaces,
   shownImageUri,
+  showsImage,
 } from '~/features/battlefield/cardFaces';
 import { useCopyAnimation, useMoveAnimation } from '~/features/castAnimation';
 import type { BoardCard } from '~/types/PlayArea';
@@ -311,6 +322,10 @@ const turn = () => {
 };
 
 const faces = computed(() => (props.card ? shownFaces(props.card) : []));
+
+const showImage = computed(
+  () => !!props.card && showsImage(props.card, settings.imagesEnabled),
+);
 
 const landscape = computed(() => !!props.card && isLandscape(props.card));
 

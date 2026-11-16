@@ -1,3 +1,4 @@
+import { showsImage } from '~/features/battlefield/cardFaces';
 import { useLocalStorage } from '~/composables/useLocalStorage';
 import { pickImageUri } from '~/composables/useScryfall';
 import { defineStore } from 'pinia';
@@ -405,6 +406,14 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     card.flipped = !card.flipped;
   }
 
+  /**
+   * Pins a card to whichever of art or text it isn't showing now, so it stays
+   * that way when the setting changes (#150).
+   */
+  function toggleShownAs(card: BoardCard, imagesEnabled: boolean) {
+    card.shownAs = showsImage(card, imagesEnabled) ? 'text' : 'art';
+  }
+
   /** Turns a card 180� and back (Kamigawa flip cards). */
   function toggleTurned(card: BoardCard) {
     card.turned = !card.turned;
@@ -616,6 +625,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     untapAll,
     toggleTapped,
     toggleFlipped,
+    toggleShownAs,
     toggleTurned,
     setFaceNumber,
     clearModifiers,
