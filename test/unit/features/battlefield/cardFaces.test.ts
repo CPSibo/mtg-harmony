@@ -4,6 +4,7 @@ import {
   canTurn,
   isLandscape,
   isLandscapeFace,
+  shownFaces,
   shownImageUri,
 } from '~/features/battlefield/cardFaces';
 import { makeCard, makeScryfallCard } from '../../fixtures/cards';
@@ -118,5 +119,40 @@ describe('snapshotCard', () => {
       true,
     );
     expect(snapshotCard(makeCard()).landscape).toBeUndefined();
+  });
+});
+
+describe('shownFaces', () => {
+  it('gives a single-faced card its own text', () => {
+    const c = card({ name: 'Bear', oracle_text: 'Hi.', type_line: 'Creature' });
+    expect(shownFaces(c)).toEqual([
+      expect.objectContaining({ name: 'Bear', oracle_text: 'Hi.' }),
+    ]);
+  });
+
+  it('gives nothing for a face-down single-faced card', () => {
+    expect(
+      shownFaces({ ...card({ oracle_text: 'Hi.' }), flipped: true }),
+    ).toEqual([]);
+  });
+
+  it('gives the face of a double-faced card that is showing', () => {
+    const c = dfc('Creature', 'Land');
+    expect(shownFaces(c).map((f) => f.name)).toEqual(['Front']);
+    expect(shownFaces({ ...c, flipped: true }).map((f) => f.name)).toEqual([
+      'Back',
+    ]);
+  });
+
+  it('gives every half of a split card', () => {
+    const c = card({
+      layout: 'split',
+      oracle_text: undefined,
+      card_faces: [
+        { name: 'Fire', oracle_text: 'Burn.' },
+        { name: 'Ice', oracle_text: 'Tap.' },
+      ],
+    });
+    expect(shownFaces(c).map((f) => f.name)).toEqual(['Fire', 'Ice']);
   });
 });
