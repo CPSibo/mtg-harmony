@@ -24,6 +24,8 @@ export function useDragToCast({ onDrop }: DragToCastOptions) {
   const board = useBattlefieldStore();
 
   let pressedAt: (Position & { id: number }) | null = null;
+  // The element the press captured the pointer to, while one is under way.
+  let captor: HTMLElement | null = null;
 
   /** Where the ghost's centre is, in screen px, while dragging. */
   const ghost = ref<Position | null>(null);
@@ -34,8 +36,24 @@ export function useDragToCast({ onDrop }: DragToCastOptions) {
 
   function onPointerDown(e: PointerEvent) {
     if (e.button !== 0) return;
+    cancelDrag();
     pressedAt = { x: e.clientX, y: e.clientY, id: e.pointerId };
-    (e.target as Element).setPointerCapture?.(e.pointerId);
+    captor = e.target as HTMLElement;
+    captor.setPointerCapture?.(e.pointerId);
+    // A finger that leaves the window can lose the capture with no pointerup
+    // or pointercancel on the card, which left the ghost stuck. The window
+    // still sees the gesture end, and losing the capture early cancels.
+    captor.addEventListener('lostpointercapture', onLostCapture);
+    window.addEventListener('pointerup', onPointerUp, true);
+    window.addEventListener('pointercancel', onWindowCancel, true);
+  }
+
+  function onLostCapture(e: PointerEvent) {
+    if (pressedAt && e.pointerId === pressedAt.id) cancelDrag();
+  }
+
+  function onWindowCancel(e: PointerEvent) {
+    if (pressedAt && e.pointerId === pressedAt.id) cancelDrag();
   }
 
   function onPointerMove(e: PointerEvent) {
@@ -63,6 +81,10 @@ export function useDragToCast({ onDrop }: DragToCastOptions) {
   }
 
   function cancelDrag() {
+    captor?.removeEventListener('lostpointercapture', onLostCapture);
+    window.removeEventListener('pointerup', onPointerUp, true);
+    window.removeEventListener('pointercancel', onWindowCancel, true);
+    captor = null;
     pressedAt = null;
     ghost.value = null;
   }

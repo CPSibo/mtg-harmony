@@ -106,4 +106,39 @@ describe('useDragToCast', () => {
     d.onPointerMove(pointer('pointermove', 30, 0, source));
     expect(d.ghost.value).toBeNull();
   });
+
+  // A finger that leaves the window loses the pointer capture without a
+  // pointerup or pointercancel on the card, which left the ghost stuck.
+  it('cancels when the pointer capture is lost', () => {
+    const onDrop = vi.fn();
+    const d = drag(onDrop, boardEl);
+    source.dispatchEvent(
+      new PointerEvent('lostpointercapture', { pointerId: 1 }),
+    );
+    expect(d.ghost.value).toBeNull();
+    d.onPointerUp(pointer('pointerup', 300, 40, source));
+    expect(onDrop).not.toHaveBeenCalled();
+  });
+
+  it('ends on a pointerup that reaches only the window', () => {
+    const onDrop = vi.fn();
+    const d = drag(onDrop, boardEl);
+    window.dispatchEvent(
+      new PointerEvent('pointerup', {
+        pointerId: 1,
+        clientX: 300,
+        clientY: 40,
+      }),
+    );
+    expect(d.ghost.value).toBeNull();
+    expect(onDrop).toHaveBeenCalledWith({ x: 100, y: 20 });
+  });
+
+  it('cancels on a pointercancel that reaches only the window', () => {
+    const onDrop = vi.fn();
+    const d = drag(onDrop, boardEl);
+    window.dispatchEvent(new PointerEvent('pointercancel', { pointerId: 1 }));
+    expect(d.ghost.value).toBeNull();
+    expect(onDrop).not.toHaveBeenCalled();
+  });
 });
