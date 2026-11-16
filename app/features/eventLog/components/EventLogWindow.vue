@@ -61,10 +61,12 @@
           class="flex items-center gap-3 py-2"
           :class="{ 'bg-elevated/50': entry.type === 'gameMarker' }"
         >
-          <img
+          <SharedCardImage
             v-if="
               'card' in entry && entry.card.imageUri && settings.imagesEnabled
             "
+            :landscape="entry.card.landscape"
+            frame-class="w-11"
             :src="entry.card.imageUri"
             alt=""
             class="w-8 rounded-sm mtg-card-display"
@@ -129,6 +131,7 @@
 </template>
 
 <script setup lang="ts">
+import SharedCardImage from '~/components/shared/CardImage.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
 import UInput from '@nuxt/ui/components/Input.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';

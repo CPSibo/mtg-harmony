@@ -9,6 +9,8 @@ export interface LoggedCard {
   scryfallId: string;
   name: string;
   imageUri: string;
+  /** The image is of a card printed sideways (battle, Room, split card). */
+  landscape?: boolean;
   scryfallUri: string;
   /** What a text card shows, for when card images are off. */
   text?: LoggedCardText;

@@ -3,7 +3,8 @@
     ref="boardCard"
     :data-card-id="card.id"
     class="board-card origin-top-left flex gap-1"
-    :class="{ tapped: card.tapped }"
+    :class="{ tapped: card.tapped, sideways, landscape }"
+    :style="{ '--rotate': `${rotation}deg` }"
   >
     <div
       class="card-image-wrapper cursor-pointer rounded-lg"
@@ -20,7 +21,7 @@
         :aria-label="card.name"
         :style="
           settings.imagesEnabled
-            ? { backgroundImage: `url('${card.image_uri}')` }
+            ? { backgroundImage: `url('${imageUri}')` }
             : undefined
         "
         title="Double tap to open"
@@ -86,6 +87,7 @@ import SharedCardText from '~/components/shared/CardText.vue';
 import { useSettingsStore } from '~/stores/settings';
 import { computed, useTemplateRef } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
+import { isLandscape, shownImageUri } from '~/features/battlefield/cardFaces';
 import type { BoardCard } from '~/types/PlayArea';
 
 const props = defineProps<{
@@ -102,6 +104,19 @@ const stack = computed(() => props.card.stack);
 const battlefield = useBattlefieldStore();
 const settings = useSettingsStore();
 const animateMove = useMoveAnimation();
+
+const imageUri = computed(() => shownImageUri(props.card));
+const landscape = computed(() => isLandscape(props.card));
+// Lies on its long side: a landscape card untapped, or any other card tapped.
+const sideways = computed(() => landscape.value !== props.card.tapped);
+// Scryfall's images are portrait, with landscape cards printed sideways in
+// them, so the image keeps its size and turns a quarter clockwise to read.
+const rotation = computed(
+  () =>
+    (landscape.value ? 90 : 0) +
+    (props.card.tapped ? 90 : 0) +
+    (props.card.turned ? 180 : 0),
+);
 
 const isValidAttachmentTarget = computed(() => {
   return battlefield.isValidAttachmentTarget(props.card);
@@ -152,7 +167,7 @@ useDoubleTap(cardImageSection, () => emits('showCardDetails', props.card));
       position: absolute;
       top: 50%;
       left: 50%;
-      transform: translate(-50%, -50%) rotate(0deg);
+      transform: translate(-50%, -50%) rotate(var(--rotate, 0deg));
       transition: transform 180ms ease-out;
 
       box-sizing: content-box;
@@ -178,15 +193,9 @@ useDoubleTap(cardImageSection, () => emits('showCardDetails', props.card));
     }
   }
 
-  &.tapped {
-    .card-image-wrapper {
-      width: var(--h);
-      height: var(--w);
-
-      .card-image {
-        transform: translate(-50%, -50%) rotate(90deg);
-      }
-    }
+  &.sideways .card-image-wrapper {
+    width: var(--h);
+    height: var(--w);
   }
 
   &:hover .modifier-icon {
@@ -210,14 +219,14 @@ useDoubleTap(cardImageSection, () => emits('showCardDetails', props.card));
   grid-template-rows: repeat(3, minmax(0, 1fr));
 }
 
-:not(.attachment) > .tapped + .modifiers {
+:not(.attachment) > .sideways + .modifiers {
   top: 17%;
   left: 15%;
   padding-bottom: 60%;
   grid-template-rows: repeat(5, minmax(0, 1fr));
 }
 
-.attachment > .tapped + .modifiers {
+.attachment > .sideways + .modifiers {
   padding-top: 45%;
   left: 12%;
   padding-bottom: 60%;

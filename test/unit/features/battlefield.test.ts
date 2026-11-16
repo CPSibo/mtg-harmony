@@ -404,6 +404,28 @@ describe('battlefield store', () => {
       expect(card.tapped).toBe(false);
     });
 
+    it('flips a card over and back', () => {
+      const board = useBattlefieldStore();
+      board.addStackByCard(makeCard());
+      const card = board.stacks[0]!.primary;
+
+      board.toggleFlipped(card);
+      expect(card.flipped).toBe(true);
+      board.toggleFlipped(card);
+      expect(card.flipped).toBe(false);
+    });
+
+    it('turns a card 180� and back', () => {
+      const board = useBattlefieldStore();
+      board.addStackByCard(makeCard());
+      const card = board.stacks[0]!.primary;
+
+      board.toggleTurned(card);
+      expect(card.turned).toBe(true);
+      board.toggleTurned(card);
+      expect(card.turned).toBe(false);
+    });
+
     it('sets the face number', () => {
       const board = useBattlefieldStore();
       board.addStackByCard(makeCard());
@@ -583,6 +605,7 @@ describe('copying cards', () => {
     host.position = { x: 500, y: 600 };
     host.primary.tapped = true;
     host.primary.faceNumber = 3;
+    host.primary.flipped = true;
     host.primary.modifiers.add({ modifier: flying, count: 2 });
     const under = makeCard({ name: 'Under 0', tapped: true });
     host.unders.add(under);
@@ -613,7 +636,11 @@ describe('copying cards', () => {
 
     const copy = board.copyCard(host.primary, 'counters');
 
-    expect(copy.primary).toMatchObject({ tapped: true, faceNumber: 3 });
+    expect(copy.primary).toMatchObject({
+      tapped: true,
+      faceNumber: 3,
+      flipped: true,
+    });
     expect([...copy.primary.modifiers]).toEqual([
       { modifier: flying, count: 2 },
     ]);

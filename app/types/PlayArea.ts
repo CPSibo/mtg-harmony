@@ -32,6 +32,10 @@ export interface BoardCard {
   tapped: boolean;
   stack?: BoardCardStack;
   faceNumber: number;
+  /** Flipped over: shows its back face, or the standard card back. */
+  flipped?: boolean;
+  /** Turned 180� (Kamigawa flip cards). */
+  turned?: boolean;
 }
 
 export interface Modifier {

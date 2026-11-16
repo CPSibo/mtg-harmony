@@ -28,7 +28,7 @@
 
     <div
       class="primary-card-wrapper flex flex-row"
-      :class="{ 'primary-tapped': stack.primary.tapped }"
+      :class="{ 'primary-sideways': primarySideways }"
     >
       <PlayAreaBoardCardStackActions
         :stack="stack"
@@ -80,6 +80,7 @@ import {
   useSelectionStore,
 } from '~/features/battlefield';
 import { useSettingsStore } from '~/stores/settings';
+import { isLandscape } from '~/features/battlefield/cardFaces';
 import type { BoardCard, BoardCardStack } from '~/types/PlayArea';
 
 const isDragging = defineModel<boolean>('isDragging');
@@ -95,6 +96,9 @@ const emits = defineEmits<{
 }>();
 
 const battlefield = useBattlefieldStore();
+const primarySideways = computed(
+  () => isLandscape(props.stack.primary) !== props.stack.primary.tapped,
+);
 const settings = useSettingsStore();
 const selection = useSelectionStore();
 const animateMove = useMoveAnimation();
@@ -349,15 +353,15 @@ watch(myIsDragging, (value) => {
   z-index: 1;
 }
 
-/* A tapped primary turns in place: it keeps its untapped width, overhanging
+/* A sideways primary (tapped, or landscape) lies in place: it keeps its untapped width, overhanging
    both sides evenly, so it stays centred on the stack (#127). It still gives
    up the height it no longer covers, so the attachments ride up under it. */
-.board-card-stack .primary-card.tapped :deep(.card-image-wrapper) {
+.board-card-stack .primary-card.sideways :deep(.card-image-wrapper) {
   width: var(--w);
 }
 
 /* Counters step right past the overhang. */
-.board-card-stack .primary-card.tapped :deep(.modifiers) {
+.board-card-stack .primary-card.sideways :deep(.modifiers) {
   left: calc(100% + (var(--h) - var(--w)) / 2 + 0.3em);
 }
 
@@ -370,7 +374,7 @@ watch(myIsDragging, (value) => {
   }
 }
 
-.primary-card-wrapper.primary-tapped :deep(.stack-actions) {
+.primary-card-wrapper.primary-sideways :deep(.stack-actions) {
   translate: calc((var(--w) - var(--h)) / 2) 0;
 }
 

@@ -2,15 +2,25 @@
   <UModal
     v-if="!!card"
     v-model:open="open"
-    :ui="{ content: 'flex flex-row gap-3 p-6' }"
+    :ui="{
+      content: [
+        'flex flex-row gap-3 p-6',
+        // Wider for a sideways card, which the image then fills.
+        landscape && settings.imagesEnabled && 'sm:max-w-2xl',
+      ],
+    }"
     title="Card details"
     description="Actions and info about this card"
   >
     <template #content>
-      <div>
-        <img
+      <!-- A sideways image fills what the buttons leave, giving way so they
+           always fit. -->
+      <div :class="{ 'min-w-0 flex-1': landscape }">
+        <SharedCardImage
           v-if="settings.imagesEnabled"
-          :src="card.image_uri"
+          :landscape="landscape"
+          frame-class="w-full"
+          :src="shownImageUri(card)"
           :alt="card.name"
           class="max-h-[80svh] mtg-card-display"
         />
@@ -34,6 +44,27 @@
             :class="['ms', `ms-${card.tapped ? 'untap' : 'tap'}`, 'ms-2x']"
           />
           {{ card.tapped ? 'Untap' : 'Tap' }}
+        </UButton>
+
+        <UButton
+          icon="i-lucide-flip-horizontal-2"
+          color="neutral"
+          variant="soft"
+          size="xl"
+          @click="flipOver"
+        >
+          Flip over
+        </UButton>
+
+        <UButton
+          v-if="canTurn(card)"
+          icon="i-lucide-rotate-cw"
+          color="neutral"
+          variant="soft"
+          size="xl"
+          @click="turn"
+        >
+          Flip 180�
         </UButton>
 
         <UButton
@@ -204,6 +235,12 @@ import SharedCardText from '~/components/shared/CardText.vue';
 import { useSettingsStore } from '~/stores/settings';
 import { computed, defineAsyncComponent, ref } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
+import SharedCardImage from '~/components/shared/CardImage.vue';
+import {
+  canTurn,
+  isLandscape,
+  shownImageUri,
+} from '~/features/battlefield/cardFaces';
 import { useCopyAnimation, useMoveAnimation } from '~/features/castAnimation';
 import type { BoardCard } from '~/types/PlayArea';
 
@@ -247,6 +284,19 @@ const toggleTap = () => {
 
   open.value = false;
 };
+
+const flipOver = () => {
+  if (!props.card) return;
+  battlefield.toggleFlipped(props.card);
+};
+
+const turn = () => {
+  if (!props.card) return;
+  battlefield.toggleTurned(props.card);
+  open.value = false;
+};
+
+const landscape = computed(() => !!props.card && isLandscape(props.card));
 
 const hasAttachments = computed(() => {
   if (!props.card || !props.card.stack?.primary) return false;
