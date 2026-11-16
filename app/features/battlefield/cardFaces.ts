@@ -29,9 +29,9 @@ const LANDSCAPE_TYPES = /\b(Battle|Room)\b/;
 
 /**
  * Whether the shown image is printed sideways, so the card lies landscape
- * when untapped. Scryfall has no flag for this; it stores battle fronts,
- * Rooms, classic split cards and planes as landscape images, and this follows
- * that. Aftermath split cards are printed upright.
+ * when untapped. Scryfall has no flag for this, and its images are all
+ * portrait, with these cards printed sideways in them; this goes by layout and
+ * type line: battle fronts, Rooms, classic split cards and planes. Aftermath split cards are printed upright.
  */
 export function isLandscape(card: BoardCard): boolean {
   const info = card.scryfallInfo;

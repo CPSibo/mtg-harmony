@@ -109,8 +109,13 @@ const imageUri = computed(() => shownImageUri(props.card));
 const landscape = computed(() => isLandscape(props.card));
 // Lies on its long side: a landscape card untapped, or any other card tapped.
 const sideways = computed(() => landscape.value !== props.card.tapped);
+// Scryfall's images are portrait, with landscape cards printed sideways in
+// them, so the image keeps its size and turns a quarter clockwise to read.
 const rotation = computed(
-  () => (props.card.tapped ? 90 : 0) + (props.card.turned ? 180 : 0),
+  () =>
+    (landscape.value ? 90 : 0) +
+    (props.card.tapped ? 90 : 0) +
+    (props.card.turned ? 180 : 0),
 );
 
 const isValidAttachmentTarget = computed(() => {
@@ -186,13 +191,6 @@ useDoubleTap(cardImageSection, () => emits('showCardDetails', props.card));
     .card-image-wrapper .card-image {
       transition: none;
     }
-  }
-
-  /* Landscape art (battles, Rooms, split cards) is drawn on its long side. */
-  &.landscape .card-image-wrapper .card-image {
-    width: var(--scaled-long);
-    height: var(--scaled-short);
-    background-size: var(--scaled-long) var(--scaled-short);
   }
 
   &.sideways .card-image-wrapper {
