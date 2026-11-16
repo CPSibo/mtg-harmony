@@ -5,8 +5,9 @@
     :ui="{
       content: [
         'flex flex-row gap-3 p-6',
-        // Wider for a sideways card, which the image then fills.
-        landscape && settings.imagesEnabled && 'sm:max-w-2xl',
+        // Wider for a sideways card, which the image then fills, and for
+        // text-only cards, which otherwise get squeezed by the buttons.
+        (landscape || !settings.imagesEnabled) && 'sm:max-w-2xl',
       ],
     }"
     title="Card details"
@@ -18,7 +19,7 @@
       <div
         :class="[
           'flex max-h-[90svh] flex-col gap-3 overflow-y-auto',
-          { 'min-w-0 flex-1': landscape },
+          { 'min-w-0 flex-1': landscape || !settings.imagesEnabled },
         ]"
       >
         <SharedCardImage
@@ -40,7 +41,7 @@
           :card="card.scryfallInfo"
           role="img"
           :aria-label="card.name"
-          class="w-72"
+          class="w-72 max-w-full shrink-0"
         />
       </div>
 
@@ -75,7 +76,7 @@
           size="xl"
           @click="turn"
         >
-          Flip 180�
+          Flip 180°
         </UButton>
 
         <UButton
