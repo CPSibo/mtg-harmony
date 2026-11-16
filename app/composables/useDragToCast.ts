@@ -43,7 +43,11 @@ export function useDragToCast({ onDrop }: DragToCastOptions) {
     // A finger that leaves the window can lose the capture with no pointerup
     // or pointercancel on the card, which left the ghost stuck. The window
     // still sees the gesture end, and losing the capture early cancels.
+    // Moves come from the window too: under the Add Card modal, Chrome's
+    // touch emulation sends them to whatever is under the finger, such as a
+    // stack's buttons, and the ghost froze there.
     captor.addEventListener('lostpointercapture', onLostCapture);
+    window.addEventListener('pointermove', onPointerMove, true);
     window.addEventListener('pointerup', onPointerUp, true);
     window.addEventListener('pointercancel', onWindowCancel, true);
   }
@@ -82,6 +86,7 @@ export function useDragToCast({ onDrop }: DragToCastOptions) {
 
   function cancelDrag() {
     captor?.removeEventListener('lostpointercapture', onLostCapture);
+    window.removeEventListener('pointermove', onPointerMove, true);
     window.removeEventListener('pointerup', onPointerUp, true);
     window.removeEventListener('pointercancel', onWindowCancel, true);
     captor = null;

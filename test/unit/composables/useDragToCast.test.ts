@@ -141,4 +141,27 @@ describe('useDragToCast', () => {
     expect(d.ghost.value).toBeNull();
     expect(onDrop).not.toHaveBeenCalled();
   });
+
+  // Under the Add Card modal, Chrome's touch emulation can send moves to
+  // whatever is under the finger, such as a stack's buttons (#151).
+  it('follows moves that reach only the window', () => {
+    const d = drag(vi.fn(), boardEl);
+    window.dispatchEvent(
+      new PointerEvent('pointermove', {
+        pointerId: 1,
+        clientX: 500,
+        clientY: 90,
+      }),
+    );
+    expect(d.ghost.value).toEqual({ x: 500, y: 90 });
+    d.cancelDrag();
+    window.dispatchEvent(
+      new PointerEvent('pointermove', {
+        pointerId: 1,
+        clientX: 600,
+        clientY: 90,
+      }),
+    );
+    expect(d.ghost.value).toBeNull();
+  });
 });
