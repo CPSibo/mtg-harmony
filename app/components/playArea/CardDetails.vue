@@ -5,8 +5,9 @@
     :ui="{
       content: [
         'flex flex-row gap-3 p-6',
-        // Wider for a sideways card, which the image then fills.
-        landscape && settings.imagesEnabled && 'sm:max-w-2xl',
+        // Wider for a sideways card, which the image then fills, and for
+        // text-only cards, which otherwise get squeezed by the buttons.
+        (landscape || !settings.imagesEnabled) && 'sm:max-w-2xl',
       ],
     }"
     title="Card details"
