@@ -129,6 +129,7 @@ const {
   onTouchStart,
   onTouchMove,
   onTouchEnd,
+  onTouchCancel,
 } = usePanAndZoom({
   size: BOARD_SIZE,
   onEnd: () => {
@@ -319,6 +320,7 @@ onMounted(() => {
   el.addEventListener('touchstart', guardedTouchStart, { passive: false });
   el.addEventListener('touchmove', guardedTouchMove, { passive: false });
   el.addEventListener('touchend', guardedTouchEnd, { passive: true });
+  el.addEventListener('touchcancel', onTouchCancel, { passive: true });
 });
 
 onUnmounted(() => {
@@ -328,6 +330,7 @@ onUnmounted(() => {
   el.removeEventListener('touchstart', guardedTouchStart);
   el.removeEventListener('touchmove', guardedTouchMove);
   el.removeEventListener('touchend', guardedTouchEnd);
+  el.removeEventListener('touchcancel', onTouchCancel);
 });
 
 // The touch handlers above pan and zoom the board; this stops Safari zooming
