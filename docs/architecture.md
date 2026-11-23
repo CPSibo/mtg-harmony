@@ -247,13 +247,21 @@ Rules the battlefield store enforces:
   request is made only when the grid pages past what's loaded. Picking one calls `swapPrinting`, which replaces
   the card's `scryfallInfo`, image and link and keeps its ID, stack and state. It isn't logged; the log's
   snapshots keep the art each event saw.
+- **Meld** in card details (#143, `meld.ts`) shows on a meld half while its other half is on the board,
+  attached, under or on its own (`meldPartner`, matched by name, so any printing counts). `cardData()` keeps only
+  the meld parts of Scryfall's `all_parts`. It fetches the melded card by ID (`fetchCardById`, through the shared
+  rate limit; disabled offline), then `meld` puts it in the first half's place in its stack and takes the other
+  half off the board as if removed (its stack-mates explode out as usual). The melded card keeps both halves, in
+  no stack and as they were, on `meldedFrom`, saved with it. **Unmeld** (`unmeld`) puts the first half back in
+  its place and the second in a stack of its own beside it. A melded card cast or added directly, or a copy of
+  one, has no halves and can't unmeld.
 - Card and stack IDs come from `randomUUID` (`utils/randomUUID.ts`). It falls back to `crypto.getRandomValues`
   where `crypto.randomUUID` is missing, as on a plain-HTTP dev server opened from a phone.
 
 ## Event log
 
 `features/eventLog` keeps one list of meaningful changes, newest last: fetched, cast, added, attached, put under,
-copied, removed, board cleared and game markers. Moving, tapping and counters aren't logged.
+copied, removed, melded, unmelded, board cleared and game markers. Moving, tapping and counters aren't logged.
 
 The log is split in two (#81):
 
@@ -285,6 +293,8 @@ The log is split in two (#81):
   | `putUnder`     | `battlefield.finishAttaching` in under mode                        |
   | `copied`       | `battlefield.copyCard`, with the new card, its source and the mode |
   | `removed`      | `battlefield.removeCard`, not the moves it causes                  |
+  | `melded`       | `battlefield.meld`: the melded card and both halves                |
+  | `unmelded`     | `battlefield.unmeld`: the melded card and both halves              |
   | `boardCleared` | `battlefield.clearBoard`, which the menu's clear actions call      |
 
   Internal moves (`removeCardFromStack`, `explodeStack`, `detach`) aren't logged.
@@ -322,6 +332,7 @@ All calls go straight from the browser to `api.scryfall.com`. There is no proxy 
 | On-deck fetching | `GET /cards/random?q=-t:land+game:paper`              | `useScryfall` → `useDiscordFetcherStore` |
 | Add Card search  | `GET /cards/search?q=…` (debounced 500 ms, cancelled) | `AddCardWindow.vue`                      |
 | Swap art         | `GET /cards/search?q=!"name" [e:set]&unique=prints`   | `usePrintings` → `SwapArtModal.vue`      |
+| Meld             | `GET /cards/:id` (the meld result from `all_parts`)   | `fetchCardById` → `CardDetails.vue`      |
 
 - **Rate limiting** (`useScryfall`): requests are spaced at least 600 ms apart, shared across all callers.
   Scryfall allows about 2 per second. A 429 waits out Scryfall's 30-second cooldown once; a second 429 stops the

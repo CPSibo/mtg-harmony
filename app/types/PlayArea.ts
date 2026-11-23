@@ -38,6 +38,11 @@ export interface BoardCard {
   turned?: boolean;
   /** Shown as art or text whatever the setting says; unset follows it (#150). */
   shownAs?: 'art' | 'text';
+  /**
+   * On a card melded on the board: the two halves it was melded from, as
+   * they were, in no stack. Unmeld puts them back (#143).
+   */
+  meldedFrom?: [BoardCard, BoardCard];
 }
 
 export interface Modifier {
