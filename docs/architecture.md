@@ -162,7 +162,9 @@ starts; and a dragged stack is its own GPU layer. On drop it calls
 so a zoom doesn't re-render every stack. Drags and pans follow the **Pointer smoothing** setting
 (`pointerSmoothing.ts`): 0 jumps to each pointer update; otherwise they ease towards it with that time
 constant in ms. While a stack is dragged, the board's own touch handling stands down
-(`anyCardIsDragging`).
+(`anyCardIsDragging`). A stack removed mid-drag (another finger, a board wipe) gets no `pointerup`, so the
+composable ends the drag when it's disposed and calls `onCancel`, which hands the board back its touches and lets
+the group drag and radial menu go (#160).
 
 ### Z-order
 
