@@ -60,18 +60,33 @@
         />
         <SharedPlaceholder
           v-else
-          class="cursor-pointer mtg-card-display vertical"
-          @click="goNext"
+          class="mtg-card-display vertical"
+          :class="{ 'cursor-pointer': !cantFetch }"
+          @click="!cantFetch && goNext()"
         >
-          <div class="flex flex-col gap-3 items-center">
+          <div class="flex flex-col gap-3 items-center text-center">
             <UIcon
-              name="i-lucide-arrow-down-to-line"
+              :name="
+                cantFetch ? 'i-lucide-wifi-off' : 'i-lucide-arrow-down-to-line'
+              "
               class="text-primary text-4xl"
             />
-            Tap to fetch next card
+            {{ cantFetch ? 'Offline' : 'Tap to fetch next card' }}
           </div>
         </SharedPlaceholder>
       </div>
+
+      <p
+        v-if="!online"
+        role="status"
+        class="mt-3 flex items-center gap-2 text-sm text-muted"
+      >
+        <UIcon
+          name="i-lucide-wifi-off"
+          class="shrink-0"
+        />
+        {{ OFFLINE_MESSAGE }}
+      </p>
 
       <div class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
         <UButton
@@ -90,6 +105,7 @@
           variant="subtle"
           icon="i-lucide-arrow-right"
           :loading="loading"
+          :disabled="cantFetch"
           size="xl"
           @click="goNext"
         >
@@ -148,19 +164,24 @@ import SharedPlaceholder from '~/components/shared/Placeholder.vue';
 import { useSettingsStore } from '~/stores/settings';
 import { useToast } from '@nuxt/ui/composables';
 import { storeToRefs } from 'pinia';
-import type { Position } from '@vueuse/core';
-import { ref, useTemplateRef } from 'vue';
+import { useOnline, type Position } from '@vueuse/core';
+import { computed, ref, useTemplateRef } from 'vue';
 import { castSource, useCastAnimation } from '~/features/castAnimation';
 import { useDragToCast } from '~/composables/useDragToCast';
 import { useBattlefieldStore } from '~/features/battlefield';
-import { useDiscordFetcherStore } from '..';
+import { OFFLINE_MESSAGE, useDiscordFetcherStore } from '..';
 
 const toast = useToast();
 
 const drawerIsOpen = ref(false);
 
 const discordFetchStore = useDiscordFetcherStore();
-const { card, canGoPrevious } = storeToRefs(discordFetchStore);
+const { card, canGoPrevious, nextNeedsNetwork } =
+  storeToRefs(discordFetchStore);
+
+// Offline, Next card still works through cards already queued or shown (#169).
+const online = useOnline();
+const cantFetch = computed(() => !online.value && nextNeedsNetwork.value);
 
 const board = useBattlefieldStore();
 const settings = useSettingsStore();

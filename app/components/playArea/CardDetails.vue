@@ -202,6 +202,8 @@
           color="neutral"
           variant="ghost"
           size="xl"
+          :disabled="!online"
+          :title="online ? undefined : 'Swap art needs a connection'"
           @click="openSwapArt"
         >
           Swap art
@@ -256,6 +258,7 @@ import PlayAreaRemoveCardModal from '~/components/playArea/RemoveCardModal.vue';
 import SharedCardText from '~/components/shared/CardText.vue';
 import SharedOracleText from '~/components/shared/OracleText.vue';
 import { useSettingsStore } from '~/stores/settings';
+import { useOnline } from '@vueuse/core';
 import { computed, defineAsyncComponent, ref } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import SharedCardImage from '~/components/shared/CardImage.vue';
@@ -270,6 +273,9 @@ import { useCopyAnimation, useMoveAnimation } from '~/features/castAnimation';
 import type { BoardCard } from '~/types/PlayArea';
 
 const open = defineModel<boolean>('open', { default: false });
+
+// Swap art lists printings from Scryfall (#169).
+const online = useOnline();
 
 const props = defineProps<{
   card: BoardCard | undefined;

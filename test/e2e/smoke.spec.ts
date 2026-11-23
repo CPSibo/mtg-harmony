@@ -762,3 +762,38 @@ test('the log keeps the last game after a new game and a reload', async ({
   await expect(events.getByText('New game (from the menu)')).toBeVisible();
   await expect(events.getByText(`Cast ${card.name}`)).toBeVisible();
 });
+
+// #169: the installed app opens without a network.
+test.describe('offline', () => {
+  test.use({ serviceWorkers: 'allow' });
+
+  test('the app opens offline, with what was on the board', async ({
+    page,
+    context,
+  }) => {
+    await page.getByRole('button', { name: 'On-deck' }).click();
+    await page.getByRole('button', { name: 'Next card' }).click();
+    await page.getByRole('button', { name: 'Cast to board' }).click();
+    const boardCard = page.locator('.board-card').getByRole('img', {
+      name: card.name,
+    });
+    await expect(boardCard).toBeVisible();
+    // The worker controls the page once it has precached the shell: it only
+    // activates after its install, and then claims the page.
+    await page.waitForFunction(() => {
+      const sw = (
+        navigator as unknown as { serviceWorker?: { controller: unknown } }
+      ).serviceWorker;
+      return !!sw?.controller;
+    });
+
+    await context.setOffline(true);
+    await page.reload();
+
+    await expect(boardCard).toBeVisible();
+    await page.getByRole('button', { name: 'On-deck' }).click();
+    await expect(page.getByText("You're offline.")).toBeVisible();
+    // Whether Next card still works depends on what On-deck had queued in
+    // time; the store's unit tests cover both.
+  });
+});

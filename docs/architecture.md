@@ -335,6 +335,29 @@ All calls go straight from the browser to `api.scryfall.com`. There is no proxy 
   and "previous" steps back through those log entries (since the last New game), rebuilding each card from
   its snapshot. "Next" steps forward through them again before taking a new card from the queue.
 
+## Offline
+
+The production build has a service worker (#169). `vite.config.ts` generates `/sw.js` at build time from
+`app/pwa/serviceWorker.ts`, with a precache list of the app shell: the page, every script, style and font in the
+build, the manifest and icons. `app/pwa/register.ts` registers it after load; the dev server has none.
+
+- Pages are network first. After 3 s, or offline, it serves the cached shell instead, so a deploy shows on the
+  next load with a connection.
+- Same-origin files are cache first; their names are content-hashed. Matches ignore `Vary`, because module
+  scripts are CORS requests and the server answers with `Vary: Origin`.
+- A new build installs its own cache and takes over at once. It keeps the previous build's cache, so a tab still
+  on the old build can load its lazy chunks; older caches go.
+- Scryfall requests and card images go to the network as before. Offline, images the browser hasn't cached
+  don't load.
+- `_headers` serves `sw.js` with `no-cache`.
+
+Offline (VueUse `useOnline`), the parts that need Scryfall say so instead of failing per request:
+
+- On-deck: Next card still steps through queued and shown cards, and otherwise says it's offline. The queue
+  tops up when the connection comes back.
+- Add Card: doesn't search.
+- Swap art: disabled.
+
 ## Gotchas
 
 - **Touch listeners in `Board.vue` are added imperatively.** Vue's `@touchstart.stop.prevent` modifiers compile

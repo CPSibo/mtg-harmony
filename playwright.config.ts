@@ -14,6 +14,9 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:4173',
     trace: 'on-first-retry',
+    // The production build registers a service worker (#169). Requests it
+    // makes skip page.route, so tests block it unless they test it.
+    serviceWorkers: 'block',
   },
   projects: [
     {
