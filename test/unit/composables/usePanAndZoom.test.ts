@@ -45,6 +45,28 @@ describe('usePanAndZoom', () => {
     }
   });
 
+  // #170: Tab to a card off screen scrolls the board's wrapper; Board.vue
+  // undoes the scroll and pans by it instead.
+  it('pans by an offset, within the board, and reports the end', () => {
+    const ends: unknown[] = [];
+    const scope = effectScope();
+    const pz = scope.run(() =>
+      usePanAndZoom({
+        size: { width: 5000, height: 5000 },
+        onEnd: (p) => ends.push(p),
+      }),
+    )!;
+    const start = { ...pz.position.value };
+
+    pz.panBy(-200, 120);
+
+    expect(pz.position.value).toEqual({ x: start.x - 200, y: start.y + 120 });
+    expect(ends).toHaveLength(1);
+
+    pz.panBy(1e6, 1e6);
+    expect(pz.position.value).toEqual({ x: 0, y: 0 });
+  });
+
   describe('touch', () => {
     const touch = (id: number, x: number, y: number) =>
       ({ identifier: id, clientX: x, clientY: y }) as Touch;

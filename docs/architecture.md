@@ -187,6 +187,19 @@ on, and a group drag's offset. It isn't saved. IDs of stacks that leave the boar
   `groupOffset` on top of their own position and write their final positions, clamped to the board, on drop.
   A group drag doesn't open the radial menu.
 
+### Keyboard and screen readers
+
+- Every board card (`.card-image`, `role="img"` named after the card) is in the tab order. Enter or Space opens
+  its details, or picks it as the target while attaching. Esc stops attaching before it clears a selection.
+- A primary card comes before its stack's actions in the DOM, so Tab goes card, Tap, Card details, Copy, Remove.
+  CSS `order` keeps the actions on the left. They hide with `opacity`, not `display: none`, so Tab can still
+  reach them, and show on hover or `:has(:focus-visible)` (not plain focus, so they don't stay up after a click).
+- Tab to a card off screen makes the browser scroll `.board-wrapper`. `Board.vue` undoes the scroll and pans
+  the board by the same distance (`panBy`), so the pan and the pointer maths stay in step.
+- Icon-only buttons carry an `aria-label`, and counters are buttons named after the counter and its count.
+- Card outlines are `slate-500`, at least 3:1 against the board. The grid is decorative (`aria-hidden`) and
+  stays faint.
+
 ### Input mode
 
 `useInputModeStore` tracks whether the last pointer was a finger or a mouse, from `pointerdown` and `pointermove`

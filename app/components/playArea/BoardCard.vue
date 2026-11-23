@@ -10,7 +10,7 @@
       class="card-image-wrapper cursor-pointer rounded-lg"
       :class="
         settings.cardOutlineEnabled
-          ? 'border-slate-600 hover:border-primary-800'
+          ? 'border-slate-500 hover:border-primary-800'
           : 'border-transparent'
       "
     >
@@ -19,12 +19,15 @@
         class="card-image"
         role="img"
         :aria-label="card.name"
+        tabindex="0"
         :style="
           showImage ? { backgroundImage: `url('${imageUri}')` } : undefined
         "
         title="Double tap to open"
         @click="tryAttach"
         @touchend="tryAttach"
+        @keydown.enter.self.prevent="onKey"
+        @keydown.space.self.prevent="onKey"
       >
         <SharedCardText
           v-if="!showImage"
@@ -40,7 +43,11 @@
         </div>
 
         <div
-          v-if="battlefield.isAttaching && isHovered && isValidAttachmentTarget"
+          v-if="
+            battlefield.isAttaching &&
+            (isHovered || isFocused) &&
+            isValidAttachmentTarget
+          "
           class="attach-overlay text-5xl"
         >
           <UIcon
@@ -56,11 +63,13 @@
     </div>
 
     <div class="modifiers grid grid-flow-col gap-1 place-items-start">
-      <div
+      <button
         v-for="modifier in card.modifiers"
         :key="modifier.modifier.name"
+        type="button"
         class="modifier-icon gap-1 flex items-center bg-gray-950/90 px-1 py-0.5 rounded-sm cursor-pointer"
         :title="modifier.modifier.name"
+        :aria-label="modifierLabel(modifier)"
         @click.stop="emits('showCardModifiers', card)"
       >
         <span :class="['ms', modifier.modifier.symbol]" />
@@ -70,7 +79,7 @@
         >
           x{{ modifier.count }}
         </span>
-      </div>
+      </button>
     </div>
   </div>
 </template>
@@ -79,7 +88,7 @@
 import { useMoveAnimation } from '~/features/castAnimation';
 // Nuxt UI's plain-Vue Icon; components/Icon.vue is the Nuxt-only variant.
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
-import { useElementHover } from '@vueuse/core';
+import { useElementHover, useFocus } from '@vueuse/core';
 import { useDoubleTap } from '~/composables/useDoubleTap';
 import SharedCardText from '~/components/shared/CardText.vue';
 import { useSettingsStore } from '~/stores/settings';
@@ -90,7 +99,7 @@ import {
   shownImageUri,
   showsImage,
 } from '~/features/battlefield/cardFaces';
-import type { BoardCard } from '~/types/PlayArea';
+import type { BoardCard, BoardCardModifier } from '~/types/PlayArea';
 
 const props = defineProps<{
   card: BoardCard;
@@ -145,7 +154,22 @@ const tryAttach = (ev: Event) => {
 
 const cardImageSection = useTemplateRef('cardImageSection');
 const isHovered = useElementHover(cardImageSection);
+const { focused: isFocused } = useFocus(cardImageSection);
 useDoubleTap(cardImageSection, () => emits('showCardDetails', props.card));
+
+/**
+ * Enter or Space on a focused card: picks it as the target while attaching,
+ * otherwise opens its details, as a double tap does (#170).
+ */
+function onKey(ev: KeyboardEvent) {
+  if (battlefield.isAttaching) tryAttach(ev);
+  else emits('showCardDetails', props.card);
+}
+
+/** A counter's name for screen readers, with its count when more than one. */
+function modifierLabel({ modifier, count }: BoardCardModifier) {
+  return count > 1 ? `${modifier.name} ×${count}` : modifier.name;
+}
 </script>
 
 <style lang="css" scoped>
@@ -188,6 +212,11 @@ useDoubleTap(cardImageSection, () => emits('showCardDetails', props.card));
       background-clip: padding-box;
       background-position: center center;
       background-size: var(--scaled-short) var(--scaled-long);
+
+      &:focus-visible {
+        outline: 3px solid var(--ui-primary);
+        outline-offset: 2px;
+      }
     }
   }
 
