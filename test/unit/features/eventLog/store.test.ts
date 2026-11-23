@@ -16,6 +16,19 @@ function cardName(entry: EventEntry | undefined) {
   return entry && 'card' in entry ? entry.card.name : undefined;
 }
 
+/** Makes IndexedDB refuse every write, as when storage is full. */
+function failWrites() {
+  const transaction = IDBDatabase.prototype.transaction;
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  return vi
+    .spyOn(IDBDatabase.prototype, 'transaction')
+    .mockImplementation(function (this: IDBDatabase, ...args) {
+      if (args[1] === 'readwrite')
+        throw new DOMException('Quota exceeded', 'QuotaExceededError');
+      return transaction.apply(this, args);
+    });
+}
+
 describe('event log store', () => {
   it('records an entry with a timestamp, the game and a card snapshot', () => {
     vi.useFakeTimers({ now: new Date('2026-11-07T12:00:00Z') });
@@ -175,6 +188,29 @@ describe('event log store', () => {
     await log.loadHistory();
 
     expect(log.history).toEqual([]);
+  });
+
+  // #156: a failed write used to drop the finished game.
+  it('keeps a finished game for a retry when the archive write fails', async () => {
+    const write = failWrites();
+    const log = useEventLogStore();
+    log.record('fetched', { card: makeScryfallCard({ name: 'Last game' }) });
+
+    log.startNewGame('newGame');
+    await log.settled();
+    expect(log.archiveAvailable).not.toBe(false);
+    await nextTick();
+    flushSaves();
+
+    // The next start retries it.
+    write.mockRestore();
+    setActivePinia(createPinia());
+    const reloaded = useEventLogStore();
+    await reloaded.settled();
+    await reloaded.loadHistory();
+
+    expect(reloaded.archiveAvailable).toBe(true);
+    expect(reloaded.history.map(cardName)).toContain('Last game');
   });
 
   it('without IndexedDB, keeps the current game only and says so', async () => {

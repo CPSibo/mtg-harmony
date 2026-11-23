@@ -268,6 +268,9 @@ The log is split in two (#81):
   start. Archiving a game again replaces it.
 - Without IndexedDB (some private windows), finished games are dropped, `archiveAvailable` is false, and the log
   window says it shows this game only.
+- A write that fails where IndexedDB exists (storage full, a transient error) keeps the game in `pending` and
+  leaves `archiveAvailable` alone; the next start or New game retries it (#156). `archiveEntries` returns
+  `archived`, `unavailable` or `failed` so the store can tell these apart.
 
 - `record(type, payload)` adds an entry with an ID, timestamp and the current game ID. Cards in the payload are
   stored as snapshots (`snapshotCard`: instance ID, Scryfall ID, name, image and Scryfall URI), so later changes
