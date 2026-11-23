@@ -5,6 +5,7 @@ export {
   EVENT_LABELS,
   describeEntry,
   filterEntries,
+  takeNewest,
   scryfallCardFromSnapshot,
   type EntryFilter,
 } from './view';
