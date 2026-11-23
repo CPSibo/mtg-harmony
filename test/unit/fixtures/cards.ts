@@ -1,5 +1,5 @@
 import { cardData } from '~/features/battlefield/boardCard';
-import type { BoardCard, BoardCardModifier } from '~/types/PlayArea';
+import type { BoardCard } from '~/types/PlayArea';
 import type { ScryfallCard } from '~/types/Scryfall';
 
 let nextId = 0;
@@ -23,19 +23,16 @@ export function makeScryfallCard(
  * A board card, untapped with no modifiers and not in any stack. A `name`
  * override names its Scryfall data too, as on a real card.
  */
-export function makeCard(overrides: Partial<BoardCard> = {}): BoardCard {
+export function makeCard({
+  name,
+  ...overrides
+}: Partial<BoardCard> & { name?: string } = {}): BoardCard {
   // Trimmed and frozen, as createBoardCard does.
-  const scryfallInfo = cardData(
-    makeScryfallCard(overrides.name ? { name: overrides.name } : {}),
-  );
+  const scryfallInfo = cardData(makeScryfallCard(name ? { name } : {}));
   return {
     id: `card-${nextId}`,
     scryfallInfo,
-    name: scryfallInfo.name,
-    mana_cost: scryfallInfo.mana_cost,
-    image_uri: scryfallInfo.image_uris!.border_crop!,
-    scryfall_uri: scryfallInfo.scryfall_uri,
-    modifiers: new Set<BoardCardModifier>(),
+    modifiers: new Map(),
     tapped: false,
     faceNumber: 0,
     ...overrides,

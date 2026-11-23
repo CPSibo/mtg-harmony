@@ -14,6 +14,8 @@ import {
 } from './types';
 
 const STORAGE_KEY = 'mtg-harmony_eventLog';
+/** Bump when the saved shape changes (#154). */
+const SAVE_VERSION = 1;
 
 /**
  * The most entries the current game keeps. A realistic long game (six
@@ -251,12 +253,16 @@ export const useEventLogStore = defineStore('eventLog', () => {
   }
 
   function save() {
-    useLocalStorage().save(STORAGE_KEY, {
-      entries: entries.value,
-      pending: pending.value,
-      gameId: gameId.value,
-      newGameOfferDismissedAt: newGameOfferDismissedAt.value,
-    });
+    useLocalStorage().save(
+      STORAGE_KEY,
+      {
+        entries: entries.value,
+        pending: pending.value,
+        gameId: gameId.value,
+        newGameOfferDismissedAt: newGameOfferDismissedAt.value,
+      },
+      SAVE_VERSION,
+    );
   }
 
   function load(): boolean {
@@ -265,7 +271,7 @@ export const useEventLogStore = defineStore('eventLog', () => {
       pending?: unknown;
       gameId?: unknown;
       newGameOfferDismissedAt?: unknown;
-    }>(STORAGE_KEY);
+    }>(STORAGE_KEY, SAVE_VERSION);
     if (!data) return false;
 
     if (Array.isArray(data.entries))

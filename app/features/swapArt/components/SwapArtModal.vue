@@ -2,7 +2,7 @@
   <UModal
     v-model:open="open"
     title="Swap art"
-    :description="`Printings of ${card.name}, newest first`"
+    :description="`Printings of ${card.scryfallInfo.name}, newest first`"
     :ui="{ content: 'sm:max-w-4xl', body: 'flex flex-col gap-3' }"
   >
     <template #body>
@@ -46,7 +46,7 @@
               :landscape="isLandscapeFace(printing.card)"
               frame-class="w-full"
               :src="imageOf(printing)!"
-              :alt="`${card.name} (${printing.set.toUpperCase()})`"
+              :alt="`${card.scryfallInfo.name} (${printing.set.toUpperCase()})`"
               loading="lazy"
               class="mtg-card-display w-full"
             />

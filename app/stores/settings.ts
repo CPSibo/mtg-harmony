@@ -46,6 +46,8 @@ export interface AppSettings {
 }
 
 const STORAGE_KEY = 'mtg-harmony_settings';
+/** Bump when the saved shape changes (#154). */
+const SAVE_VERSION = 1;
 
 const defaults: AppSettings = {
   wakeLockEnabled: true,
@@ -104,22 +106,26 @@ export const useSettingsStore = defineStore('settings', () => {
 
   function save() {
     const { save: persist } = useLocalStorage();
-    persist(STORAGE_KEY, {
-      wakeLockEnabled: wakeLockEnabled.value,
-      imagesEnabled: imagesEnabled.value,
-      cardOutlineEnabled: cardOutlineEnabled.value,
-      pointerSmoothing: pointerSmoothing.value,
-      dragMenuDelay: dragMenuDelay.value,
-      castFlight: castFlight.value,
-      castLanding: castLanding.value,
-      castDuration: castDuration.value,
-      attachFlareEnabled: attachFlareEnabled.value,
-    });
+    persist(
+      STORAGE_KEY,
+      {
+        wakeLockEnabled: wakeLockEnabled.value,
+        imagesEnabled: imagesEnabled.value,
+        cardOutlineEnabled: cardOutlineEnabled.value,
+        pointerSmoothing: pointerSmoothing.value,
+        dragMenuDelay: dragMenuDelay.value,
+        castFlight: castFlight.value,
+        castLanding: castLanding.value,
+        castDuration: castDuration.value,
+        attachFlareEnabled: attachFlareEnabled.value,
+      },
+      SAVE_VERSION,
+    );
   }
 
   function load(): boolean {
     const { load: retrieve } = useLocalStorage();
-    const data = retrieve<AppSettings>(STORAGE_KEY);
+    const data = retrieve<AppSettings>(STORAGE_KEY, SAVE_VERSION);
 
     if (!data) {
       return false;

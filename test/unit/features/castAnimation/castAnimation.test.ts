@@ -54,6 +54,7 @@ describe('cast animation settings', () => {
       'mtg-harmony_settings',
       JSON.stringify([
         {
+          version: 5,
           castFlight: 1,
           castLanding: 2,
           castDuration: 3,
@@ -63,6 +64,7 @@ describe('cast animation settings', () => {
         'nonsense',
         800,
         false,
+        1,
       ]),
     );
     const settings = useSettingsStore();

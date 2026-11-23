@@ -414,7 +414,7 @@ watch(myIsDragging, (value) => {
   width: var(--w);
 
   /* Need to cap the height, or else the `top` makes a big, invisible chin. */
-  /* TODO: This doesn't account for tapped attachments. */
+  /* TODO(#186): This doesn't account for tapped attachments. */
   height: calc((var(--total) * var(--h)) + var(--vertical-offset));
 
   > .board-card {

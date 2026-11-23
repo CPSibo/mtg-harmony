@@ -12,7 +12,9 @@
     <template #body>
       <p>
         Do you want to remove
-        <code class="bg-accented">{{ props.card?.name || 'Unknown' }}</code>
+        <code class="bg-accented">{{
+          props.card?.scryfallInfo.name || 'Unknown'
+        }}</code>
         from the battlefield?
       </p>
 

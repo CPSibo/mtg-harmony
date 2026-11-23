@@ -27,7 +27,7 @@
           :landscape="landscape"
           frame-class="w-full"
           :src="shownImageUri(card)"
-          :alt="card.name"
+          :alt="card.scryfallInfo.name"
           class="max-h-[80svh] mtg-card-display"
         />
         <!-- As wide as the image, never wider. -->
@@ -40,7 +40,7 @@
           v-else
           :card="card.scryfallInfo"
           role="img"
-          :aria-label="card.name"
+          :aria-label="card.scryfallInfo.name"
           class="w-72 max-w-full shrink-0"
         />
       </div>
@@ -224,7 +224,7 @@
           color="info"
           variant="ghost"
           size="xl"
-          :to="card.scryfall_uri"
+          :to="card.scryfallInfo.scryfall_uri"
           target="_blank"
         >
           Scryfall

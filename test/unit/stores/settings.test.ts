@@ -49,7 +49,7 @@ describe('settings store', () => {
     for (const bad of ['ease', -5, 500]) {
       localStorage.setItem(
         'mtg-harmony_settings',
-        JSON.stringify([{ pointerSmoothing: 1 }, bad]),
+        JSON.stringify([{ version: 2, pointerSmoothing: 1 }, bad, 1]),
       );
       setActivePinia(createPinia());
       expect(useSettingsStore().pointerSmoothing, String(bad)).toBe(0);
@@ -67,7 +67,7 @@ describe('settings store', () => {
     for (const bad of ['slow', 0, 100, 60000]) {
       localStorage.setItem(
         'mtg-harmony_settings',
-        JSON.stringify([{ dragMenuDelay: 1 }, bad]),
+        JSON.stringify([{ version: 2, dragMenuDelay: 1 }, bad, 1]),
       );
       setActivePinia(createPinia());
       expect(useSettingsStore().dragMenuDelay, String(bad)).toBe(500);

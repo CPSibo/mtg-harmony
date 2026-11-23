@@ -1,19 +1,19 @@
 import { showsImage } from '~/features/battlefield/cardFaces';
 import { useLocalStorage } from '~/composables/useLocalStorage';
-import { pickImageUri } from '~/composables/useScryfall';
 import { defineStore } from 'pinia';
 import { computed, ref, toValue, watch } from 'vue';
-import type {
-  Battlefield,
-  BoardCard,
-  BoardCardModifier,
-  BoardCardStack,
-} from '~/types/PlayArea';
+import type { ModifierKey } from '~/types/MtgConcepts';
+import type { Battlefield, BoardCard, BoardCardStack } from '~/types/PlayArea';
 import type { ScryfallCard } from '~/types/Scryfall';
 import { randomUUID } from '~/utils/randomUUID';
 import type { ElementSize, Position } from '@vueuse/core';
 import { useEventLogStore } from '~/features/eventLog';
-import { cardData, copyBoardCard, createBoardCard } from './boardCard';
+import {
+  cardData,
+  copyBoardCard,
+  createBoardCard,
+  readSavedCard,
+} from './boardCard';
 import { findFreeSpot, type Rect } from './placement';
 
 /** How much of a card `copyCard` copies. */
@@ -29,6 +29,42 @@ const UNDER_TAKE_OUT_OFFSET = 240;
 const COPY_OFFSET = 80;
 
 const STORAGE_KEY = 'mtg-harmony_battlefield';
+/** Bump when the saved shape changes (#154). */
+const SAVE_VERSION = 1;
+
+const isPosition = (v: unknown): v is Position =>
+  !!v &&
+  typeof v === 'object' &&
+  Number.isFinite((v as Position).x) &&
+  Number.isFinite((v as Position).y);
+
+/**
+ * A stack from saved data with its cards checked, or null if it isn't one
+ * this version can show (#154). A malformed attachment or under is dropped
+ * and the stack kept; a malformed primary drops the stack.
+ */
+function readSavedStack(value: unknown): BoardCardStack | null {
+  if (!value || typeof value !== 'object') return null;
+  const stack = value as BoardCardStack;
+  if (
+    typeof stack.id !== 'string' ||
+    !isPosition(stack.position) ||
+    !(stack.attachments instanceof Set) ||
+    !(stack.unders instanceof Set) ||
+    !readSavedCard(stack.primary)
+  )
+    return null;
+  stack.primary.stack = stack;
+  for (const set of [stack.attachments, stack.unders])
+    for (const card of [...set]) {
+      if (readSavedCard(card)) card.stack = stack;
+      else {
+        console.warn('Dropping a saved card this version can’t read.', card);
+        set.delete(card);
+      }
+    }
+  return stack;
+}
 
 /**
  * A lone untapped card's stack, actions column included, in board pixels.
@@ -430,17 +466,19 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
    * tapping: later events snapshot the new art, and past ones keep the old.
    */
   function swapPrinting(card: BoardCard, printing: ScryfallCard) {
-    const data = cardData(printing);
-    card.scryfallInfo = data;
-    card.name = data.name;
-    card.mana_cost = data.mana_cost;
-    card.image_uri = pickImageUri(data) ?? card.image_uri;
-    card.scryfall_uri = data.scryfall_uri;
+    // Name, image and link all come from it, so nothing else to update.
+    card.scryfallInfo = cardData(printing);
+  }
+
+  /** Sets how many of a counter or keyword a card has; 0 removes it. */
+  function setModifierCount(card: BoardCard, key: ModifierKey, count: number) {
+    if (count > 0) card.modifiers.set(key, count);
+    else card.modifiers.delete(key);
   }
 
   /** Removes every counter and granted keyword from a card. */
   function clearModifiers(card: BoardCard) {
-    card.modifiers = new Set<BoardCardModifier>();
+    card.modifiers = new Map();
   }
 
   const cardToAttach = ref<BoardCard | null>(null);
@@ -569,38 +607,47 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
 
   function save() {
     const { save: persist } = useLocalStorage();
-    persist(STORAGE_KEY, {
-      stacks: stacks.value,
-      zOrder: zOrder.value,
-      center: center.value,
-      snapScale: snapScale.value,
-    });
+    persist(
+      STORAGE_KEY,
+      {
+        stacks: stacks.value,
+        zOrder: zOrder.value,
+        center: center.value,
+        snapScale: snapScale.value,
+      },
+      SAVE_VERSION,
+    );
   }
 
   function load(): boolean {
     const { load: retrieve } = useLocalStorage();
-    const data = retrieve<Battlefield>(STORAGE_KEY);
+    const data = retrieve<Partial<Record<keyof Battlefield, unknown>>>(
+      STORAGE_KEY,
+      SAVE_VERSION,
+    );
 
     if (!data) {
       return false;
     }
 
-    if (Array.isArray(data?.stacks)) {
-      for (const stack of data.stacks)
-        for (const card of [
-          stack.primary,
-          ...stack.attachments,
-          ...stack.unders,
-        ])
-          card.scryfallInfo = cardData(card.scryfallInfo);
-      stacks.value = data.stacks;
+    if (Array.isArray(data.stacks)) {
+      stacks.value = data.stacks.flatMap((value: unknown) => {
+        const stack = readSavedStack(value);
+        if (!stack)
+          console.warn(
+            'Dropping a saved stack this version can’t read.',
+            value,
+          );
+        return stack ? [stack] : [];
+      });
     }
 
-    if (Array.isArray(data?.zOrder)) zOrder.value = data.zOrder;
+    if (Array.isArray(data.zOrder))
+      zOrder.value = data.zOrder.filter((id) => typeof id === 'string');
 
     reconcileZOrder();
 
-    if (typeof data?.center === 'object') center.value = data.center;
+    if (isPosition(data.center)) center.value = data.center;
 
     if (typeof data.snapScale === 'number') snapScale.value = data.snapScale;
 
@@ -628,6 +675,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     toggleShownAs,
     toggleTurned,
     setFaceNumber,
+    setModifierCount,
     clearModifiers,
 
     stacks,

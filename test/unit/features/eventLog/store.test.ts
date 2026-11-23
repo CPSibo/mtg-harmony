@@ -33,8 +33,8 @@ describe('event log store', () => {
         instanceId: card.id,
         scryfallId: card.scryfallInfo.id,
         name: 'Ooze',
-        imageUri: card.image_uri,
-        scryfallUri: card.scryfall_uri,
+        imageUri: card.scryfallInfo.image_uris!.border_crop,
+        scryfallUri: card.scryfallInfo.scryfall_uri,
       },
     });
     expect(entry.id).toBeTruthy();
@@ -57,7 +57,7 @@ describe('event log store', () => {
     const card = makeCard({ name: 'Before' });
 
     log.record('cast', { card });
-    card.name = 'After';
+    card.scryfallInfo = { ...card.scryfallInfo, name: 'After' };
 
     expect(cardName(log.entries[0])).toBe('Before');
   });
@@ -264,13 +264,24 @@ describe('event log store', () => {
     localStorage.setItem(
       'mtg-harmony_eventLog',
       // devalue's format for a plain object
-      '[{"entries":1,"gameId":3},[2],"junk","game-1"]',
+      '[{"version":4,"entries":1,"gameId":3},[2],"junk","game-1",1]',
     );
 
     const log = useEventLogStore();
 
     expect(log.entries).toEqual([]);
     expect(log.gameId).toBe('game-1');
+  });
+
+  // #154
+  it('ignores a save of another version', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    localStorage.setItem(
+      'mtg-harmony_eventLog',
+      '[{"version":2,"gameId":1},"game-1",99]',
+    );
+
+    expect(useEventLogStore().gameId).not.toBe('game-1');
   });
 
   it('reset empties the log and starts a new game', () => {

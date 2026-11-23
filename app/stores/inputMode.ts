@@ -8,6 +8,8 @@ export interface InputModeState {
 }
 
 const STORAGE_KEY = 'mtg-harmony_inputMode';
+/** Bump when the saved shape changes (#154). */
+const SAVE_VERSION = 1;
 
 const defaults: InputModeState = {
   inputMode: 'cursor',
@@ -37,14 +39,12 @@ export const useInputModeStore = defineStore('inputMode', () => {
 
   function save() {
     const { save: persist } = useLocalStorage();
-    persist(STORAGE_KEY, {
-      inputMode: inputMode.value,
-    });
+    persist(STORAGE_KEY, { inputMode: inputMode.value }, SAVE_VERSION);
   }
 
   function load(): boolean {
     const { load: retrieve } = useLocalStorage();
-    const data = retrieve<InputModeState>(STORAGE_KEY);
+    const data = retrieve<InputModeState>(STORAGE_KEY, SAVE_VERSION);
 
     if (!data) return false;
 

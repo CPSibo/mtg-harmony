@@ -1,9 +1,8 @@
 import type { Position } from '@vueuse/core';
+import type { ModifierKey } from '~/types/MtgConcepts';
 import type { ScryfallCard } from '~/types/Scryfall';
 
 export interface Battlefield {
-  cardToAttach?: BoardCard;
-
   center: Position;
   stacks: BoardCardStack[];
   zOrder: string[];
@@ -21,14 +20,15 @@ export interface BoardCardStack {
   unders: Set<BoardCard>;
 }
 
+/**
+ * One card on the board (or in On-deck). Its name, mana cost, image and link
+ * come from `scryfallInfo`, not copies of them (#155): see `cardImage()`.
+ */
 export interface BoardCard {
   id: string;
   scryfallInfo: ScryfallCard;
-  scryfall_uri: string;
-  name: string;
-  mana_cost: string;
-  image_uri: string;
-  modifiers: Set<BoardCardModifier>;
+  /** Counters and keywords, by key, with their counts (always above 0). */
+  modifiers: Map<ModifierKey, number>;
   tapped: boolean;
   stack?: BoardCardStack;
   faceNumber: number;
@@ -41,11 +41,8 @@ export interface BoardCard {
 }
 
 export interface Modifier {
+  /** What a saved card stores; never changes once shipped. */
+  key: string;
   name: string;
   symbol: string; // mana-font CSS class (e.g. 'ms ms-ability-flying')
-}
-
-export interface BoardCardModifier {
-  modifier: Modifier;
-  count: number;
 }

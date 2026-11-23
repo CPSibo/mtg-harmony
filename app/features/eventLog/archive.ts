@@ -14,6 +14,12 @@ export const ARCHIVE_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000;
 export const ARCHIVE_MAX_ENTRIES = 500_000;
 
 const DB_NAME = 'mtg-harmony';
+/**
+ * The shape of a game record (#154). Bump when it changes; records of
+ * another version are skipped (or migrated) on load. Separate from the
+ * database's own version, which only changes with its stores and indexes.
+ */
+const RECORD_VERSION = 1;
 
 interface GameSummary {
   gameId: string;
@@ -27,7 +33,7 @@ interface ArchiveSchema extends DBSchema {
   games: { key: string; value: GameSummary; indexes: { end: number } };
   gameEntries: {
     key: string;
-    value: { gameId: string; entries: EventEntry[] };
+    value: { gameId: string; version: number; entries: EventEntry[] };
   };
 }
 
@@ -75,7 +81,9 @@ export async function archiveEntries(
     const games = tx.objectStore('games');
     for (const [gameId, game] of byGame) {
       void games.put({ gameId, end: game.at(-1)!.at, count: game.length });
-      void tx.objectStore('gameEntries').put({ gameId, entries: game });
+      void tx
+        .objectStore('gameEntries')
+        .put({ gameId, version: RECORD_VERSION, entries: game });
     }
 
     // Retention: oldest games first, while too old or over the cap.
@@ -109,7 +117,16 @@ export async function loadArchive(): Promise<EventEntry[] | null> {
     const games = await Promise.all(
       order.map((gameId) => tx.objectStore('gameEntries').get(gameId)),
     );
-    return games.flatMap((game) => game?.entries ?? []);
+    return games.flatMap((game) => {
+      if (!game) return [];
+      if (game.version !== RECORD_VERSION) {
+        console.warn(
+          `Skipping archived game ${game.gameId}: version ${game.version}, expected ${RECORD_VERSION}.`,
+        );
+        return [];
+      }
+      return game.entries;
+    });
   } catch (ex) {
     console.error('Could not load the event log archive.', ex);
     return null;

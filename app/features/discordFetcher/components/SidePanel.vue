@@ -31,11 +31,11 @@
           class="mtg-card-display vertical"
         />
         <SharedCardImage
-          v-else-if="!!card?.image_uri && settings.imagesEnabled"
+          v-else-if="!!card && !!cardImage(card) && settings.imagesEnabled"
           :landscape="isLandscape(card)"
           frame-class="w-full"
-          :src="card?.image_uri"
-          :alt="card?.name ?? 'Missing card'"
+          :src="cardImage(card)"
+          :alt="card.scryfallInfo.name"
           class="mtg-card-display vertical cursor-grab touch-none select-none"
           :class="{ 'opacity-40': ghost }"
           draggable="false"
@@ -49,7 +49,7 @@
           v-else-if="!!card"
           :card="card.scryfallInfo"
           role="img"
-          :aria-label="card.name"
+          :aria-label="card.scryfallInfo.name"
           class="h-full cursor-grab touch-none select-none"
           :class="{ 'opacity-40': ghost }"
           title="Drag onto the board to cast"
@@ -128,7 +128,7 @@
   <SharedCastDragGhost
     v-if="card"
     :card="card.scryfallInfo"
-    :image-uri="card.image_uri"
+    :image-uri="cardImage(card)"
     :at="ghost"
     :width="ghostWidth"
   />
@@ -152,7 +152,7 @@ import type { Position } from '@vueuse/core';
 import { ref, useTemplateRef } from 'vue';
 import { castSource, useCastAnimation } from '~/features/castAnimation';
 import { useDragToCast } from '~/composables/useDragToCast';
-import { useBattlefieldStore } from '~/features/battlefield';
+import { cardImage, useBattlefieldStore } from '~/features/battlefield';
 import { useDiscordFetcherStore } from '..';
 
 const toast = useToast();

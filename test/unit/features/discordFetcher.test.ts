@@ -7,7 +7,7 @@ import type { ScryfallCardResponse } from '~/composables/useScryfall';
 import { useDiscordFetcherStore } from '~/features/discordFetcher';
 import { useEventLogStore } from '~/features/eventLog';
 import { useSettingsStore } from '~/stores/settings';
-import { makeScryfallCard } from '../fixtures/cards';
+import { makeCard, makeScryfallCard } from '../fixtures/cards';
 
 const STORAGE_KEY = 'mtg-harmony_discordFetcher';
 
@@ -78,8 +78,8 @@ describe('discord fetcher store', () => {
 
       expect(result).toEqual({ success: true });
       expect(fetchMany).toHaveBeenCalledExactlyOnceWith(10);
-      expect(store.card?.name).toBe('Card 1');
-      expect(store.queue.map((c) => c.name)).toEqual(
+      expect(store.card?.scryfallInfo.name).toBe('Card 1');
+      expect(store.queue.map((c) => c.scryfallInfo.name)).toEqual(
         Array.from({ length: 9 }, (_, i) => `Card ${i + 2}`),
       );
     });
@@ -93,8 +93,6 @@ describe('discord fetcher store', () => {
 
       expect(store.card).toMatchObject({
         scryfallInfo: scryfallCard,
-        name: 'Pacifism',
-        image_uri: scryfallCard.image_uris!.border_crop,
         tapped: false,
         faceNumber: 0,
       });
@@ -111,7 +109,7 @@ describe('discord fetcher store', () => {
       await store.next();
       await store.next();
 
-      expect(store.card?.name).toBe('Card 3');
+      expect(store.card?.scryfallInfo.name).toBe('Card 3');
       expect(store.queue).toHaveLength(7);
       expect(fetchMany).toHaveBeenCalledOnce();
     });
@@ -129,7 +127,7 @@ describe('discord fetcher store', () => {
 
       expect(fetchMany).toHaveBeenCalledTimes(2);
       expect(store.queue).toHaveLength(12);
-      expect(store.card?.name).toBe('Card 8');
+      expect(store.card?.scryfallInfo.name).toBe('Card 8');
     });
 
     it('reports an error and stays put when no card arrives', async () => {
@@ -229,13 +227,13 @@ describe('discord fetcher store', () => {
       expect(store.canGoPrevious).toBe(true);
 
       store.prev();
-      expect(store.card?.name).toBe('Card 2');
+      expect(store.card?.scryfallInfo.name).toBe('Card 2');
       store.prev();
-      expect(store.card?.name).toBe('Card 1');
+      expect(store.card?.scryfallInfo.name).toBe('Card 1');
       expect(store.canGoPrevious).toBe(false);
 
       store.prev();
-      expect(store.card?.name).toBe('Card 1');
+      expect(store.card?.scryfallInfo.name).toBe('Card 1');
     });
 
     it('a previous card keeps its text, for text cards', async () => {
@@ -271,7 +269,9 @@ describe('discord fetcher store', () => {
       store.prev();
 
       expect(store.card?.scryfallInfo.id).toBe(first.scryfallInfo.id);
-      expect(store.card?.image_uri).toBe(first.image_uri);
+      expect(store.card?.scryfallInfo.image_uris!.border_crop).toBe(
+        first.scryfallInfo.image_uris!.border_crop,
+      );
     });
 
     it('next after prev re-shows cards before taking a new one', async () => {
@@ -282,9 +282,9 @@ describe('discord fetcher store', () => {
       store.prev();
 
       await store.next();
-      expect(store.card?.name).toBe('Card 2');
+      expect(store.card?.scryfallInfo.name).toBe('Card 2');
       await store.next();
-      expect(store.card?.name).toBe('Card 3');
+      expect(store.card?.scryfallInfo.name).toBe('Card 3');
       expect(store.queue).toHaveLength(7);
     });
 
@@ -297,7 +297,7 @@ describe('discord fetcher store', () => {
       expect(store.card).toBeNull();
 
       await store.next();
-      expect(store.card?.name).toBe('Card 2');
+      expect(store.card?.scryfallInfo.name).toBe('Card 2');
     });
 
     it('prev after clear shows the previous card again', async () => {
@@ -309,7 +309,7 @@ describe('discord fetcher store', () => {
 
       store.prev();
 
-      expect(store.card?.name).toBe('Card 1');
+      expect(store.card?.scryfallInfo.name).toBe('Card 1');
     });
   });
 
@@ -329,7 +329,9 @@ describe('discord fetcher store', () => {
     await store.next();
     await settle(store);
 
-    expect(created.map((img) => img.src)).toContain(store.queue[0]!.image_uri);
+    expect(created.map((img) => img.src)).toContain(
+      store.queue[0]!.scryfallInfo.image_uris!.border_crop,
+    );
   });
 
   // #42
@@ -402,10 +404,10 @@ describe('discord fetcher store', () => {
       setActivePinia(createPinia());
       const reloaded = useDiscordFetcherStore();
 
-      expect(reloaded.card?.name).toBe('Card 1');
+      expect(reloaded.card?.scryfallInfo.name).toBe('Card 1');
       expect(reloaded.queue).toHaveLength(8);
       await reloaded.next();
-      expect(reloaded.card?.name).toBe('Card 2');
+      expect(reloaded.card?.scryfallInfo.name).toBe('Card 2');
     });
 
     it('keeps loaded Scryfall data out of Vue reactivity', async () => {
@@ -442,10 +444,40 @@ describe('discord fetcher store', () => {
       expect(useDiscordFetcherStore().queue).toHaveLength(9);
     });
 
+    // #154
+    it('drops malformed saved cards and keeps the rest', () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const good = makeCard({ name: 'Good' });
+      localStorage.setItem(
+        STORAGE_KEY,
+        stringify({
+          version: 1,
+          queue: [{ id: 'no data' }, good],
+          current: { id: 3 },
+        }),
+      );
+
+      const store = useDiscordFetcherStore();
+
+      expect(store.queue.map((c) => c.scryfallInfo.name)).toEqual(['Good']);
+      expect(store.card).toBeNull();
+    });
+
+    it('ignores a save of another version', () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+      localStorage.setItem(
+        STORAGE_KEY,
+        stringify({ version: 99, queue: [makeCard()] }),
+      );
+
+      expect(useDiscordFetcherStore().queue).toEqual([]);
+    });
+
     it('loads saved settings', () => {
       localStorage.setItem(
         STORAGE_KEY,
         stringify({
+          version: 1,
           fetchCardCount: 5,
           minQueuedCardCount: 2,
           preloadImagesEnabled: false,

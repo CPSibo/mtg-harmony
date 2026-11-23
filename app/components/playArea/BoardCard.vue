@@ -18,7 +18,7 @@
         ref="cardImageSection"
         class="card-image"
         role="img"
-        :aria-label="card.name"
+        :aria-label="card.scryfallInfo.name"
         :style="
           showImage ? { backgroundImage: `url('${imageUri}')` } : undefined
         "
@@ -57,18 +57,18 @@
 
     <div class="modifiers grid grid-flow-col gap-1 place-items-start">
       <div
-        v-for="modifier in card.modifiers"
-        :key="modifier.modifier.name"
+        v-for="{ modifier, count } in modifiers"
+        :key="modifier.key"
         class="modifier-icon gap-1 flex items-center bg-gray-950/90 px-1 py-0.5 rounded-sm cursor-pointer"
-        :title="modifier.modifier.name"
+        :title="modifier.name"
         @click.stop="emits('showCardModifiers', card)"
       >
-        <span :class="['ms', modifier.modifier.symbol]" />
+        <span :class="['ms', modifier.symbol]" />
         <span
-          v-if="modifier.count > 1"
+          v-if="count > 1"
           class="modifier-icon-count whitespace-nowrap"
         >
-          x{{ modifier.count }}
+          x{{ count }}
         </span>
       </div>
     </div>
@@ -90,11 +90,20 @@ import {
   shownImageUri,
   showsImage,
 } from '~/features/battlefield/cardFaces';
+import { modifierByKey } from '~/types/MtgConcepts';
 import type { BoardCard } from '~/types/PlayArea';
 
 const props = defineProps<{
   card: BoardCard;
 }>();
+
+/** The card's modifiers in the order they were added. */
+const modifiers = computed(() =>
+  [...props.card.modifiers].flatMap(([key, count]) => {
+    const modifier = modifierByKey(key);
+    return modifier ? [{ modifier, count }] : [];
+  }),
+);
 
 const emits = defineEmits<{
   showCardDetails: [BoardCard];
