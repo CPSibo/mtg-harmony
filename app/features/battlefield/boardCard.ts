@@ -1,4 +1,5 @@
 import { pickImageUri } from '~/composables/useScryfall';
+import { isRoom } from '~/features/battlefield/cardFaces';
 import type { BoardCard, BoardCardModifier } from '~/types/PlayArea';
 import type { ScryfallCard, ScryfallImageUris } from '~/types/Scryfall';
 import { randomUUID } from '~/utils/randomUUID';
@@ -69,11 +70,13 @@ function pick<T extends object>(value: T): T {
 /**
  * A new card instance for a Scryfall card: untapped, no modifiers, in no
  * stack. Every call gets its own ID, so copies of the same token stay apart.
- * The Scryfall ID stays on `scryfallInfo.id`.
+ * The Scryfall ID stays on `scryfallInfo.id`. A Room starts with both doors
+ * locked, as one that enters without being cast does (#145).
  */
 export function createBoardCard(card: ScryfallCard): BoardCard {
   const scryfallCard = cardData(card);
   return {
+    ...(isRoom(scryfallCard) && { lockedDoors: [0, 1] }),
     id: randomUUID(),
     scryfallInfo: scryfallCard,
     name: scryfallCard.name,
@@ -101,6 +104,7 @@ export function copyBoardCard(card: BoardCard, keepState: boolean): BoardCard {
     flipped: card.flipped,
     turned: card.turned,
     shownAs: card.shownAs,
+    ...(card.lockedDoors && { lockedDoors: [...card.lockedDoors] }),
     modifiers: new Set([...card.modifiers].map((m) => ({ ...m }))),
   };
 }
