@@ -1,5 +1,6 @@
 import { ref, shallowRef, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import { cardData } from '~/features/battlefield';
+import { scryfallFetch } from '~/composables/scryfallFetch';
 import type { ScryfallCardSearchResponse } from '~/composables/useScryfall';
 import type { ScryfallCard } from '~/types/Scryfall';
 
@@ -38,7 +39,7 @@ export function useCardSearch(term: MaybeRefOrGetter<string>) {
       try {
         const url = new URL(SEARCH_ENDPOINT);
         url.searchParams.set('q', q);
-        const response = await fetch(url, { signal: abort.signal });
+        const response = await scryfallFetch(url, { signal: abort.signal });
 
         if (response.status === 404) {
           if (abort.signal.aborted) return;

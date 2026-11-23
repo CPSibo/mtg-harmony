@@ -6,6 +6,7 @@ import {
   watch,
   type MaybeRefOrGetter,
 } from 'vue';
+import { scryfallFetch } from '~/composables/scryfallFetch';
 import { cardData } from '~/features/battlefield';
 import type { ScryfallCard } from '~/types/Scryfall';
 
@@ -84,7 +85,7 @@ export function usePrintings(
   async function request(url: URL | string, abort: AbortController) {
     status.value = 'pending';
     try {
-      const response = await fetch(url, { signal: abort.signal });
+      const response = await scryfallFetch(url, { signal: abort.signal });
       if (response.status === 404 || response.status === 400) {
         if (abort.signal.aborted) return;
         nextPage = undefined;
