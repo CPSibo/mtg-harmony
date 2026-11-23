@@ -335,6 +335,14 @@ All calls go straight from the browser to `api.scryfall.com`. There is no proxy 
   and "previous" steps back through those log entries (since the last New game), rebuilding each card from
   its snapshot. "Next" steps forward through them again before taking a new card from the queue.
 
+## Version
+
+Settings' footer shows the build's version, `v<version> (<short commit>)`, for bug reports (`utils/appVersion.ts`).
+`buildInfo()` in `vite.config.ts` reads `version` from `package.json`. It takes the commit from
+`CF_PAGES_COMMIT_SHA` or `GITHUB_SHA`, else from `git rev-parse`. It passes both to the app through Vite's `define`
+(`__APP_VERSION__`, `__APP_COMMIT__`, declared in `app/env.d.ts`). A release bumps `version` and tags `v<version>`
+on `main`.
+
 ## Gotchas
 
 - **Touch listeners in `Board.vue` are added imperatively.** Vue's `@touchstart.stop.prevent` modifiers compile
