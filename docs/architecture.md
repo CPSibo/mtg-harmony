@@ -333,7 +333,10 @@ All calls go straight from the browser to `api.scryfall.com`. There is no proxy 
   background. Overlapping fetches share one request. The next queued card's image is preloaded.
 - **History**: the fetcher keeps only the queue and the newest card shown. Each shown card is logged as `fetched`,
   and "previous" steps back through those log entries (since the last New game), rebuilding each card from
-  its snapshot. "Next" steps forward through them again before taking a new card from the queue.
+  its snapshot (once per card, so it keeps its ID while shown). "Next" steps forward through them again before
+  taking a new card from the queue.
+- **New game** (`reset()`) abandons a fetch under way: it stops at its next card and keeps none of them, and a
+  `next()` that was waiting for it shows nothing (#162). The next fetch starts its own request.
 
 ## Gotchas
 
