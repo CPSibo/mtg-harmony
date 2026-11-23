@@ -251,6 +251,17 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
     cardCleared.value = true;
   }
 
+  /**
+   * Casts the card without putting it on the board (#175), for anything
+   * that doesn't stay, such as an instant or sorcery: logs it as cast to the
+   * graveyard and clears it.
+   */
+  function castToGraveyard() {
+    if (!card.value) return;
+    log.record('cast', { card: card.value.scryfallInfo, toGraveyard: true });
+    clearCard();
+  }
+
   /** Empties the queue and the shown card. The log keeps what was shown. */
   function reset() {
     queue.value = [];
@@ -343,5 +354,6 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
     next,
     prev,
     clearCard,
+    castToGraveyard,
   };
 });

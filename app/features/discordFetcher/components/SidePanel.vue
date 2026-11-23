@@ -109,6 +109,20 @@
           Cast to board
         </UButton>
 
+        <!-- For what doesn't stay, such as instants and sorceries (#175). -->
+        <UButton
+          color="info"
+          variant="subtle"
+          icon="i-lucide-skull"
+          :loading="loading"
+          :disabled="!card?.id"
+          size="xl"
+          class="md:col-span-2"
+          @click="castToGraveyard"
+        >
+          Cast to graveyard
+        </UButton>
+
         <UButton
           color="error"
           variant="ghost"
@@ -150,7 +164,11 @@ import { useToast } from '@nuxt/ui/composables';
 import { storeToRefs } from 'pinia';
 import type { Position } from '@vueuse/core';
 import { ref, useTemplateRef } from 'vue';
-import { castSource, useCastAnimation } from '~/features/castAnimation';
+import {
+  castSource,
+  useCastAnimation,
+  useGraveyardAnimation,
+} from '~/features/castAnimation';
 import { useDragToCast } from '~/composables/useDragToCast';
 import { useBattlefieldStore } from '~/features/battlefield';
 import { useDiscordFetcherStore } from '..';
@@ -201,6 +219,17 @@ const cast = (at?: Position) => {
 
   discordFetchStore.clearCard();
 
+  drawerIsOpen.value = false;
+};
+
+const animateGraveyard = useGraveyardAnimation();
+
+/** Casts the card without a stack (#175): logged, then gone. */
+const castToGraveyard = () => {
+  if (!card.value) return;
+  const source = castSource(display.value?.firstElementChild);
+  discordFetchStore.castToGraveyard();
+  void animateGraveyard(source);
   drawerIsOpen.value = false;
 };
 

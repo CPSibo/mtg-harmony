@@ -102,6 +102,27 @@ test('a card fetched On-deck can be cast to the board', async ({ page }) => {
   await expect(boardCard).toBeVisible();
 });
 
+// #175: instants and sorceries are cast without staying on the board.
+test('a card cast to the graveyard is logged and leaves no card on the board', async ({
+  page,
+}) => {
+  await page.getByRole('button', { name: 'On-deck' }).click();
+  await page.getByRole('button', { name: 'Next card' }).click();
+  await page.getByRole('button', { name: 'Cast to graveyard' }).click();
+
+  await expect(page.getByRole('button', { name: 'Next card' })).toBeHidden();
+  await expect(page.locator('.board-card')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Open menu' }).click();
+  await page.getByRole('menuitem', { name: 'Event log' }).click();
+  const events = page
+    .getByRole('dialog', { name: 'Event log' })
+    .getByRole('list', { name: 'Events' });
+  await expect(
+    events.getByText(`Cast ${card.name} to the graveyard`),
+  ).toBeVisible();
+});
+
 // #23: both copies used to share one ID.
 test('the same card cast twice gives two separate cards', async ({ page }) => {
   // The mocked random endpoint always returns the same card.

@@ -3,6 +3,7 @@ import { useBattlefieldStore, type CopyMode } from '~/features/battlefield';
 import type { BoardCard } from '~/types/PlayArea';
 import {
   playCastAnimation,
+  playGraveyardAnimation,
   measureCards,
   playMoveAnimation,
   playRemoveAnimation,
@@ -18,6 +19,18 @@ export function useCastAnimation() {
       landing: settings.castLanding,
       duration: settings.castDuration,
     });
+}
+
+/**
+ * Plays a card cast to the graveyard out of view (#175), unless cast
+ * flights are turned off.
+ */
+export function useGraveyardAnimation() {
+  const settings = useSettingsStore();
+  return (source: CastSource | null) =>
+    settings.castFlight === 'off'
+      ? Promise.resolve()
+      : playGraveyardAnimation(source, settings.castDuration);
 }
 
 /**
