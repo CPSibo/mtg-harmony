@@ -80,6 +80,17 @@ npm run build         # production build into dist/
   `@tailwindcss/oxide-wasm32-wasi`). `npm ci` is unaffected. When changing dependencies, run
   `npm install --allow-remote=all`.
 
+## Dependencies
+
+Renovate (`renovate.json`) opens dependency PRs against `dev` on Monday mornings (UTC), at most five at a time, for
+releases at least 3 days old. Dev tooling minors, GitHub Actions, Vue, and Vite with Vitest are grouped; a Node
+major moves `.node-version`, `engines` and `@types/node` together. Lockfile maintenance runs monthly. It updates the
+lockfile with npm 10, as Cloudflare does, which avoids npm 12's `EALLOWREMOTE`.
+
+Treat a Renovate PR like any other: run the [Definition of Done](#definition-of-done) on its branch. Some updates
+need a generated file refreshed, and their PR says which: `npm run icons:lucide` for Nuxt UI or Lucide,
+`npm run fonts:mana` for mana-font.
+
 ## Reactivity
 
 Start non-reactive, and make something reactive only when something needs to react to it. Each step up costs
@@ -120,7 +131,6 @@ There are no auto-imports. Import every component, composable and Vue API explic
 - Every card on the board is a token. There is no library, hand, graveyard or exile, so don't add zones.
 - The app is plain Vite + Vue 3, not Nuxt. Don't bring back Nuxt-only features (Nuxt modules, auto-imports,
   `#app`/`#imports` APIs, file-based routing).
-- Renovate stays off until the project is stable.
 
 ## Generated assets
 
