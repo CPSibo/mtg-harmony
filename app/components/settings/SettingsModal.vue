@@ -21,11 +21,7 @@
       <DefineGeneral>
         <UFormField
           label="Keep screen awake"
-          :description="
-            wakeLockSupported
-              ? 'Turn off to allow the device to sleep as normal'
-              : 'Not available in this browser'
-          "
+          :description="wakeLockDescription"
         >
           <USwitch
             v-model="wakeLockEnabled"
@@ -232,6 +228,8 @@ import { MAX_POINTER_EASE_MS } from '~/composables/pointerSmoothing';
 import USwitch from '@nuxt/ui/components/Switch.vue';
 import UTabs from '@nuxt/ui/components/Tabs.vue';
 import { useSettingsStore } from '~/stores/settings';
+import { wakeLockStatus } from '~/composables/useKeepScreenAwake';
+import { computed } from 'vue';
 import { useSmallScreen } from '~/composables/useSmallScreen';
 import { createReusableTemplate, useSupported } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
@@ -279,6 +277,13 @@ const landingItems = [
 const wakeLockSupported = useSupported(
   () => typeof navigator !== 'undefined' && 'wakeLock' in navigator,
 );
+// Says when the browser hasn't granted the lock, so it isn't a silent no-op (#174).
+const wakeLockDescription = computed(() => {
+  if (!wakeLockSupported.value) return 'Not available in this browser';
+  if (wakeLockEnabled.value && wakeLockStatus.value === 'waiting')
+    return "The browser hasn't allowed it yet. It tries again on your next tap";
+  return 'Turn off to allow the device to sleep as normal';
+});
 
 const discordFetchStore = useDiscordFetcherStore();
 const { fetchCardCount, minQueuedCardCount, preloadImagesEnabled } =

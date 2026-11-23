@@ -24,9 +24,12 @@ import gotchas (`UIcon`, `$fetch`).
 `App.vue` is the whole page: the board, the corner buttons, the command palette, the Add Card window, and the
 confirmation dialogs. Settings and the confirmation dialogs are loaded lazily with `defineAsyncComponent`.
 
-`App.vue` also runs `useKeepScreenAwake`, which holds a screen wake lock while **Keep screen awake** is on and asks
-again when the page comes back into view (browsers drop it on hide). The Wake Lock API needs HTTPS; without it the
-switch is disabled.
+`App.vue` also runs `useKeepScreenAwake`, which holds a screen wake lock while **Keep screen awake** is on. Browsers
+drop the lock when the page is hidden or on battery saver, and may refuse a request made without a recent tap. So it
+asks again when the page comes back into view or gets focus, and when the lock drops while the page is shown. After a
+refusal it asks again on the next tap or key press. It doesn't use VueUse's `useWakeLock`, which counted a dropped
+lock as active after one failed request (#174). `wakeLockStatus` tells Settings whether the lock is held. The Wake Lock
+API needs HTTPS; without it the switch is disabled.
 
 With **Show card images** off, cards render as text (`components/shared/CardText.vue`: name, mana cost as mana-font
 symbols via `utils/manaSymbols.ts`, type line, P/T) on the board, in On-deck and in card details. Add Card results
