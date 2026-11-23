@@ -2,11 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { useBattlefieldStore } from '~/features/battlefield/store';
 import { useSelectionStore } from '~/features/battlefield/selection';
 import { makeCard } from '../../fixtures/cards';
+import { putOnBoard } from '../../fixtures/board';
 
 function boardWithStacks(...positions: { x: number; y: number }[]) {
   const battlefield = useBattlefieldStore();
   for (const position of positions)
-    battlefield.addStackByCard(makeCard(), position);
+    putOnBoard(battlefield, makeCard(), position);
   const stacks = battlefield.stacks;
   stacks.forEach((s) =>
     battlefield.setStackSize(s.id, { width: 100, height: 140 }),
@@ -62,7 +63,7 @@ describe('useSelectionStore (#138)', () => {
     const { battlefield, stacks } = boardWithStacks({ x: 0, y: 0 });
     const selection = useSelectionStore();
     selection.toggle(stacks[0]!.id);
-    battlefield.removeStack(stacks[0]!);
+    battlefield.removeCard(stacks[0]!.primary);
     expect(selection.size).toBe(0);
   });
 

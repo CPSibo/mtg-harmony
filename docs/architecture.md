@@ -287,7 +287,10 @@ The log is split in two (#81):
   | `removed`      | `battlefield.removeCard`, not the moves it causes                  |
   | `boardCleared` | `battlefield.clearBoard`, which the menu's clear actions call      |
 
-  Internal moves (`removeCardFromStack`, `explodeStack`, `detach`) aren't logged.
+  Moves within the board (`explodeStack`, `detach`) aren't logged. The store keeps its low-level helpers that
+  change stacks without logging (`addStackByCard`, `removeStack`, `removeCardFromStack`, `clearStacks`)
+  private, so the app can only change the board through actions that log what they should (#172). Tests put
+  cards on the board with `putOnBoard` (`test/unit/fixtures/board.ts`).
 
 - `startNewGame(reason)` moves the current game's entries to the archive, switches to a new game ID and records a
   `gameMarker`. A refresh never ends a game; neither does Clear board.
