@@ -317,6 +317,12 @@ The log is split in two (#81):
 
 All calls go straight from the browser to `api.scryfall.com`. There is no proxy or API key.
 
+The site's security headers live in `public/_headers` (#157): a Content Security Policy that allows only the site's
+own scripts, styles and fonts, images from `*.scryfall.io` and API calls to `api.scryfall.com` (inline styles stay
+allowed for style bindings), plus `nosniff`, a referrer policy and a Permissions-Policy that allows only the screen
+wake lock. A new host the app talks to has to be added there. Links to Scryfall go through `scryfallLink()`, which
+drops anything that isn't a `https://scryfall.com/` page.
+
 | Use              | Endpoint                                              | Where                                    |
 | ---------------- | ----------------------------------------------------- | ---------------------------------------- |
 | On-deck fetching | `GET /cards/random?q=-t:land+game:paper`              | `useScryfall` → `useDiscordFetcherStore` |
