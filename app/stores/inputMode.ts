@@ -31,8 +31,9 @@ export const useInputModeStore = defineStore('inputMode', () => {
     setInputMode(event.pointerType === 'touch' ? 'touch' : 'cursor');
   }
 
+  /** Back to a fresh install: guessed from the device until the next pointer. */
   function reset() {
-    inputMode.value = defaults.inputMode;
+    inputMode.value = guess();
   }
 
   function save() {
@@ -54,14 +55,16 @@ export const useInputModeStore = defineStore('inputMode', () => {
     return true;
   }
 
-  const loaded = load();
-
   // No prior session to go on - guess from the device's primary pointer
   // so touch-first devices don't render a cursor-styled UI until the
   // user's first tap.
-  if (!loaded && window.matchMedia?.('(pointer: coarse)').matches) {
-    inputMode.value = 'touch';
+  function guess(): InputMode {
+    return window.matchMedia?.('(pointer: coarse)').matches
+      ? 'touch'
+      : defaults.inputMode;
   }
+
+  if (!load()) inputMode.value = guess();
 
   window.addEventListener('pointerdown', handlePointerEvent, {
     passive: true,

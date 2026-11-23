@@ -1,4 +1,3 @@
-import { stringify } from 'devalue';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick, isReactive } from 'vue';
@@ -8,8 +7,6 @@ import { useDiscordFetcherStore } from '~/features/discordFetcher';
 import { useEventLogStore } from '~/features/eventLog';
 import { useSettingsStore } from '~/stores/settings';
 import { makeScryfallCard } from '../fixtures/cards';
-
-const STORAGE_KEY = 'mtg-harmony_discordFetcher';
 
 type FetchManyResult = ScryfallCardResponse | string;
 
@@ -189,6 +186,24 @@ describe('discord fetcher store', () => {
       await store.fetchCards(undefined);
 
       expect(fetchMany).toHaveBeenCalledExactlyOnceWith(10);
+    });
+
+    // #159: On-deck's settings live in the settings store.
+    it("uses the settings store's batch size and minimum queue", async () => {
+      const settings = useSettingsStore();
+      settings.fetchCardCount = 4;
+      settings.minQueuedCardCount = 2;
+      const store = useDiscordFetcherStore();
+
+      await store.next(); // 3 queued.
+      await settle(store);
+      expect(fetchMany).toHaveBeenLastCalledWith(4);
+      await store.next(); // 2 queued.
+      expect(fetchMany).toHaveBeenCalledOnce();
+      await store.next(); // 1 queued: top up.
+      await settle(store);
+
+      expect(fetchMany).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -372,24 +387,6 @@ describe('discord fetcher store', () => {
   });
 
   describe('persistence', () => {
-    // #24: settings changes on their own must be saved.
-    it.each([
-      ['fetchCardCount', 4],
-      ['minQueuedCardCount', 1],
-      ['preloadImagesEnabled', false],
-    ] as const)('saves a change to %s on its own', async (name, value) => {
-      vi.useFakeTimers();
-      const store = useDiscordFetcherStore();
-      expect(store[name]).not.toBe(value);
-
-      (store[name] as typeof value) = value;
-      await nextTick();
-      vi.runAllTimers();
-      setActivePinia(createPinia());
-
-      expect(useDiscordFetcherStore()[name]).toBe(value);
-    });
-
     it('keeps the shown card, the queue and the place in history over a reload', async () => {
       const store = useDiscordFetcherStore();
       await store.next();
@@ -440,23 +437,6 @@ describe('discord fetcher store', () => {
 
       setActivePinia(createPinia());
       expect(useDiscordFetcherStore().queue).toHaveLength(9);
-    });
-
-    it('loads saved settings', () => {
-      localStorage.setItem(
-        STORAGE_KEY,
-        stringify({
-          fetchCardCount: 5,
-          minQueuedCardCount: 2,
-          preloadImagesEnabled: false,
-        }),
-      );
-
-      const store = useDiscordFetcherStore();
-
-      expect(store.fetchCardCount).toBe(5);
-      expect(store.minQueuedCardCount).toBe(2);
-      expect(store.preloadImagesEnabled).toBe(false);
     });
   });
 });

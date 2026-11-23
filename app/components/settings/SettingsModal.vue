@@ -49,7 +49,7 @@
           <UInputNumber
             v-model="fetchCardCount"
             :min="minQueuedCardCount"
-            :max="50"
+            :max="MAX_QUEUE_SIZE"
           />
         </UFormField>
 
@@ -231,7 +231,7 @@ import USlider from '@nuxt/ui/components/Slider.vue';
 import { MAX_POINTER_EASE_MS } from '~/composables/pointerSmoothing';
 import USwitch from '@nuxt/ui/components/Switch.vue';
 import UTabs from '@nuxt/ui/components/Tabs.vue';
-import { useSettingsStore } from '~/stores/settings';
+import { MAX_QUEUE_SIZE, useSettingsStore } from '~/stores/settings';
 import { useSmallScreen } from '~/composables/useSmallScreen';
 import { createReusableTemplate, useSupported } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
@@ -240,7 +240,6 @@ import {
   MIN_DRAG_MENU_DELAY_MS,
   useBattlefieldStore,
 } from '~/features/battlefield';
-import { useDiscordFetcherStore } from '~/features/discordFetcher';
 import {
   MAX_CAST_DURATION_MS,
   MIN_CAST_DURATION_MS,
@@ -260,6 +259,9 @@ const {
   castLanding,
   castDuration,
   attachFlareEnabled,
+  fetchCardCount,
+  minQueuedCardCount,
+  preloadImagesEnabled,
 } = storeToRefs(settingsStore);
 
 const flightItems = [
@@ -279,10 +281,6 @@ const landingItems = [
 const wakeLockSupported = useSupported(
   () => typeof navigator !== 'undefined' && 'wakeLock' in navigator,
 );
-
-const discordFetchStore = useDiscordFetcherStore();
-const { fetchCardCount, minQueuedCardCount, preloadImagesEnabled } =
-  storeToRefs(discordFetchStore);
 
 const battlefieldStore = useBattlefieldStore();
 const { snapScale } = storeToRefs(battlefieldStore);

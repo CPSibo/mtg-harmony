@@ -55,6 +55,48 @@ describe('settings store', () => {
       expect(useSettingsStore().pointerSmoothing, String(bad)).toBe(0);
     }
   });
+  // #159: moved here from the fetcher store, so Reset app restores them.
+  it('saves the On-deck settings and ignores invalid values', async () => {
+    vi.useFakeTimers();
+    const store = useSettingsStore();
+    expect(store.fetchCardCount).toBe(10);
+    expect(store.minQueuedCardCount).toBe(3);
+    expect(store.preloadImagesEnabled).toBe(true);
+
+    store.fetchCardCount = 5;
+    store.minQueuedCardCount = 2;
+    store.preloadImagesEnabled = false;
+    const reloaded = await reload();
+    expect(reloaded.fetchCardCount).toBe(5);
+    expect(reloaded.minQueuedCardCount).toBe(2);
+    expect(reloaded.preloadImagesEnabled).toBe(false);
+
+    for (const bad of ['many', 0, 2.5, 51]) {
+      localStorage.setItem(
+        'mtg-harmony_settings',
+        JSON.stringify([{ fetchCardCount: 1, minQueuedCardCount: 1 }, bad]),
+      );
+      setActivePinia(createPinia());
+      expect(useSettingsStore().fetchCardCount, String(bad)).toBe(10);
+      expect(useSettingsStore().minQueuedCardCount, String(bad)).toBe(3);
+    }
+  });
+
+  it('reset restores every setting, On-deck included', () => {
+    const store = useSettingsStore();
+    store.setImagesEnabled(false);
+    store.fetchCardCount = 20;
+    store.minQueuedCardCount = 5;
+    store.preloadImagesEnabled = false;
+
+    store.reset();
+
+    expect(store.imagesEnabled).toBe(true);
+    expect(store.fetchCardCount).toBe(10);
+    expect(store.minQueuedCardCount).toBe(3);
+    expect(store.preloadImagesEnabled).toBe(true);
+  });
+
   // #108
   it('saves the drag menu delay and ignores invalid values', async () => {
     vi.useFakeTimers();
