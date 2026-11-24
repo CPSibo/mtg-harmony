@@ -109,13 +109,15 @@ watch([…state], save);  // On every change; deep only where data changes in pl
   two store instances share them.
 - `reset()` returns a store to its defaults. `useReset()` builds the menu's three levels from these: **Clear
   board** (battlefield, for board wipes), **New game** (plus On-deck's queue and shown card, and a new game in the
-  event log) and **Reset app** (plus settings and the whole event log). Each shows one toast.
+  event log) and **Reset app** (plus settings, the input mode and the whole event log). Each shows one toast. Every setting,
+  On-deck's batch size, minimum queue and image preload included, lives in `useSettingsStore`, so Reset app
+  restores them all (#159); the input mode goes back to its guess from the device.
 
 | Key                          | Store                    | Holds                                                                        |
 | ---------------------------- | ------------------------ | ---------------------------------------------------------------------------- |
 | `mtg-harmony_battlefield`    | `useBattlefieldStore`    | Stacks, z-order, board centre, snap size                                     |
-| `mtg-harmony_discordFetcher` | `useDiscordFetcherStore` | Queued cards, the shown card, settings                                       |
-| `mtg-harmony_settings`       | `useSettingsStore`       | App settings                                                                 |
+| `mtg-harmony_discordFetcher` | `useDiscordFetcherStore` | Queued cards, the shown card, the place in history                           |
+| `mtg-harmony_settings`       | `useSettingsStore`       | App settings, On-deck's included                                             |
 | `mtg-harmony_inputMode`      | `useInputModeStore`      | Last input mode (touch or cursor)                                            |
 | `mtg-harmony_eventLog`       | `useEventLogStore`       | The current game's log entries, finished games not yet archived, the game ID |
 

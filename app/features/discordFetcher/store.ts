@@ -17,9 +17,6 @@ export interface DiscordFetcherStore {
   stepsBack: number;
   historyStart: number;
   cardCleared: boolean;
-  fetchCardCount: number;
-  minQueuedCardCount: number;
-  preloadImagesEnabled: boolean;
 }
 
 const STORAGE_KEY = 'mtg-harmony_discordFetcher';
@@ -32,9 +29,6 @@ function createDefaults(): DiscordFetcherStore {
     stepsBack: 0,
     historyStart: 0,
     cardCleared: false,
-    fetchCardCount: 10,
-    minQueuedCardCount: 3,
-    preloadImagesEnabled: true,
   };
 }
 
@@ -69,12 +63,6 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
   // Hides the card without losing our place, so clearCard() -> next() reveals
   // the next *unseen* card rather than replaying one already seen.
   const cardCleared = ref(defaults.cardCleared);
-
-  const fetchCardCount = ref(defaults.fetchCardCount);
-
-  const minQueuedCardCount = ref(defaults.minQueuedCardCount);
-
-  const preloadImagesEnabled = ref(defaults.preloadImagesEnabled);
 
   /** The cards shown since the last reset, oldest first, from the log. */
   const shownHistory = computed(() =>
@@ -143,7 +131,7 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
       fetchingCards.value = true;
 
       for await (const result of scryfall.fetchMany(
-        count || fetchCardCount.value,
+        count || settings.fetchCardCount,
       )) {
         // Leaving the loop stops the generator, so no further requests.
         if (generation !== startedIn) return CANCELLED;
@@ -190,7 +178,7 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
   async function ensureQueuedCard(): Promise<FetchResult> {
     if (queue.value.length) return { success: true };
 
-    const fetchPromise = fetchCards(fetchCardCount.value);
+    const fetchPromise = fetchCards(settings.fetchCardCount);
 
     return new Promise<FetchResult>((resolve) => {
       const stop = watch(
@@ -236,8 +224,8 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
     cardCleared.value = false;
     log.record('fetched', { card: shown });
 
-    if (queue.value.length < minQueuedCardCount.value) {
-      fetchCards(fetchCardCount.value);
+    if (queue.value.length < settings.minQueuedCardCount) {
+      fetchCards(settings.fetchCardCount);
     }
 
     return { success: true };
@@ -268,7 +256,7 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
     () => queue.value[0]?.image_uri,
     (url) => {
       // No images shown, so none to preload (#42).
-      if (preloadImagesEnabled.value && settings.imagesEnabled && url)
+      if (settings.preloadImagesEnabled && settings.imagesEnabled && url)
         preloadImage(url);
     },
     { immediate: true },
@@ -301,9 +289,6 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
       stepsBack: stepsBack.value,
       historyStart: historyStart.value,
       cardCleared: cardCleared.value,
-      fetchCardCount: fetchCardCount.value,
-      minQueuedCardCount: minQueuedCardCount.value,
-      preloadImagesEnabled: preloadImagesEnabled.value,
     });
   }
 
@@ -332,33 +317,12 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
     if (typeof data.cardCleared === 'boolean')
       cardCleared.value = data.cardCleared;
 
-    if (typeof data.fetchCardCount === 'number')
-      fetchCardCount.value = data.fetchCardCount;
-
-    if (typeof data.minQueuedCardCount === 'number')
-      minQueuedCardCount.value = data.minQueuedCardCount;
-
-    if (typeof data.preloadImagesEnabled === 'boolean')
-      preloadImagesEnabled.value = data.preloadImagesEnabled;
-
     return true;
   }
 
   load();
 
-  watch(
-    [
-      queue,
-      current,
-      stepsBack,
-      historyStart,
-      cardCleared,
-      fetchCardCount,
-      minQueuedCardCount,
-      preloadImagesEnabled,
-    ],
-    save,
-  );
+  watch([queue, current, stepsBack, historyStart, cardCleared], save);
 
   return {
     save,
@@ -369,9 +333,6 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
     queue,
     canGoPrevious,
     fetchingCards,
-    fetchCardCount,
-    minQueuedCardCount,
-    preloadImagesEnabled,
     fetchCards,
     next,
     prev,
