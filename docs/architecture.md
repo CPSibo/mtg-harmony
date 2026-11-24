@@ -420,6 +420,16 @@ to `main`, then create a GitHub release with a new tag `v<version>` on `main` an
 from the CLI: `gh release create v<version> --target main --generate-notes`. The first release has no earlier tag
 to start from, so its notes list every PR since the start.
 
+## New version available
+
+A tab can stay open for days, so it checks for a new build (#206, `app/pwa/updateCheck.ts`). The build emits
+`/version.json`, `{ version, commit }` (`versionFile()` in `vite.config.ts`), and `_headers` serves it `no-cache`.
+`useUpdateCheck()` in `App.vue` fetches it with `cache: 'no-store'` once the page is idle after load, whenever the
+tab comes back into view, and hourly while it's visible, at most once a minute. If the version or commit differs
+from this build's, a toast stays until the player picks **Refresh** (save, then reload) or **Dismiss**. Each new
+build is toasted once. Offline or on a bad reply it says nothing. Production builds only: the dev server has no
+`version.json`.
+
 ## Offline
 
 The production build has a service worker (#169). `vite.config.ts` generates `/sw.js` at build time from

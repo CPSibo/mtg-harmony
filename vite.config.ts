@@ -69,6 +69,24 @@ function buildInfo() {
 const { version, commit } = buildInfo();
 
 /**
+ * Emits `/version.json`, `{ version, commit }`, which open tabs poll to learn
+ * that a new build is out (#206, `app/pwa/updateCheck.ts`).
+ */
+function versionFile(): Plugin {
+  return {
+    name: 'version-file',
+    apply: 'build',
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'version.json',
+        source: JSON.stringify({ version, commit }),
+      });
+    },
+  };
+}
+
+/**
  * Emits `/sw.js`, which precaches this build's app shell (#169). Its version
  * is a hash of the shell's files, so any change gives a new worker.
  */
@@ -106,6 +124,7 @@ export default defineConfig({
     vue(),
     preloadFont(),
     serviceWorker(),
+    versionFile(),
     ui({
       // Single-page app: no vue-router, so links render as plain <a>.
       router: false,

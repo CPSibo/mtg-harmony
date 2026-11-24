@@ -19,3 +19,7 @@
 # let a cache hold an old one.
 /sw.js
   Cache-Control: no-cache
+
+# Open tabs poll it for a new build (#206); always answer with the latest.
+/version.json
+  Cache-Control: no-cache

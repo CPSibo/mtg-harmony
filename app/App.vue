@@ -52,6 +52,7 @@ import {
 } from '~/features/eventLog';
 import { FloatingBar } from '~/features/palette';
 import { useInputModeStore } from '~/stores/inputMode';
+import { useUpdateCheck } from '~/pwa/updateCheck';
 
 // The Add Card and event log windows (with export and the archive) load the
 // first time they open, so they stay out of the startup bundle (#102).
@@ -123,4 +124,5 @@ const showConfirmResetAppData = ref(false);
 useInputModeStore();
 
 useKeepScreenAwake();
+useUpdateCheck();
 </script>
