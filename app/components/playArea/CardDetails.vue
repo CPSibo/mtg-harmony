@@ -84,7 +84,7 @@
           color="neutral"
           variant="soft"
           size="xl"
-          @click="battlefield.setDoorLocked(card!, i, !isLocked(i))"
+          @click="toggleDoor(i)"
         >
           {{ isLocked(i) ? 'Unlock' : 'Lock' }} {{ door }}
         </UButton>
@@ -377,6 +377,14 @@ const toggleTap = () => {
 const flipOver = () => {
   if (!props.card) return;
   battlefield.toggleFlipped(props.card);
+};
+
+// Like tapping, locking a door is done with the card, so the window closes
+// (#205).
+const toggleDoor = (i: number) => {
+  if (!props.card) return;
+  battlefield.setDoorLocked(props.card, i, !isLocked(i));
+  open.value = false;
 };
 
 const turn = () => {
