@@ -217,6 +217,13 @@
         </template>
       </UTabs>
     </template>
+
+    <template #footer>
+      <!-- Selectable, so it can be copied into a bug report (#168). -->
+      <p class="w-full text-center text-xs text-muted select-text">
+        MTG Harmony {{ APP_VERSION }}
+      </p>
+    </template>
   </UModal>
 </template>
 
@@ -232,6 +239,7 @@ import { MAX_POINTER_EASE_MS } from '~/composables/pointerSmoothing';
 import USwitch from '@nuxt/ui/components/Switch.vue';
 import UTabs from '@nuxt/ui/components/Tabs.vue';
 import { MAX_QUEUE_SIZE, useSettingsStore } from '~/stores/settings';
+import { APP_VERSION } from '~/utils/appVersion';
 import { useSmallScreen } from '~/composables/useSmallScreen';
 import { createReusableTemplate, useSupported } from '@vueuse/core';
 import { storeToRefs } from 'pinia';

@@ -354,6 +354,14 @@ drops anything that isn't a `https://scryfall.com/` page.
 - **New game** (`reset()`) abandons a fetch under way: it stops at its next card and keeps none of them, and a
   `next()` that was waiting for it shows nothing (#162). The next fetch starts its own request.
 
+## Version
+
+Settings' footer shows the build's version, `v<version> (<short commit>)`, for bug reports (`utils/appVersion.ts`).
+`buildInfo()` in `vite.config.ts` reads `version` from `package.json`. It takes the commit from
+`CF_PAGES_COMMIT_SHA` or `GITHUB_SHA`, else from `git rev-parse`. It passes both to the app through Vite's `define`
+(`__APP_VERSION__`, `__APP_COMMIT__`, declared in `app/env.d.ts`). A release bumps `version` and tags `v<version>`
+on `main`.
+
 ## Gotchas
 
 - **Touch listeners in `Board.vue` are added imperatively.** Vue's `@touchstart.stop.prevent` modifiers compile
