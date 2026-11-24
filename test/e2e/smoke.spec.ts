@@ -102,6 +102,27 @@ test('a card fetched On-deck can be cast to the board', async ({ page }) => {
   await expect(boardCard).toBeVisible();
 });
 
+// #175: instants and sorceries are cast without staying on the board.
+test('a card cast to the graveyard is logged and leaves no card on the board', async ({
+  page,
+}) => {
+  await page.getByRole('button', { name: 'On-deck' }).click();
+  await page.getByRole('button', { name: 'Next card' }).click();
+  await page.getByRole('button', { name: 'Cast to graveyard' }).click();
+
+  await expect(page.getByRole('button', { name: 'Next card' })).toBeHidden();
+  await expect(page.locator('.board-card')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Open menu' }).click();
+  await page.getByRole('menuitem', { name: 'Event log' }).click();
+  const events = page
+    .getByRole('dialog', { name: 'Event log' })
+    .getByRole('list', { name: 'Events' });
+  await expect(
+    events.getByText(`Cast ${card.name} to the graveyard`),
+  ).toBeVisible();
+});
+
 // #23: both copies used to share one ID.
 test('the same card cast twice gives two separate cards', async ({ page }) => {
   // The mocked random endpoint always returns the same card.
@@ -189,7 +210,32 @@ test.describe('dragging the On-deck card', () => {
       }),
     ).toBeVisible();
     await expect(page.locator('.board-card-stack')).toHaveCount(0);
+    // #176: a tap enlarges the card; a drag doesn't count as one.
+    await expect(page.getByRole('dialog', { name: card.name })).toBeHidden();
   });
+});
+
+// #176: players pinch-zoomed the panel to read the On-deck card.
+test('a tap on the On-deck card enlarges it, and another tap closes it', async ({
+  page,
+}) => {
+  await page.getByRole('button', { name: 'On-deck' }).click();
+  await page.getByRole('button', { name: 'Next card' }).click();
+  const small = page
+    .getByRole('dialog', { name: 'On-deck' })
+    .getByRole('img', { name: card.name });
+  const smallBox = (await small.boundingBox())!;
+  await small.click();
+
+  // The panel behind is hidden from the accessibility tree meanwhile.
+  const lightbox = page.getByRole('dialog', { name: card.name });
+  const big = lightbox.getByRole('img', { name: card.name });
+  await expect(big).toBeVisible();
+  const bigBox = (await big.boundingBox())!;
+  expect(bigBox.height).toBeGreaterThan(smallBox.height * 1.3);
+
+  await big.click();
+  await expect(lightbox).toBeHidden();
 });
 
 // #42
@@ -761,4 +807,24 @@ test('the log keeps the last game after a new game and a reload', async ({
     .getByRole('list', { name: 'Events' });
   await expect(events.getByText('New game (from the menu)')).toBeVisible();
   await expect(events.getByText(`Cast ${card.name}`)).toBeVisible();
+});
+
+// #167: the app shows Wizards' card names and art, so it carries their notice.
+test('About shows the fan content notice and credits', async ({ page }) => {
+  await page.getByRole('button', { name: 'Open menu' }).click();
+  await page.getByRole('menuitem', { name: 'About' }).click();
+
+  const about = page.getByRole('dialog', { name: 'About MTG Harmony' });
+  await expect(about.getByText(/unofficial Fan Content/)).toBeVisible();
+  await expect(
+    about.getByText(/Not approved\/endorsed by Wizards/),
+  ).toBeVisible();
+  await expect(about.getByRole('link', { name: 'Scryfall' })).toHaveAttribute(
+    'href',
+    'https://scryfall.com',
+  );
+  await expect(about.getByRole('link', { name: 'Mana' })).toHaveAttribute(
+    'href',
+    'https://mana.andrewgioia.com',
+  );
 });

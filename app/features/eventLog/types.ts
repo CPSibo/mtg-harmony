@@ -39,8 +39,11 @@ type AnyCard = BoardCard | ScryfallCard;
 export interface EventPayloads<C = AnyCard> {
   /** Shown in On-deck (not prefetched). */
   fetched: { card: C };
-  /** Cast from On-deck. */
-  cast: { card: C };
+  /**
+   * Cast from On-deck: onto the board, or straight to the graveyard with no
+   * stack (#175), say an instant or sorcery.
+   */
+  cast: { card: C; toGraveyard?: true };
   /** Added through Add Card. */
   added: { card: C };
   attached: { card: C; target: C };

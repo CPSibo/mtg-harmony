@@ -51,17 +51,23 @@ async function open(): Promise<IDBPDatabase<ArchiveSchema> | null> {
 }
 
 /**
+ * How an archive write went. `unavailable`: there's no IndexedDB here, so
+ * there never will be an archive. `failed`: there is one, but this write
+ * didn't land (storage full, a transient error), so it's worth retrying.
+ */
+export type ArchiveResult = 'archived' | 'unavailable' | 'failed';
+
+/**
  * Adds `entries` to the archive, one record per game, then drops games past
- * the age and entry limits. Archiving a game again replaces it. Resolves
- * whether it worked; false when IndexedDB is unavailable or the write failed.
+ * the age and entry limits. Archiving a game again replaces it.
  */
 export async function archiveEntries(
   entries: readonly EventEntry[],
   maxEntries = ARCHIVE_MAX_ENTRIES,
-): Promise<boolean> {
-  if (!entries.length) return true;
+): Promise<ArchiveResult> {
+  if (!entries.length) return 'archived';
   const db = await open();
-  if (!db) return false;
+  if (!db) return 'unavailable';
 
   const byGame = new Map<string, EventEntry[]>();
   for (const entry of entries) {
@@ -89,11 +95,11 @@ export async function archiveEntries(
       total -= game.count;
     }
     await tx.done;
-    return true;
+    return 'archived';
   } catch (ex) {
     // Storage full, or the browser refused.
     console.error('Could not archive event log entries.', ex);
-    return false;
+    return 'failed';
   } finally {
     db.close();
   }
