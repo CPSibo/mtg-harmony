@@ -2,7 +2,7 @@ import { showsImage } from '~/features/battlefield/cardFaces';
 import { useLocalStorage } from '~/composables/useLocalStorage';
 import { pickImageUri } from '~/composables/useScryfall';
 import { defineStore } from 'pinia';
-import { computed, ref, toRaw, toValue, watch } from 'vue';
+import { computed, ref, shallowRef, toRaw, toValue, watch } from 'vue';
 import type {
   Battlefield,
   BoardCard,
@@ -59,9 +59,6 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
   const log = useEventLogStore();
 
   const stacks = ref<BoardCardStack[]>(defaults.stacks);
-  function setStacks(value: BoardCardStack[]) {
-    stacks.value = value;
-  }
 
   // MRU order of the stacks for display purposes.
   const zOrder = ref<string[]>(defaults.zOrder);
@@ -69,9 +66,10 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
   function bringToFront(stack: BoardCardStack) {
     const idx = zOrder.value.indexOf(stack.id);
 
-    if (idx === zOrder.value.length - 1) return; // Already front.
-
-    if (idx !== -1) zOrder.value.splice(idx, 1);
+    if (idx !== -1) {
+      if (idx === zOrder.value.length - 1) return; // Already front.
+      zOrder.value.splice(idx, 1);
+    }
 
     zOrder.value.push(stack.id);
   }
@@ -170,9 +168,6 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
   }
 
   const snapScale = ref<number>(defaults.snapScale);
-  function setSnapScale(value: number) {
-    snapScale.value = value;
-  }
 
   function addStackByCard(card: BoardCard, position = center.value) {
     const newStack: BoardCardStack = {
@@ -213,6 +208,10 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
       : newStackPosition();
     const stack = addStackByCard(createBoardCard(scryfallCard), position);
     log.record(how, { card: stack.primary });
+    // A Room cast to the board asks which door opens (#145). The store's
+    // reactive copy, so the choice shows on the board.
+    if (stack.primary.lockedDoors)
+      doorChoice.value = stacks.value.at(-1)!.primary;
     return stack;
   }
 
@@ -474,6 +473,31 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     card.tapped = !card.tapped;
   }
 
+  /**
+   * The Room just cast, waiting for the player to say which door opens
+   * (#145). The board shows the choice while it's set.
+   */
+  const doorChoice = shallowRef<BoardCard | null>(null);
+
+  /** Locks or unlocks one of a Room's doors (0 is the first, on the left). */
+  function setDoorLocked(card: BoardCard, door: number, locked: boolean) {
+    if (!card.lockedDoors) return;
+    const others = card.lockedDoors.filter((d) => d !== door);
+    card.lockedDoors = locked ? [...others, door].sort() : others;
+  }
+
+  /**
+   * Settles the door choice for the Room being cast: `unlocked` opens, the
+   * rest stay locked. Without a choice, both stay locked.
+   */
+  function chooseDoors(unlocked: number[] = []) {
+    const card = doorChoice.value;
+    doorChoice.value = null;
+    if (!card?.lockedDoors) return;
+    for (const door of [0, 1])
+      setDoorLocked(card, door, !unlocked.includes(door));
+  }
+
   /** Flips a card over, between its front and its back. */
   function toggleFlipped(card: BoardCard) {
     card.flipped = !card.flipped;
@@ -487,7 +511,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     card.shownAs = showsImage(card, imagesEnabled) ? 'text' : 'art';
   }
 
-  /** Turns a card 180� and back (Kamigawa flip cards). */
+  /** Turns a card 180° and back (Kamigawa flip cards). */
   function toggleTurned(card: BoardCard) {
     card.turned = !card.turned;
   }
@@ -634,6 +658,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
   function reset() {
     clearStacks();
     cancelAttaching();
+    doorChoice.value = null;
 
     const fresh = createDefaults();
     snapScale.value = fresh.snapScale;
@@ -694,7 +719,6 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     reset,
 
     snapScale,
-    setSnapScale,
 
     untapAll,
     toggleTapped,
@@ -709,8 +733,6 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     setStackPosition,
     orderedStacks,
     stackZIndex,
-    setStacks,
-    addStackByCard,
     castCard,
     setView,
     setTransform,
@@ -727,15 +749,14 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     meldPartner,
     meld,
     unmeld,
-    clearStacks,
-    removeStack,
-    removeCardFromStack,
     explodeStack,
-    cardIsInStack,
-    getStackByCard,
 
     center,
     setCenter,
+
+    doorChoice,
+    chooseDoors,
+    setDoorLocked,
 
     startAttaching,
     cancelAttaching,

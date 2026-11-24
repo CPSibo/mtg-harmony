@@ -9,9 +9,11 @@ import ui from '@nuxt/ui/vue-plugin';
 import { createPinia } from 'pinia';
 import { createApp } from 'vue';
 import App from './App.vue';
+import { registerServiceWorker } from './pwa/register';
 import lucide from './assets/icons/lucide.json';
 
 // The icons ship in the bundle, so none is fetched from the Iconify API (#100).
 addCollection(lucide);
 
 createApp(App).use(createPinia()).use(ui).mount('#app');
+registerServiceWorker();

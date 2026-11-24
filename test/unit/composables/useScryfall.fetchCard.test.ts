@@ -7,11 +7,14 @@ describe('fetchCardById (#143)', () => {
 
   it('fetches one card by its Scryfall ID', async () => {
     const card = makeScryfallCard({ id: 'brisela-id' });
-    const fetch = vi.fn(async () => new Response(JSON.stringify(card)));
+    const fetch = vi.fn(
+      async (_url: string, _init?: RequestInit) =>
+        new Response(JSON.stringify(card)),
+    );
     vi.stubGlobal('fetch', fetch);
 
     await expect(fetchCardById('brisela-id')).resolves.toEqual(card);
-    expect(fetch).toHaveBeenCalledWith(
+    expect(fetch.mock.calls[0]![0]).toBe(
       'https://api.scryfall.com/cards/brisela-id',
     );
   });

@@ -48,6 +48,21 @@ function cardNames(entry: EventEntry): string[] {
   return names;
 }
 
+/**
+ * The first `max` of `newer` followed by `older`, both already newest first,
+ * without copying the rest (#173): the log window shows the newest 200 of
+ * the current game and past games.
+ */
+export function takeNewest<T>(
+  newer: readonly T[],
+  older: readonly T[],
+  max: number,
+): T[] {
+  return newer.length >= max
+    ? newer.slice(0, max)
+    : [...newer, ...older.slice(0, max - newer.length)];
+}
+
 /** The entries that match `filter`, newest first. */
 export function filterEntries(
   entries: readonly EventEntry[],
@@ -68,8 +83,11 @@ export function filterEntries(
 /** One line saying what happened. */
 export function describeEntry(entry: EventEntry): string {
   switch (entry.type) {
-    case 'fetched':
     case 'cast':
+      return entry.toGraveyard
+        ? `Cast ${entry.card.name} to the graveyard`
+        : `Cast ${entry.card.name}`;
+    case 'fetched':
     case 'added':
     case 'removed':
       return `${EVENT_LABELS[entry.type].label} ${entry.card.name}`;
@@ -107,6 +125,8 @@ export function entryDetails(entry: EventEntry): string {
       return `${entry.card.name} into ${entry.source.name} and ${entry.target.name}`;
     case 'gameMarker':
       return REASON_LABELS[entry.reason];
+    case 'cast':
+      return entry.toGraveyard ? `${entry.card.name} to the graveyard` : '';
     default:
       return '';
   }

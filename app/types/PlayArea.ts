@@ -34,10 +34,15 @@ export interface BoardCard {
   faceNumber: number;
   /** Flipped over: shows its back face, or the standard card back. */
   flipped?: boolean;
-  /** Turned 180� (Kamigawa flip cards). */
+  /** Turned 180° (Kamigawa flip cards). */
   turned?: boolean;
   /** Shown as art or text whatever the setting says; unset follows it (#150). */
   shownAs?: 'art' | 'text';
+  /**
+   * A Room's locked doors, by face index: 0 is the first door, on the left
+   * (#145). Unset for cards that aren't Rooms.
+   */
+  lockedDoors?: number[];
   /**
    * On a card melded on the board: the two halves it was melded from, as
    * they were, in no stack. Unmeld puts them back (#143).

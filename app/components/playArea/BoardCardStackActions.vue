@@ -8,6 +8,8 @@
       size="xs"
       variant="solid"
       :disabled="battlefield.isAttaching"
+      :aria-label="stack.primary.tapped ? 'Untap' : 'Tap'"
+      :title="stack.primary.tapped ? 'Untap' : 'Tap'"
       @click="battlefield.toggleTapped(stack.primary)"
     >
       <span
@@ -21,6 +23,8 @@
 
     <UButton
       icon="i-lucide-ellipsis"
+      aria-label="Card details"
+      title="Card details"
       :ui="{ base: 'bg-slate-300/85 text-black' }"
       size="xs"
       variant="solid"
@@ -57,6 +61,7 @@
       <UButton
         icon="i-lucide-copy"
         aria-label="Copy"
+        title="Copy"
         :ui="{ base: 'bg-slate-300/85 text-black' }"
         size="xs"
         variant="solid"
@@ -67,6 +72,7 @@
     <UButton
       icon="i-lucide-trash"
       aria-label="Remove card"
+      title="Remove card"
       :ui="{ base: 'bg-error/80 text-black' }"
       size="xs"
       variant="solid"
@@ -119,16 +125,22 @@ const copyMenuOpen = ref(false);
   z-index: 1;
   position: relative;
 
-  &:not(.is-touch):not(.is-menu-open) * {
-    display: none;
+  /* Hidden but still in the tab order, so Tab can reach a card's actions
+     (#170). The container keeps its pointer events, so hovering where the
+     actions sit shows them. */
+  &:not(.is-touch):not(.is-menu-open) > * {
+    opacity: 0;
+    pointer-events: none;
   }
 }
 
-.board-card-stack:hover {
-  .stack-actions {
-    * {
-      display: block;
-    }
+/* Keyboard focus on the card or its actions shows them too; a click doesn't,
+   so they don't stay up after the mouse leaves. */
+.board-card-stack:hover,
+.board-card-stack:has(:focus-visible) {
+  .stack-actions > * {
+    opacity: 1;
+    pointer-events: auto;
   }
 }
 </style>

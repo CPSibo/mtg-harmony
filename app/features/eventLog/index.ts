@@ -6,6 +6,7 @@ export {
   describeEntry,
   entryDetails,
   filterEntries,
+  takeNewest,
   scryfallCardFromSnapshot,
   type EntryFilter,
 } from './view';
