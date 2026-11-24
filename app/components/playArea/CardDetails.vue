@@ -220,11 +220,12 @@
         <USeparator />
 
         <UButton
+          v-if="scryfallUrl"
           icon="i-lucide-external-link"
           color="info"
           variant="ghost"
           size="xl"
-          :to="card.scryfall_uri"
+          :to="scryfallUrl"
           target="_blank"
         >
           Scryfall
@@ -268,6 +269,7 @@ import {
 } from '~/features/battlefield/cardFaces';
 import { useCopyAnimation, useMoveAnimation } from '~/features/castAnimation';
 import type { BoardCard } from '~/types/PlayArea';
+import { scryfallLink } from '~/utils/scryfallLink';
 
 const open = defineModel<boolean>('open', { default: false });
 
@@ -328,6 +330,9 @@ const showImage = computed(
 );
 
 const landscape = computed(() => !!props.card && isLandscape(props.card));
+
+/** Only a scryfall.com page becomes a link (#157). */
+const scryfallUrl = computed(() => scryfallLink(props.card?.scryfall_uri));
 
 const hasAttachments = computed(() => {
   if (!props.card || !props.card.stack?.primary) return false;

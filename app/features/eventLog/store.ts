@@ -100,12 +100,16 @@ export const useEventLogStore = defineStore('eventLog', () => {
     return enqueue(async () => {
       const batch = pending.value;
       if (!batch.length) return;
-      const ok = await (await archive()).archiveEntries(batch);
-      archiveAvailable.value = ok;
+      const result = await (await archive()).archiveEntries(batch);
+      // A failed write keeps the batch in `pending`, saved with the current
+      // game, for the next start or New game to retry (#156).
+      if (result === 'failed') return;
+      archiveAvailable.value = result === 'archived';
       // Archived, or nowhere to put it: either way it leaves localStorage.
       const done = new Set(batch);
       pending.value = pending.value.filter((e) => !done.has(e));
-      if (ok && archived.value) archived.value = [...archived.value, ...batch];
+      if (result === 'archived' && archived.value)
+        archived.value = [...archived.value, ...batch];
     });
   }
 

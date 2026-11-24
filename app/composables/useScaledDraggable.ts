@@ -27,6 +27,8 @@ export interface UseBoardDraggableOptions {
   /** Each pointer move of a drag, before smoothing. */
   onMove?: (event: PointerEvent) => void;
   onEnd?: (position: Position, event: PointerEvent) => void;
+  /** A drag cut short because the element went away mid-drag (#160). */
+  onCancel?: () => void;
 }
 
 /**
@@ -145,6 +147,12 @@ export function useBoardDraggable(
     toValue(el)?.removeEventListener('pointerdown', onDown, { capture: true });
     stopListening();
     follower.finish();
+    // Unmounted mid-drag, e.g. removed by another finger (#160): no pointerup
+    // will come, so end the drag here or the board keeps standing down.
+    if (pointerId === null) return;
+    pointerId = null;
+    isDragging.value = false;
+    options.onCancel?.();
   });
 
   // A transform, not left/top, so a move skips layout.
