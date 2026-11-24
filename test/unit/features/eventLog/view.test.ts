@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   describeEntry,
+  entryDetails,
   filterEntries,
   scryfallCardFromSnapshot,
   takeNewest,
@@ -129,5 +130,28 @@ describe('event log window', () => {
     expect(log.windowIsOpen).toBe(true);
     log.closeWindow();
     expect(log.windowIsOpen).toBe(false);
+  });
+});
+
+// #143
+describe('meld entries', () => {
+  it('say which halves melded into which card, and back', () => {
+    const log = useEventLogStore();
+    const halves = {
+      source: makeCard({ name: 'Bruna' }),
+      target: makeCard({ name: 'Gisela' }),
+    };
+    const card = makeCard({ name: 'Brisela' });
+    log.record('melded', { card, ...halves });
+    log.record('unmelded', { card, ...halves });
+
+    expect(log.entries.map((e: EventEntry) => describeEntry(e))).toEqual([
+      'Melded Bruna and Gisela into Brisela',
+      'Unmelded Brisela into Bruna and Gisela',
+    ]);
+    expect(log.entries.map((e: EventEntry) => entryDetails(e))).toEqual([
+      'Bruna and Gisela into Brisela',
+      'Brisela into Bruna and Gisela',
+    ]);
   });
 });

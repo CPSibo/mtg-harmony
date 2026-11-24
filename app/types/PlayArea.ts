@@ -43,6 +43,11 @@ export interface BoardCard {
    * (#145). Unset for cards that aren't Rooms.
    */
   lockedDoors?: number[];
+  /**
+   * On a card melded on the board: the two halves it was melded from, as
+   * they were, in no stack. Unmeld puts them back (#143).
+   */
+  meldedFrom?: [BoardCard, BoardCard];
 }
 
 export interface Modifier {

@@ -110,6 +110,33 @@
           Flip 180°
         </UButton>
 
+        <!-- Only with both halves on the board (#143). The melded card comes
+             from Scryfall, so it needs a connection. -->
+        <UButton
+          v-if="canMeld"
+          icon="i-lucide-merge"
+          color="neutral"
+          variant="soft"
+          size="xl"
+          :loading="melding"
+          :disabled="!online"
+          :title="online ? undefined : 'Melding needs a connection'"
+          @click="meld"
+        >
+          Meld
+        </UButton>
+
+        <UButton
+          v-if="card.meldedFrom"
+          icon="i-lucide-split"
+          color="neutral"
+          variant="soft"
+          size="xl"
+          @click="unmeld"
+        >
+          Unmeld
+        </UButton>
+
         <UButton
           color="primary"
           variant="soft"
@@ -276,6 +303,9 @@ import UDropdownMenu from '@nuxt/ui/components/DropdownMenu.vue';
 import UInputNumber from '@nuxt/ui/components/InputNumber.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
 import USeparator from '@nuxt/ui/components/Separator.vue';
+import { useToast } from '@nuxt/ui/composables';
+import { fetchCardById } from '~/composables/useScryfall';
+import { meldResult } from '~/features/battlefield/meld';
 import PlayAreaRemoveCardModal from '~/components/playArea/RemoveCardModal.vue';
 import SharedCardText from '~/components/shared/CardText.vue';
 import SharedOracleText from '~/components/shared/OracleText.vue';
@@ -298,7 +328,8 @@ import { scryfallLink } from '~/utils/scryfallLink';
 
 const open = defineModel<boolean>('open', { default: false });
 
-// Swap art lists printings from Scryfall (#169).
+// Swap art lists printings and Meld fetches the melded card from Scryfall
+// (#169, #143).
 const online = useOnline();
 
 /** Whether door `i` of the Room shown is locked (#145). */
@@ -351,6 +382,44 @@ const flipOver = () => {
 const turn = () => {
   if (!props.card) return;
   battlefield.toggleTurned(props.card);
+  open.value = false;
+};
+
+const toast = useToast();
+
+// What the card melds into comes first, so cards that don't meld never walk
+// the board for a partner.
+const canMeld = computed(
+  () =>
+    !!props.card &&
+    !!meldResult(props.card.scryfallInfo) &&
+    !!battlefield.meldPartner(props.card),
+);
+const melding = ref(false);
+
+const meld = async () => {
+  const card = props.card;
+  const result = card && meldResult(card.scryfallInfo);
+  if (!result || melding.value) return;
+  melding.value = true;
+  try {
+    const data = await fetchCardById(result.id);
+    if (battlefield.meld(card, data)) open.value = false;
+  } catch {
+    toast.add({
+      title: `Could not fetch ${result.name}`,
+      description: 'Check your connection and try again.',
+      color: 'error',
+      icon: 'i-lucide-triangle-alert',
+    });
+  } finally {
+    melding.value = false;
+  }
+};
+
+const unmeld = () => {
+  if (!props.card) return;
+  battlefield.unmeld(props.card);
   open.value = false;
 };
 

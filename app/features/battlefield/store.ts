@@ -2,7 +2,7 @@ import { showsImage } from '~/features/battlefield/cardFaces';
 import { useLocalStorage } from '~/composables/useLocalStorage';
 import { pickImageUri } from '~/composables/useScryfall';
 import { defineStore } from 'pinia';
-import { computed, ref, shallowRef, toValue, watch } from 'vue';
+import { computed, ref, shallowRef, toRaw, toValue, watch } from 'vue';
 import type {
   Battlefield,
   BoardCard,
@@ -14,6 +14,7 @@ import { randomUUID } from '~/utils/randomUUID';
 import type { ElementSize, Position } from '@vueuse/core';
 import { useEventLogStore } from '~/features/eventLog';
 import { cardData, copyBoardCard, createBoardCard } from './boardCard';
+import { findMeldPartner } from './meld';
 import { findFreeSpot, type Rect } from './placement';
 
 /** How much of a card `copyCard` copies. */
@@ -267,6 +268,78 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     zOrder.value.push(copy.id);
     log.record('copied', { card: primary, source: card, mode });
     return stacks.value.at(-1)!;
+  }
+
+  /** Every card on the board: primaries, attachments and unders. */
+  function* allCards() {
+    for (const stack of stacks.value) {
+      yield stack.primary;
+      yield* stack.attachments;
+      yield* stack.unders;
+    }
+  }
+
+  /** The other half `card` melds with, if it's on the board (#143). */
+  function meldPartner(card: BoardCard) {
+    return findMeldPartner(card, allCards());
+  }
+
+  /** Puts `next` in `old`'s place in its stack: primary, attachment or under. */
+  function replaceInStack(old: BoardCard, next: BoardCard) {
+    const stack = old.stack!;
+    // Either may be the store's reactive copy or the raw card.
+    if (toRaw(stack.primary) === toRaw(old)) stack.primary = next;
+    else
+      for (const set of [stack.attachments, stack.unders])
+        if (set.delete(old)) set.add(next);
+    next.stack = stack;
+    old.stack = undefined;
+  }
+
+  /**
+   * Melds `card` and its other half into `result` (#143), which takes
+   * `card`'s place in its stack. The other half leaves the board as if
+   * removed. The melded card keeps both halves, as they were, so `unmeld` can
+   * put them back. Returns the melded card, or null when either half has left
+   * the board (say, while `result` was being fetched).
+   */
+  function meld(card: BoardCard, result: ScryfallCard) {
+    if (!card.stack || !stacks.value.includes(card.stack)) return null;
+    const partner = meldPartner(card);
+    if (!partner) return null;
+
+    // First, so a half attached to the other has a stack of its own.
+    removeCardFromStack(partner);
+    const melded = createBoardCard(result);
+    replaceInStack(card, melded);
+    partner.stack = undefined;
+    melded.meldedFrom = [card, partner];
+
+    log.record('melded', { card: melded, source: card, target: partner });
+    return melded;
+  }
+
+  /**
+   * Splits a card melded on the board back into its halves (#143): the first
+   * takes its place, the second a stack of its own beside it. Each comes back
+   * as it was when melded. Returns the halves, or null for a card that wasn't
+   * melded here.
+   */
+  function unmeld(card: BoardCard) {
+    const halves = card.meldedFrom;
+    const stack = card.stack;
+    if (!halves || !stack) return null;
+    const [first, second] = halves;
+
+    replaceInStack(card, first);
+    card.meldedFrom = undefined;
+    addStackByCard(second, {
+      x: stack.position.x + stackSize(stack).width,
+      y: stack.position.y,
+    });
+
+    log.record('unmelded', { card, source: first, target: second });
+    return halves;
   }
 
   function removeStack(stack: BoardCardStack) {
@@ -617,7 +690,8 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
           ...stack.attachments,
           ...stack.unders,
         ])
-          card.scryfallInfo = cardData(card.scryfallInfo);
+          for (const c of [card, ...(card.meldedFrom ?? [])])
+            c.scryfallInfo = cardData(c.scryfallInfo);
       stacks.value = data.stacks;
     }
 
@@ -672,6 +746,9 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     clearBoard,
     copyCard,
     swapPrinting,
+    meldPartner,
+    meld,
+    unmeld,
     explodeStack,
 
     center,

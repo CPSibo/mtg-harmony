@@ -3,8 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { isReactive, nextTick } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import { useEventLogStore, type EventEntry } from '~/features/eventLog';
-import type { BoardCardModifier, BoardCardStack } from '~/types/PlayArea';
-import { makeCard, makeScryfallCard } from '../fixtures/cards';
+import type {
+  BoardCard,
+  BoardCardModifier,
+  BoardCardStack,
+} from '~/types/PlayArea';
+import { makeCard, makeMeldCards, makeScryfallCard } from '../fixtures/cards';
 import { putOnBoard } from '../fixtures/board';
 import { stubStorage } from '../fixtures/storage';
 
@@ -982,5 +986,138 @@ describe('casting at a drop point', () => {
     expect(
       useBattlefieldStore().boardPointFromScreen({ x: 1, y: 1 }),
     ).toBeNull();
+  });
+});
+
+// #143
+describe('melding', () => {
+  /** Bruna and Gisela on the board, each in its own stack. */
+  function boardWithMeldPair() {
+    const board = useBattlefieldStore();
+    const cards = makeMeldCards();
+    board.castCard(cards.bruna);
+    board.castCard(cards.gisela);
+    // The store's reactive cards, as components pass them.
+    const [bruna, gisela] = board.stacks.map((s) => s.primary) as [
+      BoardCard,
+      BoardCard,
+    ];
+    useEventLogStore().reset();
+    return { board, bruna, gisela, brisela: cards.brisela };
+  }
+
+  function logged() {
+    return useEventLogStore().entries.map((e: EventEntry) =>
+      'source' in e && 'target' in e
+        ? `${e.type} ${e.card.name} from ${e.source.name} + ${e.target.name}`
+        : e.type,
+    );
+  }
+
+  it('offers the other half only while it is on the board', () => {
+    const { board, bruna, gisela } = boardWithMeldPair();
+
+    expect(board.meldPartner(bruna)?.id).toBe(gisela.id);
+    expect(board.meldPartner(gisela)?.id).toBe(bruna.id);
+
+    board.removeCard(gisela);
+
+    expect(board.meldPartner(bruna)).toBeUndefined();
+  });
+
+  it('finds the other half as an attachment or under', () => {
+    const { board, bruna, gisela } = boardWithMeldPair();
+    board.dropCardOn(gisela, bruna.stack!, 'under');
+
+    expect(board.meldPartner(bruna)?.id).toBe(gisela.id);
+  });
+
+  it('melds both halves into one card in place of the first', () => {
+    const { board, bruna, gisela, brisela } = boardWithMeldPair();
+    const stack = bruna.stack!;
+    const position = { ...stack.position };
+
+    const melded = board.meld(bruna, brisela)!;
+
+    expect(names(board.stacks)).toEqual(['Brisela, Voice of Nightmares']);
+    expect(board.stacks[0]!.id).toBe(stack.id);
+    expect(board.stacks[0]!.position).toEqual(position);
+    expect(melded.stack?.id).toBe(stack.id);
+    expect(melded.meldedFrom?.map((c) => c.id)).toEqual([bruna.id, gisela.id]);
+    expect(melded.meldedFrom?.every((c) => !c.stack)).toBe(true);
+    expect(logged()).toEqual([
+      'melded Brisela, Voice of Nightmares from Bruna, the Fading Light + Gisela, the Broken Blade',
+    ]);
+  });
+
+  it('melds a half that is attached to the other', () => {
+    const { board, bruna, gisela, brisela } = boardWithMeldPair();
+    board.dropCardOn(bruna, gisela.stack!, 'attach');
+
+    board.meld(bruna, brisela);
+
+    expect(names(board.stacks)).toEqual(['Brisela, Voice of Nightmares']);
+    expect(board.stacks[0]!.attachments.size).toBe(0);
+  });
+
+  it('does nothing when the other half has left the board', () => {
+    const { board, bruna, gisela, brisela } = boardWithMeldPair();
+    board.removeCard(gisela);
+    useEventLogStore().reset();
+
+    expect(board.meld(bruna, brisela)).toBeNull();
+    expect(names(board.stacks)).toEqual(['Bruna, the Fading Light']);
+    expect(logged()).toEqual([]);
+  });
+
+  it('unmelds back into the original halves, with their state', () => {
+    const { board, bruna, gisela, brisela } = boardWithMeldPair();
+    board.toggleTapped(gisela);
+    const melded = board.meld(bruna, brisela)!;
+    const stackId = melded.stack!.id;
+
+    const halves = board.unmeld(melded)!;
+
+    expect(halves.map((c) => c.id)).toEqual([bruna.id, gisela.id]);
+    expect(names(board.stacks)).toEqual([
+      'Bruna, the Fading Light',
+      'Gisela, the Broken Blade',
+    ]);
+    expect(board.stacks[0]!.id).toBe(stackId);
+    expect(board.stacks[1]!.primary.tapped).toBe(true);
+    expect(board.stacks[1]!.position.x).toBeGreaterThan(
+      board.stacks[0]!.position.x,
+    );
+    expect(logged()).toEqual([
+      'melded Brisela, Voice of Nightmares from Bruna, the Fading Light + Gisela, the Broken Blade',
+      'unmelded Brisela, Voice of Nightmares from Bruna, the Fading Light + Gisela, the Broken Blade',
+    ]);
+  });
+
+  it('cannot unmeld a card that was not melded on the board', () => {
+    const board = useBattlefieldStore();
+    const brisela = board.castCard(makeMeldCards().brisela).primary;
+
+    expect(board.unmeld(brisela)).toBeNull();
+    expect(names(board.stacks)).toEqual(['Brisela, Voice of Nightmares']);
+  });
+
+  it('keeps the halves through a save and load', async () => {
+    vi.useFakeTimers();
+    const { board, bruna, brisela } = boardWithMeldPair();
+    board.meld(bruna, brisela);
+    await nextTick();
+    vi.runAllTimers();
+
+    board.reset();
+    board.load();
+
+    const melded = board.stacks[0]!.primary;
+    expect(melded.meldedFrom?.map((c) => c.name)).toEqual([
+      'Bruna, the Fading Light',
+      'Gisela, the Broken Blade',
+    ]);
+    expect(Object.isFrozen(melded.meldedFrom![0]!.scryfallInfo)).toBe(true);
+    expect(board.unmeld(melded)).toHaveLength(2);
   });
 });

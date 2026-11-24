@@ -1,7 +1,11 @@
 import { pickImageUri } from '~/composables/useScryfall';
 import { isRoom } from '~/features/battlefield/cardFaces';
 import type { BoardCard, BoardCardModifier } from '~/types/PlayArea';
-import type { ScryfallCard, ScryfallImageUris } from '~/types/Scryfall';
+import type {
+  ScryfallCard,
+  ScryfallImageUris,
+  ScryfallRelatedCard,
+} from '~/types/Scryfall';
 import { MODIFIERS } from '~/types/MtgConcepts';
 import { randomUUID } from '~/utils/randomUUID';
 import { markRaw } from 'vue';
@@ -43,8 +47,22 @@ export function cardData(card: ScryfallCard): ScryfallCard {
     image_status: card.image_status,
     image_uris: images(card.image_uris),
     scryfall_uri: card.scryfall_uri,
+    all_parts: meldParts(card.all_parts),
   }) as ScryfallCard;
   return Object.freeze(markRaw(data));
+}
+
+const MELD_COMPONENTS: readonly string[] = ['meld_part', 'meld_result'];
+
+/** The meld parts of `all_parts`, frozen, or nothing on other cards. */
+function meldParts(parts: readonly ScryfallRelatedCard[] | undefined) {
+  const meld = parts?.filter((p) => MELD_COMPONENTS.includes(p.component));
+  if (!meld?.length) return undefined;
+  return Object.freeze(
+    meld.map(({ id, component, name }) =>
+      Object.freeze({ id, component, name }),
+    ),
+  );
 }
 
 /** The image sizes the app uses, frozen. */

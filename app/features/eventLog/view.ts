@@ -16,6 +16,8 @@ export const EVENT_LABELS: Record<EventType, { label: string; icon: string }> =
     putUnder: { label: 'Put under', icon: 'i-lucide-layers' },
     copied: { label: 'Copied', icon: 'i-lucide-copy' },
     removed: { label: 'Removed', icon: 'i-lucide-trash' },
+    melded: { label: 'Melded', icon: 'i-lucide-merge' },
+    unmelded: { label: 'Unmelded', icon: 'i-lucide-split' },
     boardCleared: { label: 'Board cleared', icon: 'i-lucide-brush-cleaning' },
     gameMarker: { label: 'New game', icon: 'i-lucide-flag' },
   };
@@ -95,6 +97,9 @@ export function describeEntry(entry: EventEntry): string {
       return `Put ${entry.card.name} under ${entry.target.name}`;
     case 'copied':
       return `Copied ${entry.source.name} (${COPY_MODE_LABELS[entry.mode]})`;
+    case 'melded':
+    case 'unmelded':
+      return `${EVENT_LABELS[entry.type].label} ${entryDetails(entry)}`;
     case 'boardCleared':
       return 'Cleared the board';
     case 'gameMarker':
@@ -114,6 +119,10 @@ export function entryDetails(entry: EventEntry): string {
       return `${entry.card.name} under ${entry.target.name}`;
     case 'copied':
       return `${entry.source.name} (${COPY_MODE_LABELS[entry.mode]})`;
+    case 'melded':
+      return `${entry.source.name} and ${entry.target.name} into ${entry.card.name}`;
+    case 'unmelded':
+      return `${entry.card.name} into ${entry.source.name} and ${entry.target.name}`;
     case 'gameMarker':
       return REASON_LABELS[entry.reason];
     case 'cast':

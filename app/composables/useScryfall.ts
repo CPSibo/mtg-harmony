@@ -36,6 +36,19 @@ async function getRandomCard(): Promise<ScryfallCard> {
   return (await response.json()) as ScryfallCard;
 }
 
+/**
+ * Fetches one card by its Scryfall ID, such as what two meld halves meld into
+ * (#143). Shares the rate limit with every other fetch here; throws an
+ * `HttpError` for any non-2xx response.
+ */
+export async function fetchCardById(id: string): Promise<ScryfallCard> {
+  const response = await scryfallFetch(
+    `https://api.scryfall.com/cards/${encodeURIComponent(id)}`,
+  );
+  if (!response.ok) throw new HttpError(response.status);
+  return (await response.json()) as ScryfallCard;
+}
+
 export function useScryfall() {
   async function fetchOne(): Promise<ScryfallCardResponse> {
     let response = await getRandomCard();

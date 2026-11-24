@@ -50,6 +50,10 @@ export interface EventPayloads<C = AnyCard> {
   putUnder: { card: C; target: C };
   copied: { card: C; source: C; mode: CopyMode };
   removed: { card: C };
+  /** Two halves (`source`, then `target`) melded into `card` (#143). */
+  melded: { card: C; source: C; target: C };
+  /** `card` split back into the halves it was melded from. */
+  unmelded: { card: C; source: C; target: C };
   boardCleared: Record<string, never>;
   gameMarker: { reason: GameMarkerReason };
 }
@@ -78,6 +82,8 @@ export const EVENT_TYPES: readonly EventType[] = [
   'putUnder',
   'copied',
   'removed',
+  'melded',
+  'unmelded',
   'boardCleared',
   'gameMarker',
 ];
