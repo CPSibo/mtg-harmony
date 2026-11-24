@@ -1,6 +1,7 @@
 import {
   scryfallCardFromSnapshot,
   useEventLogStore,
+  type LoggedCard,
 } from '~/features/eventLog';
 import { useLocalStorage } from '~/composables/useLocalStorage';
 import { useScryfall } from '~/composables/useScryfall';
@@ -82,15 +83,26 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
     ),
   );
 
+  // A previous card is rebuilt from its log snapshot once, not on every log
+  // event, so it keeps its ID while shown (#162). Snapshots are shared per
+  // card and never change, so they key the cache.
+  const fromSnapshot = new WeakMap<LoggedCard, BoardCard>();
+  function cardFromSnapshot(snapshot: LoggedCard): BoardCard {
+    let built = fromSnapshot.get(snapshot);
+    if (!built) {
+      built = createBoardCard(scryfallCardFromSnapshot(snapshot));
+      fromSnapshot.set(snapshot, built);
+    }
+    return built;
+  }
+
   const card = computed<BoardCard | null>(() => {
     if (cardCleared.value) return null;
     if (stepsBack.value === 0) return current.value;
 
     const snapshot =
       shownHistory.value[shownHistory.value.length - 1 - stepsBack.value];
-    return snapshot
-      ? createBoardCard(scryfallCardFromSnapshot(snapshot))
-      : null;
+    return snapshot ? cardFromSnapshot(snapshot) : null;
   });
 
   const canGoPrevious = computed(
@@ -98,26 +110,34 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
   );
 
   type FetchResult = { success: boolean; error?: string };
+  /** A fetch stopped by a reset: not an error, and nothing to show. */
+  const CANCELLED: FetchResult = { success: true };
 
   // Tracks an in-flight fetchCards() call so concurrent callers (e.g. a
   // manual "next" racing next's own background top-up) await the same
   // request instead of one of them being rejected outright.
   let activeFetch: Promise<FetchResult> | null = null;
 
+  // Bumped by reset(). A fetch started before then belongs to the old game:
+  // it stops at its next card and keeps none of them (#162).
+  let generation = 0;
+
   async function fetchCards(count: number | undefined): Promise<FetchResult> {
     if (activeFetch) return activeFetch;
 
-    activeFetch = runFetch(count);
+    const fetch = (activeFetch = runFetch(count));
 
     try {
-      return await activeFetch;
+      return await fetch;
     } finally {
-      activeFetch = null;
+      // A reset may have let a newer fetch start meanwhile.
+      if (activeFetch === fetch) activeFetch = null;
     }
   }
 
   async function runFetch(count: number | undefined): Promise<FetchResult> {
     const errors: string[] = [];
+    const startedIn = generation;
 
     try {
       fetchingCards.value = true;
@@ -125,6 +145,9 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
       for await (const result of scryfall.fetchMany(
         count || fetchCardCount.value,
       )) {
+        // Leaving the loop stops the generator, so no further requests.
+        if (generation !== startedIn) return CANCELLED;
+
         if (typeof result === 'string') {
           errors.push(result);
           continue;
@@ -148,12 +171,13 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
         error: errors.length ? errors.join('; ') : undefined,
       };
     } catch {
+      if (generation !== startedIn) return CANCELLED;
       return {
         success: false,
         error: 'Could not fetch card',
       };
     } finally {
-      fetchingCards.value = false;
+      if (generation === startedIn) fetchingCards.value = false;
     }
   }
 
@@ -200,7 +224,10 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
       return { success: true };
     }
 
+    const startedIn = generation;
     const result = await ensureQueuedCard();
+    // New game while waiting: that card belonged to the old game.
+    if (generation !== startedIn) return CANCELLED;
     if (!result.success) return result;
 
     const shown = queue.value.shift()!;
@@ -251,8 +278,14 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
     cardCleared.value = true;
   }
 
-  /** Empties the queue and the shown card. The log keeps what was shown. */
+  /**
+   * Empties the queue and the shown card, and abandons a fetch under way.
+   * The log keeps what was shown.
+   */
   function reset() {
+    generation++;
+    activeFetch = null;
+    fetchingCards.value = false;
     queue.value = [];
     current.value = null;
     stepsBack.value = 0;

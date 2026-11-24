@@ -371,6 +371,86 @@ describe('discord fetcher store', () => {
     expect(store.canGoPrevious).toBe(false);
   });
 
+  // #162: a background top-up kept filling the queue after New game.
+  describe('reset during a fetch', () => {
+    /** The next fetch yields one card, then waits for `release` for the rest. */
+    function pauseAfterFirstCard() {
+      let release!: () => void;
+      const gate = new Promise<void>((r) => (release = r));
+      fetchMany.mockImplementationOnce(async function* (n: number) {
+        const [first, ...rest] = namedCards(n);
+        yield first!;
+        await gate;
+        yield* rest;
+      });
+      return () => release();
+    }
+
+    it("doesn't put the old fetch's cards in the new game's queue", async () => {
+      const store = useDiscordFetcherStore();
+      const release = pauseAfterFirstCard();
+      const fetching = store.fetchCards(5);
+      await vi.waitFor(() => expect(store.queue).toHaveLength(1));
+
+      store.reset();
+      release();
+      await fetching;
+
+      expect(store.queue).toEqual([]);
+      expect(store.fetchingCards).toBe(false);
+    });
+
+    it('starts a fresh request for the new game', async () => {
+      const store = useDiscordFetcherStore();
+      const release = pauseAfterFirstCard();
+      const old = store.fetchCards(5);
+      await vi.waitFor(() => expect(store.queue).toHaveLength(1));
+
+      store.reset();
+      const fresh = store.fetchCards(2);
+      await fresh;
+      expect(store.fetchingCards).toBe(false);
+      release();
+      await old;
+
+      expect(fetchMany).toHaveBeenCalledTimes(2);
+      expect(store.queue).toHaveLength(2);
+      expect(store.fetchingCards).toBe(false);
+    });
+
+    it('shows nothing from a next() that was waiting at the reset', async () => {
+      const store = useDiscordFetcherStore();
+      let release!: () => void;
+      const gate = new Promise<void>((r) => (release = r));
+      fetchMany.mockImplementationOnce(async function* () {
+        await gate;
+        yield { data: makeScryfallCard({ name: 'Old' }), date: new Date() };
+      });
+
+      const shown = store.next();
+      store.reset();
+      release();
+
+      expect(await shown).toEqual({ success: true });
+      expect(store.card).toBeNull();
+      expect(shownNames()).toEqual([]);
+    });
+  });
+
+  // #162: the previous card was rebuilt, with a new ID, on every log event.
+  it('keeps a previous card the same object as the log grows', async () => {
+    const store = useDiscordFetcherStore();
+    await store.next();
+    await store.next();
+    await settle(store);
+    store.prev();
+    const before = store.card;
+
+    useEventLogStore().record('boardCleared', {});
+
+    expect(store.card).toBe(before);
+  });
+
   describe('persistence', () => {
     // #24: settings changes on their own must be saved.
     it.each([
