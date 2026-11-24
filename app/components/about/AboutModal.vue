@@ -87,6 +87,8 @@
             >GitHub</a
           >.
         </p>
+        <!-- Selectable, so it can be copied into a bug report (#168). -->
+        <p class="text-muted select-text">Version {{ APP_VERSION }}</p>
       </section>
     </template>
   </UModal>
@@ -96,6 +98,7 @@
 // Nuxt UI's plain-Vue Icon; components/Icon.vue is the Nuxt-only variant.
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
+import { APP_VERSION } from '~/utils/appVersion';
 
 const emit = defineEmits<{ close: [boolean] }>();
 
