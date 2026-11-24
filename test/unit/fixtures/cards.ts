@@ -38,3 +38,31 @@ export function makeCard({
     ...overrides,
   };
 }
+
+/**
+ * A meld pair and the card they meld into, linked through `all_parts` as
+ * Scryfall links them (with an unrelated token part, which meld ignores).
+ */
+export function makeMeldCards() {
+  const all_parts = [
+    { id: 'bruna-id', component: 'meld_part', name: 'Bruna, the Fading Light' },
+    {
+      id: 'brisela-id',
+      component: 'meld_result',
+      name: 'Brisela, Voice of Nightmares',
+    },
+    {
+      id: 'gisela-id',
+      component: 'meld_part',
+      name: 'Gisela, the Broken Blade',
+    },
+    { id: 'angel-id', component: 'token', name: 'Angel' },
+  ];
+  const card = (id: string, name: string) =>
+    makeScryfallCard({ id, name, layout: 'meld', all_parts });
+  return {
+    bruna: card('bruna-id', 'Bruna, the Fading Light'),
+    gisela: card('gisela-id', 'Gisela, the Broken Blade'),
+    brisela: card('brisela-id', 'Brisela, Voice of Nightmares'),
+  };
+}

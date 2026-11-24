@@ -65,6 +65,8 @@
     v-model:open="cardModifiersIsOpen"
     :card="selectedCard"
   />
+
+  <PlayAreaRoomDoorsModal v-if="battlefield.doorChoice" />
 </template>
 
 <script setup lang="ts">
@@ -93,6 +95,7 @@ import {
 } from '~/features/battlefield';
 import { useSettingsStore } from '~/stores/settings';
 import { gridLevels } from '~/utils/gridLevels';
+import { whenIdle } from '~/utils/whenIdle';
 import type { BoardCard } from '~/types/PlayArea';
 
 // Card details and modifiers (with the number input) load when the browser is
@@ -102,7 +105,11 @@ const loadModifiersMenu = () =>
   import('~/components/playArea/ModifiersMenu.vue');
 const PlayAreaCardDetails = defineAsyncComponent(loadCardDetails);
 const PlayAreaModifiersMenu = defineAsyncComponent(loadModifiersMenu);
-window.requestIdleCallback?.(() => {
+// Only a Room cast to the board opens it (#145).
+const PlayAreaRoomDoorsModal = defineAsyncComponent(
+  () => import('~/components/playArea/RoomDoorsModal.vue'),
+);
+whenIdle(() => {
   void loadCardDetails();
   void loadModifiersMenu();
 });
@@ -121,6 +128,7 @@ const {
   scale,
   style,
   isDragging,
+  panBy,
   onWheel,
   onMouseDown,
   onMouseMove,
@@ -232,10 +240,23 @@ function selectBox(end: { x: number; y: number }) {
   );
 }
 
-// Esc clears the selection, then leaves selection mode. Dialogs handle their
-// own Esc first.
+// Tab to a card off screen makes the browser scroll the wrapper to it, which
+// the pan and the pointer maths know nothing about. Undo the scroll and pan
+// the same distance instead, so the card still comes into view (#170).
+useEventListener(wrapperEl, 'scroll', () => {
+  const el = wrapperEl.value;
+  if (!el || (!el.scrollLeft && !el.scrollTop)) return;
+  const { scrollLeft, scrollTop } = el;
+  el.scrollLeft = 0;
+  el.scrollTop = 0;
+  panBy(-scrollLeft, -scrollTop);
+});
+
+// Esc stops attaching (#170), else clears the selection, then leaves
+// selection mode. Dialogs handle their own Esc first.
 useEventListener(window, 'keydown', (e: KeyboardEvent) => {
   if (e.key !== 'Escape' || e.defaultPrevented) return;
+  if (battlefield.isAttaching) return battlefield.cancelAttaching();
   if (!selection.size && !selection.mode) return;
   selection.escape();
 });

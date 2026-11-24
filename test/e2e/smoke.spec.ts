@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 const IMAGE_URL = 'https://cards.scryfall.io/border_crop/front/test-card.jpg';
 
@@ -102,6 +102,27 @@ test('a card fetched On-deck can be cast to the board', async ({ page }) => {
   await expect(boardCard).toBeVisible();
 });
 
+// #175: instants and sorceries are cast without staying on the board.
+test('a card cast to the graveyard is logged and leaves no card on the board', async ({
+  page,
+}) => {
+  await page.getByRole('button', { name: 'On-deck' }).click();
+  await page.getByRole('button', { name: 'Next card' }).click();
+  await page.getByRole('button', { name: 'Cast to graveyard' }).click();
+
+  await expect(page.getByRole('button', { name: 'Next card' })).toBeHidden();
+  await expect(page.locator('.board-card')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Open menu' }).click();
+  await page.getByRole('menuitem', { name: 'Event log' }).click();
+  const events = page
+    .getByRole('dialog', { name: 'Event log' })
+    .getByRole('list', { name: 'Events' });
+  await expect(
+    events.getByText(`Cast ${card.name} to the graveyard`),
+  ).toBeVisible();
+});
+
 // #23: both copies used to share one ID.
 test('the same card cast twice gives two separate cards', async ({ page }) => {
   // The mocked random endpoint always returns the same card.
@@ -189,7 +210,32 @@ test.describe('dragging the On-deck card', () => {
       }),
     ).toBeVisible();
     await expect(page.locator('.board-card-stack')).toHaveCount(0);
+    // #176: a tap enlarges the card; a drag doesn't count as one.
+    await expect(page.getByRole('dialog', { name: card.name })).toBeHidden();
   });
+});
+
+// #176: players pinch-zoomed the panel to read the On-deck card.
+test('a tap on the On-deck card enlarges it, and another tap closes it', async ({
+  page,
+}) => {
+  await page.getByRole('button', { name: 'On-deck' }).click();
+  await page.getByRole('button', { name: 'Next card' }).click();
+  const small = page
+    .getByRole('dialog', { name: 'On-deck' })
+    .getByRole('img', { name: card.name });
+  const smallBox = (await small.boundingBox())!;
+  await small.click();
+
+  // The panel behind is hidden from the accessibility tree meanwhile.
+  const lightbox = page.getByRole('dialog', { name: card.name });
+  const big = lightbox.getByRole('img', { name: card.name });
+  await expect(big).toBeVisible();
+  const bigBox = (await big.boundingBox())!;
+  expect(bigBox.height).toBeGreaterThan(smallBox.height * 1.3);
+
+  await big.click();
+  await expect(lightbox).toBeHidden();
 });
 
 // #42
@@ -199,10 +245,10 @@ test('with card images off, cards show as text and no image loads', async ({
   // Reload first, so pending saves land before the settings are replaced.
   await page.reload();
   await page.evaluate(() =>
-    // devalue's format for { imagesEnabled: false }
+    // devalue's format for { imagesEnabled: false, version: 1 } (#154)
     localStorage.setItem(
       'mtg-harmony_settings',
-      JSON.stringify([{ imagesEnabled: 1 }, false]),
+      JSON.stringify([{ imagesEnabled: 1, version: 2 }, false, 1]),
     ),
   );
   const images: string[] = [];
@@ -608,17 +654,18 @@ async function ageTheLog(page: Page) {
       type: 'boardCleared',
       gameId: 'g1',
     };
-    // devalue's format for { entries: [entry], gameId: 'g1' }
+    // devalue's format for { entries: [entry], gameId: 'g1', version: 1 }
     localStorage.setItem(
       'mtg-harmony_eventLog',
       JSON.stringify([
-        { entries: 1, gameId: 6 },
+        { entries: 1, gameId: 6, version: 7 },
         [2],
         { id: 3, at: 4, type: 5, gameId: 6 },
         entry.id,
         entry.at,
         entry.type,
         entry.gameId,
+        1,
       ]),
     );
   });
@@ -721,10 +768,10 @@ test('with card outlines off, board cards have no visible border', async ({
 }) => {
   await page.reload();
   await page.evaluate(() =>
-    // devalue's format for { cardOutlineEnabled: false }
+    // devalue's format for { cardOutlineEnabled: false, version: 1 } (#154)
     localStorage.setItem(
       'mtg-harmony_settings',
-      JSON.stringify([{ cardOutlineEnabled: 1 }, false]),
+      JSON.stringify([{ cardOutlineEnabled: 1, version: 2 }, false, 1]),
     ),
   );
   await page.reload();
@@ -761,4 +808,163 @@ test('the log keeps the last game after a new game and a reload', async ({
     .getByRole('list', { name: 'Events' });
   await expect(events.getByText('New game (from the menu)')).toBeVisible();
   await expect(events.getByText(`Cast ${card.name}`)).toBeVisible();
+});
+
+// #167: the app shows Wizards' card names and art, so it carries their notice.
+test('About shows the fan content notice and credits', async ({ page }) => {
+  await page.getByRole('button', { name: 'Open menu' }).click();
+  await page.getByRole('menuitem', { name: 'About' }).click();
+
+  const about = page.getByRole('dialog', { name: 'About MTG Harmony' });
+  await expect(about.getByText(/unofficial Fan Content/)).toBeVisible();
+  await expect(
+    about.getByText(/Not approved\/endorsed by Wizards/),
+  ).toBeVisible();
+  await expect(about.getByRole('link', { name: 'Scryfall' })).toHaveAttribute(
+    'href',
+    'https://scryfall.com',
+  );
+  await expect(about.getByRole('link', { name: 'Mana' })).toHaveAttribute(
+    'href',
+    'https://mana.andrewgioia.com',
+  );
+});
+
+// #170: board cards and their actions work from the keyboard.
+test('a board card and its actions can be used from the keyboard', async ({
+  page,
+}) => {
+  await page.getByRole('button', { name: 'On-deck' }).click();
+  await page.getByRole('button', { name: 'Next card' }).click();
+  await page.getByRole('button', { name: 'Cast to board' }).click();
+  const boardCard = page.locator('.board-card').getByRole('img', {
+    name: card.name,
+  });
+  await expect(boardCard).toBeVisible();
+
+  // Tab reaches the card, then its actions, which show while focused.
+  await boardCard.focus();
+  await page.keyboard.press('Tab');
+  const tap = page.getByRole('button', { name: 'Tap', exact: true });
+  await expect(tap).toBeFocused();
+  await expect(tap).toHaveCSS('opacity', '1');
+  await page.keyboard.press('Enter');
+  await expect(
+    page.getByRole('button', { name: 'Untap', exact: true }),
+  ).toBeVisible();
+
+  // Enter on the card opens its details; closing them returns focus.
+  await boardCard.focus();
+  await page.keyboard.press('Enter');
+  const details = page.getByRole('dialog', { name: 'Card details' });
+  await expect(details).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(details).toBeHidden();
+  await expect(boardCard).toBeFocused();
+});
+
+// #169: the installed app opens without a network.
+test.describe('offline', () => {
+  test.use({ serviceWorkers: 'allow' });
+
+  test('the app opens offline, with what was on the board', async ({
+    page,
+    context,
+  }) => {
+    await page.getByRole('button', { name: 'On-deck' }).click();
+    await page.getByRole('button', { name: 'Next card' }).click();
+    await page.getByRole('button', { name: 'Cast to board' }).click();
+    const boardCard = page.locator('.board-card').getByRole('img', {
+      name: card.name,
+    });
+    await expect(boardCard).toBeVisible();
+    // The worker controls the page once it has precached the shell: it only
+    // activates after its install, and then claims the page.
+    await page.waitForFunction(() => {
+      const sw = (
+        navigator as unknown as { serviceWorker?: { controller: unknown } }
+      ).serviceWorker;
+      return !!sw?.controller;
+    });
+
+    await context.setOffline(true);
+    await page.reload();
+
+    await expect(boardCard).toBeVisible();
+    await page.getByRole('button', { name: 'On-deck' }).click();
+    await expect(page.getByText("You're offline.")).toBeVisible();
+    // Whether Next card still works depends on what On-deck had queued in
+    // time; the store's unit tests cover both.
+  });
+});
+
+// #186: the stack's box ends where its lowest attachment does.
+test.describe('a stack with attachments', () => {
+  /**
+   * Casts `count` cards and attaches all but the first to the first, each
+   * as it's cast: only a few cards fit in view.
+   */
+  async function stackWithAttachments(page: Page, count: number) {
+    const stacks = page.locator('.board-card-stack');
+    const details = page.getByRole('dialog', { name: 'Card details' });
+    for (let i = 0; i < count; i++) {
+      await page.getByRole('button', { name: 'On-deck' }).click();
+      await page.getByRole('button', { name: 'Next card' }).click();
+      await page.getByRole('button', { name: 'Cast to board' }).click();
+      if (i === 0) continue;
+      await expect(stacks).toHaveCount(2);
+      await stacks.nth(1).locator('.primary-card').getByRole('img').dblclick();
+      await details.getByRole('button', { name: 'Attach to...' }).click();
+      await stacks.nth(0).locator('.primary-card').getByRole('img').click();
+      await expect(stacks).toHaveCount(1);
+    }
+    return stacks.first();
+  }
+
+  /** Taps an attachment from its bottom edge, which nothing covers. */
+  async function tapAttachment(page: Page, index: number) {
+    const attachment = page.locator('.attachment').nth(index);
+    const image = attachment.getByRole('img');
+    const box = (await image.boundingBox())!;
+    await image.dblclick({ position: { x: box.width / 2, y: box.height - 5 } });
+    await page
+      .getByRole('dialog', { name: 'Card details' })
+      .getByRole('button', { name: 'Tap' })
+      .click();
+    await expect(attachment).toHaveClass(/tapped/);
+  }
+
+  /** How far the stack's box ends from its lowest card, in screen px. */
+  async function chin(stack: Locator) {
+    const cards = await stack.locator('.card-image-wrapper').all();
+    let lowest = -Infinity;
+    for (const card of cards) {
+      const b = (await card.boundingBox())!;
+      lowest = Math.max(lowest, b.y + b.height);
+    }
+    const box = (await stack.boundingBox())!;
+    return box.y + box.height - lowest;
+  }
+
+  test('fits untapped attachments', async ({ page }) => {
+    const stack = await stackWithAttachments(page, 4);
+
+    await expect.poll(() => chin(stack)).toBeCloseTo(0, 0);
+  });
+
+  test('fits tapped and untapped attachments mixed', async ({ page }) => {
+    const stack = await stackWithAttachments(page, 4);
+    await tapAttachment(page, 0);
+    await tapAttachment(page, 2);
+
+    // Tapping eases (#124), so wait for it to settle.
+    await expect.poll(() => chin(stack)).toBeCloseTo(0, 0);
+  });
+
+  test('fits a lone tapped attachment', async ({ page }) => {
+    const stack = await stackWithAttachments(page, 2);
+    await tapAttachment(page, 0);
+
+    await expect.poll(() => chin(stack)).toBeCloseTo(0, 0);
+  });
 });

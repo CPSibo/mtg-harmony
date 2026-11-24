@@ -86,3 +86,6 @@ Cloudflare Pages builds and deploys from git: `main` to [mtg-harmony.com](https:
 
 - [Scryfall API](https://scryfall.com/docs/api)
 - [Mana font](https://mana.andrewgioia.com)
+- [Lucide](https://lucide.dev) icons
+
+MTG Harmony is unofficial Fan Content permitted under the [Fan Content Policy](https://company.wizards.com/en/legal/fancontentpolicy). Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.

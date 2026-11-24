@@ -10,7 +10,7 @@
       class="card-image-wrapper cursor-pointer rounded-lg"
       :class="
         settings.cardOutlineEnabled
-          ? 'border-slate-600 hover:border-primary-800'
+          ? 'border-slate-500 hover:border-primary-800'
           : 'border-transparent'
       "
     >
@@ -19,18 +19,40 @@
         class="card-image"
         role="img"
         :aria-label="card.scryfallInfo.name"
+        tabindex="0"
+        :aria-description="lockedDescription"
         :style="
           showImage ? { backgroundImage: `url('${imageUri}')` } : undefined
         "
         title="Double tap to open"
         @click="tryAttach"
         @touchend="tryAttach"
+        @keydown.enter.self.prevent="onKey"
+        @keydown.space.self.prevent="onKey"
       >
         <SharedCardText
           v-if="!showImage"
           :card="card.scryfallInfo"
           class="size-full"
         />
+
+        <!-- A Room's locked doors, dimmed under a padlock (#145). In the
+             image's own frame, before it turns to read: the first door is
+             its bottom half. -->
+        <template v-if="showImage && !card.flipped">
+          <div
+            v-for="door in card.lockedDoors"
+            :key="door"
+            class="door-lock"
+            :class="door === 0 ? 'bottom-0' : 'top-0'"
+            aria-hidden="true"
+          >
+            <UIcon
+              name="i-lucide-lock"
+              class="door-lock-icon"
+            />
+          </div>
+        </template>
 
         <div
           v-if="!!card.faceNumber"
@@ -40,7 +62,11 @@
         </div>
 
         <div
-          v-if="battlefield.isAttaching && isHovered && isValidAttachmentTarget"
+          v-if="
+            battlefield.isAttaching &&
+            (isHovered || isFocused) &&
+            isValidAttachmentTarget
+          "
           class="attach-overlay text-5xl"
         >
           <UIcon
@@ -56,11 +82,25 @@
     </div>
 
     <div class="modifiers grid grid-flow-col gap-1 place-items-start">
-      <div
+      <!-- As text, there are no halves to dim: name the locked doors. -->
+      <template v-if="!showImage">
+        <span
+          v-for="name in lockedNames"
+          :key="name"
+          class="modifier-icon gap-1 flex items-center bg-gray-950/90 px-1 py-0.5 rounded-sm"
+          :title="`${name} is locked`"
+        >
+          <UIcon name="i-lucide-lock" />
+          {{ name }}
+        </span>
+      </template>
+      <button
         v-for="{ modifier, count } in modifiers"
         :key="modifier.key"
+        type="button"
         class="modifier-icon gap-1 flex items-center bg-gray-950/90 px-1 py-0.5 rounded-sm cursor-pointer"
         :title="modifier.name"
+        :aria-label="modifierLabel(modifier, count)"
         @click.stop="emits('showCardModifiers', card)"
       >
         <span :class="['ms', modifier.symbol]" />
@@ -70,7 +110,7 @@
         >
           x{{ count }}
         </span>
-      </div>
+      </button>
     </div>
   </div>
 </template>
@@ -79,19 +119,20 @@
 import { useMoveAnimation } from '~/features/castAnimation';
 // Nuxt UI's plain-Vue Icon; components/Icon.vue is the Nuxt-only variant.
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
-import { useElementHover } from '@vueuse/core';
+import { useElementHover, useFocus } from '@vueuse/core';
 import { useDoubleTap } from '~/composables/useDoubleTap';
 import SharedCardText from '~/components/shared/CardText.vue';
 import { useSettingsStore } from '~/stores/settings';
 import { computed, useTemplateRef } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import {
+  doorNames,
   isLandscape,
   shownImageUri,
   showsImage,
 } from '~/features/battlefield/cardFaces';
 import { modifierByKey } from '~/types/MtgConcepts';
-import type { BoardCard } from '~/types/PlayArea';
+import type { BoardCard, Modifier } from '~/types/PlayArea';
 
 const props = defineProps<{
   card: BoardCard;
@@ -120,6 +161,15 @@ const showImage = computed(() =>
   showsImage(props.card, settings.imagesEnabled),
 );
 const imageUri = computed(() => shownImageUri(props.card));
+const lockedNames = computed(() => {
+  const names = doorNames(props.card);
+  return (props.card.lockedDoors ?? []).map((door) => names[door]!);
+});
+const lockedDescription = computed(() =>
+  lockedNames.value.length
+    ? `Locked: ${lockedNames.value.join(', ')}`
+    : undefined,
+);
 const landscape = computed(() => isLandscape(props.card));
 // Lies on its long side: a landscape card untapped, or any other card tapped.
 const sideways = computed(() => landscape.value !== props.card.tapped);
@@ -154,7 +204,22 @@ const tryAttach = (ev: Event) => {
 
 const cardImageSection = useTemplateRef('cardImageSection');
 const isHovered = useElementHover(cardImageSection);
+const { focused: isFocused } = useFocus(cardImageSection);
 useDoubleTap(cardImageSection, () => emits('showCardDetails', props.card));
+
+/**
+ * Enter or Space on a focused card: picks it as the target while attaching,
+ * otherwise opens its details, as a double tap does (#170).
+ */
+function onKey(ev: KeyboardEvent) {
+  if (battlefield.isAttaching) tryAttach(ev);
+  else emits('showCardDetails', props.card);
+}
+
+/** A counter's name for screen readers, with its count when more than one. */
+function modifierLabel(modifier: Modifier, count: number) {
+  return count > 1 ? `${modifier.name} ×${count}` : modifier.name;
+}
 </script>
 
 <style lang="css" scoped>
@@ -197,6 +262,33 @@ useDoubleTap(cardImageSection, () => emits('showCardDetails', props.card));
       background-clip: padding-box;
       background-position: center center;
       background-size: var(--scaled-short) var(--scaled-long);
+
+      &:focus-visible {
+        outline: 3px solid var(--ui-primary);
+        outline-offset: 2px;
+      }
+
+      .door-lock {
+        position: absolute;
+        left: 0;
+        width: 100%;
+        height: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgb(0 0 0 / 55%);
+        pointer-events: none;
+      }
+
+      .door-lock-icon {
+        width: 30%;
+        height: auto;
+        aspect-ratio: 1;
+        color: white;
+        filter: drop-shadow(0 0 0.15em black);
+        /* Upright however the card has turned. */
+        rotate: calc(var(--rotate, 0deg) * -1);
+      }
     }
   }
 

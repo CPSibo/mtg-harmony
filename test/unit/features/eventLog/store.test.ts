@@ -16,6 +16,19 @@ function cardName(entry: EventEntry | undefined) {
   return entry && 'card' in entry ? entry.card.name : undefined;
 }
 
+/** Makes IndexedDB refuse every write, as when storage is full. */
+function failWrites() {
+  const transaction = IDBDatabase.prototype.transaction;
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  return vi
+    .spyOn(IDBDatabase.prototype, 'transaction')
+    .mockImplementation(function (this: IDBDatabase, ...args) {
+      if (args[1] === 'readwrite')
+        throw new DOMException('Quota exceeded', 'QuotaExceededError');
+      return transaction.apply(this, args);
+    });
+}
+
 describe('event log store', () => {
   it('records an entry with a timestamp, the game and a card snapshot', () => {
     vi.useFakeTimers({ now: new Date('2026-11-07T12:00:00Z') });
@@ -105,6 +118,36 @@ describe('event log store', () => {
     ]);
   });
 
+  // #173: the log window used to keep every past game in memory for good,
+  // and copy them all on each new event.
+  it('lets go of past games once the log window is done with them', async () => {
+    const log = useEventLogStore();
+    log.record('fetched', { card: makeScryfallCard({ name: 'Last game' }) });
+    log.startNewGame('newGame');
+    await log.loadHistory();
+    expect(log.history.map(cardName)).toContain('Last game');
+
+    log.unloadHistory();
+    await log.settled();
+    expect(log.history.map(cardName)).not.toContain('Last game');
+
+    await log.loadHistory();
+    expect(log.history.map(cardName)).toContain('Last game');
+  });
+
+  it("doesn't rebuild past games on each new event (#173)", async () => {
+    const log = useEventLogStore();
+    log.record('fetched', { card: makeScryfallCard() });
+    log.startNewGame('newGame');
+    await log.loadHistory();
+    const past = log.pastEntries;
+
+    log.record('fetched', { card: makeScryfallCard() });
+
+    expect(log.pastEntries).toBe(past);
+    expect(past.map((e) => e.type)).toEqual(['fetched']);
+  });
+
   it('when the current game fills, keeps only the newest 250 of a recent game', () => {
     const log = useEventLogStore();
     for (let i = 0; i <= MAX_ENTRIES; i++) log.record('boardCleared', {});
@@ -175,6 +218,29 @@ describe('event log store', () => {
     await log.loadHistory();
 
     expect(log.history).toEqual([]);
+  });
+
+  // #156: a failed write used to drop the finished game.
+  it('keeps a finished game for a retry when the archive write fails', async () => {
+    const write = failWrites();
+    const log = useEventLogStore();
+    log.record('fetched', { card: makeScryfallCard({ name: 'Last game' }) });
+
+    log.startNewGame('newGame');
+    await log.settled();
+    expect(log.archiveAvailable).not.toBe(false);
+    await nextTick();
+    flushSaves();
+
+    // The next start retries it.
+    write.mockRestore();
+    setActivePinia(createPinia());
+    const reloaded = useEventLogStore();
+    await reloaded.settled();
+    await reloaded.loadHistory();
+
+    expect(reloaded.archiveAvailable).toBe(true);
+    expect(reloaded.history.map(cardName)).toContain('Last game');
   });
 
   it('without IndexedDB, keeps the current game only and says so', async () => {

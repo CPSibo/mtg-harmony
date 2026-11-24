@@ -28,13 +28,26 @@ function entry(gameId: string, at: number, c = card): EventEntry {
   };
 }
 
+/** Makes IndexedDB refuse every write, as when storage is full. */
+function failWrites() {
+  const transaction = IDBDatabase.prototype.transaction;
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  return vi
+    .spyOn(IDBDatabase.prototype, 'transaction')
+    .mockImplementation(function (this: IDBDatabase, ...args) {
+      if (args[1] === 'readwrite')
+        throw new DOMException('Quota exceeded', 'QuotaExceededError');
+      return transaction.apply(this, args);
+    });
+}
+
 describe('event log archive', () => {
   it('keeps archived games, oldest first, across games', async () => {
     const a = [entry('game-a', 1), entry('game-a', 2)];
     const b = [entry('game-b', 3)];
 
-    expect(await archiveEntries(b)).toBe(true);
-    expect(await archiveEntries(a)).toBe(true);
+    expect(await archiveEntries(b)).toBe('archived');
+    expect(await archiveEntries(a)).toBe('archived');
 
     expect((await loadArchive())?.map((e) => e.id)).toEqual(
       [...a, ...b].map((e) => e.id),
@@ -106,7 +119,14 @@ describe('event log archive', () => {
   it('reports no archive when IndexedDB is unavailable', async () => {
     Reflect.deleteProperty(globalThis, 'indexedDB');
 
-    expect(await archiveEntries([entry('game-a', 1)])).toBe(false);
+    expect(await archiveEntries([entry('game-a', 1)])).toBe('unavailable');
     expect(await loadArchive()).toBeNull();
+  });
+
+  // #156: a failed write and no IndexedDB were both `false`.
+  it('tells a failed write apart from no IndexedDB', async () => {
+    failWrites();
+
+    expect(await archiveEntries([entry('game-a', 1)])).toBe('failed');
   });
 });

@@ -43,7 +43,22 @@ export interface AppSettings {
 
   /** Whether attaching or putting under plays a small flourish (#124). */
   attachFlareEnabled: boolean;
+
+  /** How many cards On-deck fetches at a time. */
+  fetchCardCount: number;
+
+  /** On-deck tops up in the background below this many queued cards. */
+  minQueuedCardCount: number;
+
+  /** Whether On-deck preloads the next queued card's image. */
+  preloadImagesEnabled: boolean;
 }
+
+/** The most On-deck may fetch or keep queued, as the settings dialog allows. */
+export const MAX_QUEUE_SIZE = 50;
+
+const isQueueSize = (v: unknown): v is number =>
+  Number.isInteger(v) && (v as number) >= 1 && (v as number) <= MAX_QUEUE_SIZE;
 
 const STORAGE_KEY = 'mtg-harmony_settings';
 /** Bump when the saved shape changes (#154). */
@@ -59,6 +74,9 @@ const defaults: AppSettings = {
   castLanding: CAST_LANDING_DEFAULT,
   castDuration: CAST_DURATION_DEFAULT,
   attachFlareEnabled: true,
+  fetchCardCount: 10,
+  minQueuedCardCount: 3,
+  preloadImagesEnabled: true,
 };
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -92,6 +110,11 @@ export const useSettingsStore = defineStore('settings', () => {
   const castDuration = ref<number>(defaults.castDuration);
   const attachFlareEnabled = ref<boolean>(defaults.attachFlareEnabled);
 
+  // On-deck's, here so Reset app restores them with the rest (#159).
+  const fetchCardCount = ref<number>(defaults.fetchCardCount);
+  const minQueuedCardCount = ref<number>(defaults.minQueuedCardCount);
+  const preloadImagesEnabled = ref<boolean>(defaults.preloadImagesEnabled);
+
   function reset() {
     wakeLockEnabled.value = defaults.wakeLockEnabled;
     imagesEnabled.value = defaults.imagesEnabled;
@@ -102,6 +125,9 @@ export const useSettingsStore = defineStore('settings', () => {
     castLanding.value = defaults.castLanding;
     castDuration.value = defaults.castDuration;
     attachFlareEnabled.value = defaults.attachFlareEnabled;
+    fetchCardCount.value = defaults.fetchCardCount;
+    minQueuedCardCount.value = defaults.minQueuedCardCount;
+    preloadImagesEnabled.value = defaults.preloadImagesEnabled;
   }
 
   function save() {
@@ -118,6 +144,9 @@ export const useSettingsStore = defineStore('settings', () => {
         castLanding: castLanding.value,
         castDuration: castDuration.value,
         attachFlareEnabled: attachFlareEnabled.value,
+        fetchCardCount: fetchCardCount.value,
+        minQueuedCardCount: minQueuedCardCount.value,
+        preloadImagesEnabled: preloadImagesEnabled.value,
       },
       SAVE_VERSION,
     );
@@ -154,6 +183,15 @@ export const useSettingsStore = defineStore('settings', () => {
     if (typeof data.attachFlareEnabled === 'boolean')
       attachFlareEnabled.value = data.attachFlareEnabled;
 
+    if (isQueueSize(data.fetchCardCount))
+      fetchCardCount.value = data.fetchCardCount;
+
+    if (isQueueSize(data.minQueuedCardCount))
+      minQueuedCardCount.value = data.minQueuedCardCount;
+
+    if (typeof data.preloadImagesEnabled === 'boolean')
+      preloadImagesEnabled.value = data.preloadImagesEnabled;
+
     return true;
   }
 
@@ -170,6 +208,9 @@ export const useSettingsStore = defineStore('settings', () => {
       castLanding,
       castDuration,
       attachFlareEnabled,
+      fetchCardCount,
+      minQueuedCardCount,
+      preloadImagesEnabled,
     ],
     save,
   );
@@ -198,5 +239,9 @@ export const useSettingsStore = defineStore('settings', () => {
     castLanding,
     castDuration,
     attachFlareEnabled,
+
+    fetchCardCount,
+    minQueuedCardCount,
+    preloadImagesEnabled,
   };
 });

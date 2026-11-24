@@ -1,31 +1,16 @@
 import type { ScryfallCard } from '~/types/Scryfall';
+import { scryfallFetch } from './scryfallFetch';
 
 const SCRYFALL_ENDPOINT =
   'https://api.scryfall.com/cards/random?q=-t:land+game:paper';
-
-// Scryfall's docs specify a 2 req/s hard cap. 600ms keeps us under that
-// with some margin instead of shaving it exactly to 500ms.
-const MIN_REQUEST_INTERVAL_MS = 600;
 
 // Per Scryfall's docs: the first 429 buys you a 30s window where nothing
 // will be answered. Wait it out once; a second 429 after that means
 // something's wrong and we should bail rather than risk a temp ban.
 const RATE_LIMIT_COOLDOWN_MS = 30_000;
 
-// Shared across calls (and concurrent generator instances) so bursts
-// from multiple callers can't stack up and blow the rate limit.
-let lastRequestTime = 0;
-
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function throttle(): Promise<void> {
-  const elapsed = Date.now() - lastRequestTime;
-  if (elapsed < MIN_REQUEST_INTERVAL_MS) {
-    await sleep(MIN_REQUEST_INTERVAL_MS - elapsed);
-  }
-  lastRequestTime = Date.now();
 }
 
 function isRateLimitError(err: unknown): boolean {
@@ -41,21 +26,35 @@ class HttpError extends Error {
   }
 }
 
-/** Fetches one random card, throwing an `HttpError` for any non-2xx response. */
+/**
+ * Fetches one random card, throwing an `HttpError` for any non-2xx response.
+ * Spaced from every other Scryfall request by `scryfallFetch`.
+ */
 async function getRandomCard(): Promise<ScryfallCard> {
-  const response = await fetch(SCRYFALL_ENDPOINT);
+  const response = await scryfallFetch(SCRYFALL_ENDPOINT);
+  if (!response.ok) throw new HttpError(response.status);
+  return (await response.json()) as ScryfallCard;
+}
+
+/**
+ * Fetches one card by its Scryfall ID, such as what two meld halves meld into
+ * (#143). Shares the rate limit with every other fetch here; throws an
+ * `HttpError` for any non-2xx response.
+ */
+export async function fetchCardById(id: string): Promise<ScryfallCard> {
+  const response = await scryfallFetch(
+    `https://api.scryfall.com/cards/${encodeURIComponent(id)}`,
+  );
   if (!response.ok) throw new HttpError(response.status);
   return (await response.json()) as ScryfallCard;
 }
 
 export function useScryfall() {
   async function fetchOne(): Promise<ScryfallCardResponse> {
-    await throttle();
     let response = await getRandomCard();
 
     // Retry once if the card has no usable image (e.g. image_status 'missing').
     if (!hasUsableImage(response)) {
-      await throttle();
       response = await getRandomCard();
 
       if (!hasUsableImage(response)) {

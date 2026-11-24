@@ -1,10 +1,16 @@
 export * from './options';
-export { flightKeyframes, sparkleAngles, type ScreenRect } from './keyframes';
+export {
+  flightKeyframes,
+  graveyardKeyframes,
+  sparkleAngles,
+  type ScreenRect,
+} from './keyframes';
 export {
   cardImage,
   castSource,
   measureCards,
   playCastAnimation,
+  playGraveyardAnimation,
   playMoveAnimation,
   playRemoveAnimation,
   type CastAnimationOptions,
@@ -13,6 +19,7 @@ export {
 export {
   useCastAnimation,
   useCopyAnimation,
+  useGraveyardAnimation,
   useMoveAnimation,
   useRemoveAnimation,
 } from './useCastAnimation';

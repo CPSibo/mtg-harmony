@@ -9,6 +9,7 @@ import ui from '@nuxt/ui/vue-plugin';
 import { createPinia } from 'pinia';
 import { createApp } from 'vue';
 import App from './App.vue';
+import { registerServiceWorker } from './pwa/register';
 import lucide from './assets/icons/lucide.json';
 import { showStartupFailure } from './startupRecovery';
 
@@ -32,3 +33,4 @@ try {
   showStartupFailure(error);
 }
 started = true;
+registerServiceWorker();

@@ -2,6 +2,7 @@ export {
   cardData,
   cardImage,
   createBoardCard,
+  entersPrepared,
   readSavedCard,
 } from './boardCard';
 export {

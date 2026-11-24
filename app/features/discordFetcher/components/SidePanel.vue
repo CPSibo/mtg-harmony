@@ -9,6 +9,7 @@
     :ui="{
       overlay: 'bg-elevated',
       content: 'border-primary-900! border-r-3',
+      body: 'flex flex-col',
     }"
   >
     <UButton
@@ -28,22 +29,26 @@
       >
         <USkeleton
           v-if="loading"
-          class="mtg-card-display vertical"
+          class="mtg-card-display fit"
         />
         <SharedCardImage
-          v-else-if="!!card && !!cardImage(card) && settings.imagesEnabled"
-          :landscape="isLandscape(card)"
-          frame-class="w-full"
-          :src="cardImage(card)"
-          :alt="card.scryfallInfo.name"
-          class="mtg-card-display vertical cursor-grab touch-none select-none"
+          v-else-if="!!imageUri && settings.imagesEnabled"
+          :landscape="landscape"
+          :frame-style="{ width: 'min(100cqw, 100cqh * 17 / 12)' }"
+          :src="imageUri"
+          :alt="card?.scryfallInfo.name ?? 'Missing card'"
+          class="mtg-card-display fit cursor-grab touch-none select-none"
           :class="{ 'opacity-40': ghost }"
           draggable="false"
-          title="Drag onto the board to cast"
+          tabindex="0"
+          title="Tap to enlarge, or drag onto the board to cast"
           @pointerdown="onPointerDown"
           @pointermove="onPointerMove"
           @pointerup="onPointerUp"
           @pointercancel="cancelDrag"
+          @click="enlarged = true"
+          @keydown.enter.prevent="enlarged = true"
+          @keydown.space.prevent="enlarged = true"
         />
         <SharedCardText
           v-else-if="!!card"
@@ -60,20 +65,35 @@
         />
         <SharedPlaceholder
           v-else
-          class="cursor-pointer mtg-card-display vertical"
-          @click="goNext"
+          class="mtg-card-display fit"
+          :class="{ 'cursor-pointer': !cantFetch }"
+          @click="!cantFetch && goNext()"
         >
-          <div class="flex flex-col gap-3 items-center">
+          <div class="flex flex-col gap-3 items-center text-center">
             <UIcon
-              name="i-lucide-arrow-down-to-line"
+              :name="
+                cantFetch ? 'i-lucide-wifi-off' : 'i-lucide-arrow-down-to-line'
+              "
               class="text-primary text-4xl"
             />
-            Tap to fetch next card
+            {{ cantFetch ? 'Offline' : 'Tap to fetch next card' }}
           </div>
         </SharedPlaceholder>
       </div>
 
-      <div class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <p
+        v-if="!online"
+        role="status"
+        class="mt-3 flex items-center gap-2 text-sm text-muted"
+      >
+        <UIcon
+          name="i-lucide-wifi-off"
+          class="shrink-0"
+        />
+        {{ OFFLINE_MESSAGE }}
+      </p>
+
+      <div class="mt-5 grid shrink-0 grid-cols-1 md:grid-cols-2 gap-4">
         <UButton
           color="secondary"
           variant="subtle"
@@ -90,6 +110,7 @@
           variant="subtle"
           icon="i-lucide-arrow-right"
           :loading="loading"
+          :disabled="cantFetch"
           size="xl"
           @click="goNext"
         >
@@ -109,6 +130,20 @@
           Cast to board
         </UButton>
 
+        <!-- For what doesn't stay, such as instants and sorceries (#175). -->
+        <UButton
+          color="info"
+          variant="subtle"
+          icon="i-lucide-skull"
+          :loading="loading"
+          :disabled="!card?.id"
+          size="xl"
+          class="md:col-span-2"
+          @click="castToGraveyard"
+        >
+          Cast to graveyard
+        </UButton>
+
         <UButton
           color="error"
           variant="ghost"
@@ -124,6 +159,14 @@
       </div>
     </template>
   </USlideover>
+
+  <SharedCardLightbox
+    v-if="imageUri"
+    v-model:open="enlarged"
+    :src="imageUri"
+    :alt="card?.scryfallInfo.name ?? ''"
+    :landscape="landscape"
+  />
 
   <SharedCastDragGhost
     v-if="card"
@@ -142,30 +185,47 @@ import UButton from '@nuxt/ui/components/Button.vue';
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
 import USkeleton from '@nuxt/ui/components/Skeleton.vue';
 import USlideover from '@nuxt/ui/components/Slideover.vue';
+import SharedCardLightbox from '~/components/shared/CardLightbox.vue';
 import SharedCardText from '~/components/shared/CardText.vue';
 import SharedCastDragGhost from '~/components/shared/CastDragGhost.vue';
 import SharedPlaceholder from '~/components/shared/Placeholder.vue';
 import { useSettingsStore } from '~/stores/settings';
 import { useToast } from '@nuxt/ui/composables';
 import { storeToRefs } from 'pinia';
-import type { Position } from '@vueuse/core';
-import { ref, useTemplateRef } from 'vue';
-import { castSource, useCastAnimation } from '~/features/castAnimation';
+import { useOnline, type Position } from '@vueuse/core';
+import { computed, ref, useTemplateRef, watch } from 'vue';
+import {
+  castSource,
+  useCastAnimation,
+  useGraveyardAnimation,
+} from '~/features/castAnimation';
 import { useDragToCast } from '~/composables/useDragToCast';
 import { cardImage, useBattlefieldStore } from '~/features/battlefield';
-import { useDiscordFetcherStore } from '..';
+import { OFFLINE_MESSAGE, useDiscordFetcherStore } from '..';
 
 const toast = useToast();
 
 const drawerIsOpen = ref(false);
 
 const discordFetchStore = useDiscordFetcherStore();
-const { card, canGoPrevious } = storeToRefs(discordFetchStore);
+const { card, canGoPrevious, nextNeedsNetwork } =
+  storeToRefs(discordFetchStore);
+
+// Offline, Next card still works through cards already queued or shown (#169).
+const online = useOnline();
+const cantFetch = computed(() => !online.value && nextNeedsNetwork.value);
 
 const board = useBattlefieldStore();
 const settings = useSettingsStore();
 
 const loading = ref(false);
+
+const imageUri = computed(() => (card.value ? cardImage(card.value) : ''));
+const landscape = computed(() => !!card.value && isLandscape(card.value));
+
+// The On-deck card blown up to fill the screen, for reading it (#176).
+const enlarged = ref(false);
+watch(card, () => (enlarged.value = false));
 
 const display = useTemplateRef<HTMLDivElement>('display');
 const animateCast = useCastAnimation();
@@ -204,6 +264,17 @@ const cast = (at?: Position) => {
   drawerIsOpen.value = false;
 };
 
+const animateGraveyard = useGraveyardAnimation();
+
+/** Casts the card without a stack (#175): logged, then gone. */
+const castToGraveyard = () => {
+  if (!card.value) return;
+  const source = castSource(display.value?.firstElementChild);
+  discordFetchStore.castToGraveyard();
+  void animateGraveyard(source);
+  drawerIsOpen.value = false;
+};
+
 // Drag to the board (#79).
 const {
   ghost,
@@ -216,10 +287,21 @@ const {
 </script>
 
 <style lang="scss" scoped>
+/* Takes all the height the buttons leave, not a fixed share of it, so the
+   card is as big as the panel allows (#176). */
 .on-deck-display {
-  height: 50%;
+  flex: 1 1 0;
+  min-height: 12rem;
+  container-type: size;
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+/* As big as fits both ways. */
+.on-deck-display > .fit {
+  width: min(100cqw, 100cqh * 12 / 17);
+  height: auto;
+  aspect-ratio: var(--card-ratio-vertical);
 }
 </style>

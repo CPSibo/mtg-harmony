@@ -30,11 +30,8 @@
       class="primary-card-wrapper flex flex-row"
       :class="{ 'primary-sideways': primarySideways }"
     >
-      <PlayAreaBoardCardStackActions
-        :stack="stack"
-        @show-card-details="emits('showCardDetails', $event)"
-      />
-
+      <!-- The card comes first so Tab reaches it, then its actions; the
+           actions still sit to its left (order: -1). #170 -->
       <PlayAreaBoardCard
         class="primary-card"
         :card="stack.primary"
@@ -43,11 +40,19 @@
         @show-card-details="emits('showCardDetails', stack.primary)"
         @show-card-modifiers="emits('showCardModifiers', stack.primary)"
       />
+
+      <PlayAreaBoardCardStackActions
+        :stack="stack"
+        @show-card-details="emits('showCardDetails', $event)"
+      />
     </div>
 
     <div
       class="attachments"
-      :style="`--total: ${stack.attachments.size}`"
+      :style="{
+        '--total': stack.attachments.size,
+        '--sideways': sidewaysAttachments,
+      }"
     >
       <PlayAreaBoardCard
         v-for="(card, index) in stack.attachments"
@@ -99,6 +104,13 @@ const battlefield = useBattlefieldStore();
 const primarySideways = computed(
   () => isLandscape(props.stack.primary) !== props.stack.primary.tapped,
 );
+/** Attachments lying on their long side, which are only a card's width tall. */
+const sidewaysAttachments = computed(() => {
+  let count = 0;
+  for (const card of props.stack.attachments)
+    if (isLandscape(card) !== card.tapped) count++;
+  return count;
+});
 const settings = useSettingsStore();
 const selection = useSelectionStore();
 const animateMove = useMoveAnimation();
@@ -188,6 +200,18 @@ const {
       selection.endGroupDrag();
     } else onSingleDrop(position, e);
     if (!movedTooFar && !longPressed && e.type === 'pointerup') onTap(e);
+  },
+  // This stack left the board mid-drag (#160). The watch on `myIsDragging`
+  // is already stopped, so tell the board directly, and let the group and
+  // the radial menu go.
+  onCancel: () => {
+    cancelLongPress();
+    dragMenu.end();
+    if (groupDrag) {
+      groupDrag = false;
+      selection.endGroupDrag();
+    }
+    isDragging.value = false;
   },
 });
 
@@ -367,6 +391,7 @@ watch(myIsDragging, (value) => {
 
 /* The actions step left by the overhang so the tapped card doesn't cover them. */
 .primary-card-wrapper :deep(.stack-actions) {
+  order: -1;
   transition: translate 180ms ease-out;
 
   @media (prefers-reduced-motion: reduce) {
@@ -413,9 +438,13 @@ watch(myIsDragging, (value) => {
      evenly and stays centred on the primary (#127). */
   width: var(--w);
 
-  /* Need to cap the height, or else the `top` makes a big, invisible chin. */
-  /* TODO(#186): This doesn't account for tapped attachments. */
-  height: calc((var(--total) * var(--h)) + var(--vertical-offset));
+  /* Cap the height at where the last card ends, or the offsets leave a big,
+     invisible chin (#186). Each card is a card's height tall, or its width
+     when it lies sideways, and each rides up by the offset. */
+  height: calc(
+    (var(--total) - var(--sideways)) * var(--h) + var(--sideways) * var(--w) +
+      var(--total) * var(--vertical-offset)
+  );
 
   > .board-card {
     top: calc(var(--vertical-offset) * var(--index));

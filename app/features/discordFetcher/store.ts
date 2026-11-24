@@ -1,9 +1,11 @@
 import {
   scryfallCardFromSnapshot,
   useEventLogStore,
+  type LoggedCard,
 } from '~/features/eventLog';
 import { useLocalStorage } from '~/composables/useLocalStorage';
 import { useScryfall } from '~/composables/useScryfall';
+import { useOnline } from '@vueuse/core';
 import { defineStore } from 'pinia';
 import { computed, ref, shallowRef, triggerRef, watch } from 'vue';
 import {
@@ -20,14 +22,15 @@ export interface DiscordFetcherStore {
   stepsBack: number;
   historyStart: number;
   cardCleared: boolean;
-  fetchCardCount: number;
-  minQueuedCardCount: number;
-  preloadImagesEnabled: boolean;
 }
 
 const STORAGE_KEY = 'mtg-harmony_discordFetcher';
 /** Bump when the saved shape changes (#154). */
 const SAVE_VERSION = 1;
+
+/** Why Next card can't fetch while offline (#169). */
+export const OFFLINE_MESSAGE =
+  "You're offline. On-deck fetches new cards when you're back online.";
 
 /** Fresh default state. A factory, so no store shares (and mutates) it. */
 function createDefaults(): DiscordFetcherStore {
@@ -37,9 +40,6 @@ function createDefaults(): DiscordFetcherStore {
     stepsBack: 0,
     historyStart: 0,
     cardCleared: false,
-    fetchCardCount: 10,
-    minQueuedCardCount: 3,
-    preloadImagesEnabled: true,
   };
 }
 
@@ -75,12 +75,6 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
   // the next *unseen* card rather than replaying one already seen.
   const cardCleared = ref(defaults.cardCleared);
 
-  const fetchCardCount = ref(defaults.fetchCardCount);
-
-  const minQueuedCardCount = ref(defaults.minQueuedCardCount);
-
-  const preloadImagesEnabled = ref(defaults.preloadImagesEnabled);
-
   /** The cards shown since the last reset, oldest first, from the log. */
   const shownHistory = computed(() =>
     log.entries.flatMap((e) =>
@@ -88,15 +82,26 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
     ),
   );
 
+  // A previous card is rebuilt from its log snapshot once, not on every log
+  // event, so it keeps its ID while shown (#162). Snapshots are shared per
+  // card and never change, so they key the cache.
+  const fromSnapshot = new WeakMap<LoggedCard, BoardCard>();
+  function cardFromSnapshot(snapshot: LoggedCard): BoardCard {
+    let built = fromSnapshot.get(snapshot);
+    if (!built) {
+      built = createBoardCard(scryfallCardFromSnapshot(snapshot));
+      fromSnapshot.set(snapshot, built);
+    }
+    return built;
+  }
+
   const card = computed<BoardCard | null>(() => {
     if (cardCleared.value) return null;
     if (stepsBack.value === 0) return current.value;
 
     const snapshot =
       shownHistory.value[shownHistory.value.length - 1 - stepsBack.value];
-    return snapshot
-      ? createBoardCard(scryfallCardFromSnapshot(snapshot))
-      : null;
+    return snapshot ? cardFromSnapshot(snapshot) : null;
   });
 
   const canGoPrevious = computed(
@@ -104,33 +109,55 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
   );
 
   type FetchResult = { success: boolean; error?: string };
+  /** A fetch stopped by a reset: not an error, and nothing to show. */
+  const CANCELLED: FetchResult = { success: true };
+
+  const online = useOnline();
+  /** Next card has to fetch: nothing queued, and no later card to step to. */
+  const nextNeedsNetwork = computed(
+    () => stepsBack.value === 0 && queue.value.length === 0,
+  );
+  // Back online: top up a queue that ran low while offline (#169).
+  watch(online, (isOnline) => {
+    if (isOnline && queue.value.length < settings.minQueuedCardCount)
+      void fetchCards(settings.fetchCardCount);
+  });
 
   // Tracks an in-flight fetchCards() call so concurrent callers (e.g. a
   // manual "next" racing next's own background top-up) await the same
   // request instead of one of them being rejected outright.
   let activeFetch: Promise<FetchResult> | null = null;
 
+  // Bumped by reset(). A fetch started before then belongs to the old game:
+  // it stops at its next card and keeps none of them (#162).
+  let generation = 0;
+
   async function fetchCards(count: number | undefined): Promise<FetchResult> {
     if (activeFetch) return activeFetch;
 
-    activeFetch = runFetch(count);
+    const fetch = (activeFetch = runFetch(count));
 
     try {
-      return await activeFetch;
+      return await fetch;
     } finally {
-      activeFetch = null;
+      // A reset may have let a newer fetch start meanwhile.
+      if (activeFetch === fetch) activeFetch = null;
     }
   }
 
   async function runFetch(count: number | undefined): Promise<FetchResult> {
     const errors: string[] = [];
+    const startedIn = generation;
 
     try {
       fetchingCards.value = true;
 
       for await (const result of scryfall.fetchMany(
-        count || fetchCardCount.value,
+        count || settings.fetchCardCount,
       )) {
+        // Leaving the loop stops the generator, so no further requests.
+        if (generation !== startedIn) return CANCELLED;
+
         if (typeof result === 'string') {
           errors.push(result);
           continue;
@@ -154,12 +181,13 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
         error: errors.length ? errors.join('; ') : undefined,
       };
     } catch {
+      if (generation !== startedIn) return CANCELLED;
       return {
         success: false,
         error: 'Could not fetch card',
       };
     } finally {
-      fetchingCards.value = false;
+      if (generation === startedIn) fetchingCards.value = false;
     }
   }
 
@@ -172,7 +200,7 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
   async function ensureQueuedCard(): Promise<FetchResult> {
     if (queue.value.length) return { success: true };
 
-    const fetchPromise = fetchCards(fetchCardCount.value);
+    const fetchPromise = fetchCards(settings.fetchCardCount);
 
     return new Promise<FetchResult>((resolve) => {
       const stop = watch(
@@ -206,7 +234,13 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
       return { success: true };
     }
 
+    if (!online.value && nextNeedsNetwork.value)
+      return { success: false, error: OFFLINE_MESSAGE };
+
+    const startedIn = generation;
     const result = await ensureQueuedCard();
+    // New game while waiting: that card belonged to the old game.
+    if (generation !== startedIn) return CANCELLED;
     if (!result.success) return result;
 
     const shown = queue.value.shift()!;
@@ -215,8 +249,8 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
     cardCleared.value = false;
     log.record('fetched', { card: shown });
 
-    if (queue.value.length < minQueuedCardCount.value) {
-      fetchCards(fetchCardCount.value);
+    if (online.value && queue.value.length < settings.minQueuedCardCount) {
+      fetchCards(settings.fetchCardCount);
     }
 
     return { success: true };
@@ -247,7 +281,7 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
     () => queue.value[0] && cardImage(queue.value[0]),
     (url) => {
       // No images shown, so none to preload (#42).
-      if (preloadImagesEnabled.value && settings.imagesEnabled && url)
+      if (settings.preloadImagesEnabled && settings.imagesEnabled && url)
         preloadImage(url);
     },
     { immediate: true },
@@ -257,8 +291,25 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
     cardCleared.value = true;
   }
 
-  /** Empties the queue and the shown card. The log keeps what was shown. */
+  /**
+   * Casts the card without putting it on the board (#175), for anything
+   * that doesn't stay, such as an instant or sorcery: logs it as cast to the
+   * graveyard and clears it.
+   */
+  function castToGraveyard() {
+    if (!card.value) return;
+    log.record('cast', { card: card.value.scryfallInfo, toGraveyard: true });
+    clearCard();
+  }
+
+  /**
+   * Empties the queue and the shown card, and abandons a fetch under way.
+   * The log keeps what was shown.
+   */
   function reset() {
+    generation++;
+    activeFetch = null;
+    fetchingCards.value = false;
     queue.value = [];
     current.value = null;
     stepsBack.value = 0;
@@ -276,9 +327,6 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
         stepsBack: stepsBack.value,
         historyStart: historyStart.value,
         cardCleared: cardCleared.value,
-        fetchCardCount: fetchCardCount.value,
-        minQueuedCardCount: minQueuedCardCount.value,
-        preloadImagesEnabled: preloadImagesEnabled.value,
       },
       SAVE_VERSION,
     );
@@ -314,33 +362,12 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
     if (typeof data.cardCleared === 'boolean')
       cardCleared.value = data.cardCleared;
 
-    if (typeof data.fetchCardCount === 'number')
-      fetchCardCount.value = data.fetchCardCount;
-
-    if (typeof data.minQueuedCardCount === 'number')
-      minQueuedCardCount.value = data.minQueuedCardCount;
-
-    if (typeof data.preloadImagesEnabled === 'boolean')
-      preloadImagesEnabled.value = data.preloadImagesEnabled;
-
     return true;
   }
 
   load();
 
-  watch(
-    [
-      queue,
-      current,
-      stepsBack,
-      historyStart,
-      cardCleared,
-      fetchCardCount,
-      minQueuedCardCount,
-      preloadImagesEnabled,
-    ],
-    save,
-  );
+  watch([queue, current, stepsBack, historyStart, cardCleared], save);
 
   return {
     save,
@@ -350,13 +377,12 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
     card,
     queue,
     canGoPrevious,
+    nextNeedsNetwork,
     fetchingCards,
-    fetchCardCount,
-    minQueuedCardCount,
-    preloadImagesEnabled,
     fetchCards,
     next,
     prev,
     clearCard,
+    castToGraveyard,
   };
 });

@@ -39,14 +39,21 @@ type AnyCard = BoardCard | ScryfallCard;
 export interface EventPayloads<C = AnyCard> {
   /** Shown in On-deck (not prefetched). */
   fetched: { card: C };
-  /** Cast from On-deck. */
-  cast: { card: C };
+  /**
+   * Cast from On-deck: onto the board, or straight to the graveyard with no
+   * stack (#175), say an instant or sorcery.
+   */
+  cast: { card: C; toGraveyard?: true };
   /** Added through Add Card. */
   added: { card: C };
   attached: { card: C; target: C };
   putUnder: { card: C; target: C };
   copied: { card: C; source: C; mode: CopyMode };
   removed: { card: C };
+  /** Two halves (`source`, then `target`) melded into `card` (#143). */
+  melded: { card: C; source: C; target: C };
+  /** `card` split back into the halves it was melded from. */
+  unmelded: { card: C; source: C; target: C };
   boardCleared: Record<string, never>;
   gameMarker: { reason: GameMarkerReason };
 }
@@ -75,6 +82,8 @@ export const EVENT_TYPES: readonly EventType[] = [
   'putUnder',
   'copied',
   'removed',
+  'melded',
+  'unmelded',
   'boardCleared',
   'gameMarker',
 ];

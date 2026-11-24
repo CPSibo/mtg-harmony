@@ -62,6 +62,7 @@
         v-model:page="page"
         :total="total"
         :items-per-page="PRINTINGS_PAGE_SIZE"
+        :disabled="!canPage"
         class="self-center"
       />
     </template>
@@ -92,7 +93,7 @@ const settings = useSettingsStore();
 const setFilter = ref('');
 const setFilterDebounced = refDebounced(setFilter, 500);
 
-const { visible, page, pageCount, status, total } = usePrintings(
+const { visible, page, pageCount, status, total, canPage } = usePrintings(
   () => ({
     name: props.card.scryfallInfo.name,
     oracleId: props.card.scryfallInfo.oracle_id,

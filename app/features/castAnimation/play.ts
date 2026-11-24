@@ -2,6 +2,7 @@ import { nextTick } from 'vue';
 import {
   flightKeyframes,
   flightTiming,
+  graveyardKeyframes,
   sparkleAngles,
   type ScreenRect,
 } from './keyframes';
@@ -64,18 +65,30 @@ function jitter(i: number, salt: number) {
   return v - Math.floor(v);
 }
 
-/** Fine magic dust: many tiny bright specks that twinkle and drift down. */
+/**
+ * Fine magic dust: many tiny bright specks that twinkle and drift down.
+ * `ash` is grey and violet specks that drift up instead, for the graveyard.
+ */
 function sparkles(
   layer: HTMLElement,
   rect: ScreenRect,
   count = 32,
   spread = 0.8,
+  tone: 'magic' | 'ash' = 'magic',
 ): Animation[] {
   const reach = Math.max(rect.width, rect.height) * spread;
   return sparkleAngles(count).map((base, i) => {
     const s = document.createElement('div');
     const size = 2 + Math.round(jitter(i, 1) * 2);
     const gold = jitter(i, 2) < 0.5;
+    const [core, glow] =
+      tone === 'ash'
+        ? gold
+          ? ['#c4b5fd', '#6d28d9']
+          : ['#d4d4d8', '#52525b']
+        : gold
+          ? ['#fff3b0', '#ffd76a']
+          : ['#ffffff', COLOUR];
     Object.assign(s.style, {
       position: 'absolute',
       left: '50%',
@@ -83,8 +96,8 @@ function sparkles(
       width: `${size}px`,
       height: `${size}px`,
       borderRadius: '50%',
-      background: gold ? '#fff3b0' : '#ffffff',
-      boxShadow: `0 0 3px 1px ${gold ? '#ffd76a' : COLOUR}`,
+      background: core,
+      boxShadow: `0 0 3px 1px ${glow}`,
       // Hidden outside the animation, so none lingers in the middle.
       opacity: '0',
     });
@@ -93,7 +106,7 @@ function sparkles(
     const r = reach * (0.45 + jitter(i, 4) * 0.6);
     const x = Math.cos(angle) * r;
     const y = Math.sin(angle) * r;
-    const fall = 20 + jitter(i, 5) * 25;
+    const fall = (20 + jitter(i, 5) * 25) * (tone === 'ash' ? -1.5 : 1);
     const at = (t: number, drop: number) =>
       `translate(calc(-50% + ${x * t}px), calc(-50% + ${y * t + drop}px))`;
     return s.animate(
@@ -214,6 +227,62 @@ export async function playCastAnimation(
       }
     }
     await land(target, options.landing);
+  } catch {
+    // Decoration only.
+  }
+}
+
+/** The graveyard's spot on screen: a small card in the bottom-right corner. */
+function graveyardSpot(): ScreenRect {
+  const width = 24;
+  const height = 34;
+  return {
+    x: window.innerWidth - 32 - width,
+    y: window.innerHeight - 32 - height,
+    width,
+    height,
+  };
+}
+
+/**
+ * Sends a copy of `source` (where the card was shown, measured before its
+ * window closed) spinning down into the bottom-right corner, where it
+ * crumbles into ash (#175). Never throws: it's decoration.
+ */
+export async function playGraveyardAnimation(
+  source: CastSource | null,
+  duration: number,
+) {
+  if (
+    !source ||
+    reducedMotion() ||
+    typeof Element.prototype.animate !== 'function'
+  )
+    return;
+  try {
+    const spot = graveyardSpot();
+    const flyer = makeFlyer(source.element, source.rect);
+    try {
+      const flight = flyer.animate(graveyardKeyframes(source.rect, spot), {
+        duration: duration * 1.2,
+        easing: 'linear',
+        fill: 'forwards',
+      });
+      await Promise.race([
+        flight.finished,
+        new Promise((resolve) => setTimeout(resolve, duration * 1.2 + 100)),
+      ]);
+    } finally {
+      flyer.remove();
+    }
+
+    const layer = document.createElement('div');
+    Object.assign(layer.style, fixedBox(spot));
+    document.body.appendChild(layer);
+    await Promise.allSettled(
+      sparkles(layer, spot, 20, 2.2, 'ash').map((a) => a.finished),
+    );
+    layer.remove();
   } catch {
     // Decoration only.
   }
@@ -400,7 +469,7 @@ export async function playRemoveAnimation(cardId: string) {
     ];
     const buttons = leads
       ? stackEl!.querySelector<HTMLElement>(
-          '.primary-card-wrapper > :first-child',
+          '.primary-card-wrapper > .stack-actions',
         )
       : null;
     if (buttons && buttons !== root)

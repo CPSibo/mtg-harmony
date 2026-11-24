@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { isReactive, reactive } from 'vue';
-import { cardImage, createBoardCard } from '~/features/battlefield';
+import {
+  cardImage,
+  createBoardCard,
+  entersPrepared,
+} from '~/features/battlefield';
 import { makeScryfallCard } from '../fixtures/cards';
 
 describe('createBoardCard', () => {
@@ -112,5 +116,94 @@ describe('createBoardCard', () => {
     const card = createBoardCard(makeScryfallCard({ image_uris: undefined }));
 
     expect(cardImage(card)).toBe('');
+  });
+});
+
+// #146: preparation cards can enter with their spell ready to cast.
+describe('entersPrepared', () => {
+  it('spots a card that says it enters prepared', () => {
+    expect(
+      entersPrepared(
+        makeScryfallCard({
+          oracle_text: 'Flying\nThis creature enters prepared.',
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("spots it on the first face, or by the card's own name", () => {
+    expect(
+      entersPrepared(
+        makeScryfallCard({
+          card_faces: [
+            { name: 'Scholar', oracle_text: 'This creature enters prepared.' },
+            { name: 'Lesson', oracle_text: 'Draw two cards.' },
+          ],
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      entersPrepared(
+        makeScryfallCard({
+          name: 'Eager Scholar',
+          oracle_text: 'Eager Scholar enters prepared.',
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it('knows a legend by the part of its name before the comma', () => {
+    expect(
+      entersPrepared(
+        makeScryfallCard({
+          name: "Jadzi, Steward of Fate // Oracle's Gift",
+          card_faces: [
+            {
+              name: 'Jadzi, Steward of Fate',
+              oracle_text: 'Jadzi enters prepared.',
+            },
+            { name: "Oracle's Gift", oracle_text: 'Create X tokens.' },
+          ],
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it('counts a condition before it in the same sentence', () => {
+    expect(
+      entersPrepared(
+        makeScryfallCard({
+          oracle_text: 'If this creature was kicked, it enters prepared.',
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it('ignores other cards entering prepared, and other sentences', () => {
+    expect(
+      entersPrepared(
+        makeScryfallCard({
+          oracle_text:
+            'Whenever another creature you control enters prepared, draw a card.',
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      entersPrepared(
+        makeScryfallCard({
+          oracle_text:
+            'When this creature enters, scry 1. It becomes prepared.',
+        }),
+      ),
+    ).toBe(false);
+    expect(entersPrepared(makeScryfallCard())).toBe(false);
+  });
+
+  it('puts the Prepared counter on such a card as it is made', () => {
+    const card = createBoardCard(
+      makeScryfallCard({ oracle_text: 'This creature enters prepared.' }),
+    );
+
+    expect([...card.modifiers]).toEqual([['prepared', 1]]);
   });
 });
