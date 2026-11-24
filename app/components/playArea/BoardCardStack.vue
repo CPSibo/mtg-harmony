@@ -191,6 +191,18 @@ const {
     } else onSingleDrop(position, e);
     if (!movedTooFar && !longPressed && e.type === 'pointerup') onTap(e);
   },
+  // This stack left the board mid-drag (#160). The watch on `myIsDragging`
+  // is already stopped, so tell the board directly, and let the group and
+  // the radial menu go.
+  onCancel: () => {
+    cancelLongPress();
+    dragMenu.end();
+    if (groupDrag) {
+      groupDrag = false;
+      selection.endGroupDrag();
+    }
+    isDragging.value = false;
+  },
 });
 
 function offsetFromStart(p: Position): Position {

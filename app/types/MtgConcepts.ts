@@ -11,6 +11,9 @@ export const MODIFIERS: Array<Modifier> = [
   { name: 'Lore', symbol: 'ms ms-counter-lore' },
   { name: 'Stun', symbol: 'ms ms-counter-stun' },
   { name: 'Goad', symbol: 'ms ms-counter-goad' },
+  // Preparation cards' spell can be cast while prepared (#146). Mana has no
+  // prepared symbol; Learn's book suits the Strixhaven cards.
+  { name: 'Prepared', symbol: 'ms ms-ability-learn' },
 
   // Keyword abilities
   { name: 'Flying', symbol: 'ms ms-ability-flying' },

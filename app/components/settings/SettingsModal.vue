@@ -21,11 +21,7 @@
       <DefineGeneral>
         <UFormField
           label="Keep screen awake"
-          :description="
-            wakeLockSupported
-              ? 'Turn off to allow the device to sleep as normal'
-              : 'Not available in this browser'
-          "
+          :description="wakeLockDescription"
         >
           <USwitch
             v-model="wakeLockEnabled"
@@ -49,7 +45,7 @@
           <UInputNumber
             v-model="fetchCardCount"
             :min="minQueuedCardCount"
-            :max="50"
+            :max="MAX_QUEUE_SIZE"
           />
         </UFormField>
 
@@ -217,6 +213,13 @@
         </template>
       </UTabs>
     </template>
+
+    <template #footer>
+      <!-- Selectable, so it can be copied into a bug report (#168). -->
+      <p class="w-full text-center text-xs text-muted select-text">
+        MTG Harmony {{ APP_VERSION }}
+      </p>
+    </template>
   </UModal>
 </template>
 
@@ -231,7 +234,10 @@ import USlider from '@nuxt/ui/components/Slider.vue';
 import { MAX_POINTER_EASE_MS } from '~/composables/pointerSmoothing';
 import USwitch from '@nuxt/ui/components/Switch.vue';
 import UTabs from '@nuxt/ui/components/Tabs.vue';
-import { useSettingsStore } from '~/stores/settings';
+import { MAX_QUEUE_SIZE, useSettingsStore } from '~/stores/settings';
+import { APP_VERSION } from '~/utils/appVersion';
+import { wakeLockStatus } from '~/composables/useKeepScreenAwake';
+import { computed } from 'vue';
 import { useSmallScreen } from '~/composables/useSmallScreen';
 import { createReusableTemplate, useSupported } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
@@ -240,7 +246,6 @@ import {
   MIN_DRAG_MENU_DELAY_MS,
   useBattlefieldStore,
 } from '~/features/battlefield';
-import { useDiscordFetcherStore } from '~/features/discordFetcher';
 import {
   MAX_CAST_DURATION_MS,
   MIN_CAST_DURATION_MS,
@@ -260,6 +265,9 @@ const {
   castLanding,
   castDuration,
   attachFlareEnabled,
+  fetchCardCount,
+  minQueuedCardCount,
+  preloadImagesEnabled,
 } = storeToRefs(settingsStore);
 
 const flightItems = [
@@ -279,10 +287,13 @@ const landingItems = [
 const wakeLockSupported = useSupported(
   () => typeof navigator !== 'undefined' && 'wakeLock' in navigator,
 );
-
-const discordFetchStore = useDiscordFetcherStore();
-const { fetchCardCount, minQueuedCardCount, preloadImagesEnabled } =
-  storeToRefs(discordFetchStore);
+// Says when the browser hasn't granted the lock, so it isn't a silent no-op (#174).
+const wakeLockDescription = computed(() => {
+  if (!wakeLockSupported.value) return 'Not available in this browser';
+  if (wakeLockEnabled.value && wakeLockStatus.value === 'waiting')
+    return "The browser hasn't allowed it yet. It tries again on your next tap";
+  return 'Turn off to allow the device to sleep as normal';
+});
 
 const battlefieldStore = useBattlefieldStore();
 const { snapScale } = storeToRefs(battlefieldStore);

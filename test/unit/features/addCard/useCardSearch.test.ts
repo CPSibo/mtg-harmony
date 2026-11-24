@@ -3,6 +3,12 @@ import { nextTick, ref } from 'vue';
 import { useCardSearch } from '~/features/addCard';
 import { makeScryfallCard } from '../../fixtures/cards';
 
+// No spacing between requests here; scryfallFetch has its own tests.
+vi.mock('~/composables/scryfallFetch', () => ({
+  scryfallFetch: (input: string | URL, init?: RequestInit) =>
+    fetch(input, init),
+}));
+
 function jsonResponse(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
     status,

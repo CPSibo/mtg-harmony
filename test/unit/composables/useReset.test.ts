@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { useReset } from '~/composables/useReset';
 import { useBattlefieldStore } from '~/features/battlefield';
 import { useEventLogStore } from '~/features/eventLog';
+import { useInputModeStore } from '~/stores/inputMode';
 import { useSettingsStore } from '~/stores/settings';
 import { makeScryfallCard } from '../fixtures/cards';
 
@@ -61,6 +62,23 @@ describe('useReset', () => {
     expect(log.entries).toEqual([]);
     expect(log.gameId).not.toBe(before);
     expect(toastAdd).toHaveBeenCalledOnce();
+  });
+
+  // #159: back to a fresh install, so the input mode is guessed again.
+  it('reset app forgets the input mode and guesses it from the device', () => {
+    vi.stubGlobal('matchMedia', (q: string) => ({
+      matches: q === '(pointer: coarse)',
+    }));
+    const inputMode = useInputModeStore();
+    window.dispatchEvent(
+      new PointerEvent('pointerdown', { pointerType: 'mouse' }),
+    );
+    expect(inputMode.inputMode).toBe('cursor');
+
+    useReset().resetAppData();
+
+    expect(inputMode.inputMode).toBe('touch');
+    vi.unstubAllGlobals();
   });
 
   it('a new game from the idle prompt says so', () => {

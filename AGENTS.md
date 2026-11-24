@@ -52,8 +52,13 @@ npm run build         # production build into dist/
   (`fake-indexeddb`; happy-dom has none), real timers and a fresh Pinia, so a store created in a test starts from
   its defaults. Await the event log's `settled()` before checking its archive.
 - Mock Scryfall at the module boundary (`vi.mock('~/composables/useScryfall', …)`). Tests never hit the network.
-- Build cards with `test/unit/fixtures/cards.ts`. To watch or break storage writes, use `stubStorage()` from
+- Build cards with `test/unit/fixtures/cards.ts` and put them on the board with `putOnBoard` from
+  `test/unit/fixtures/board.ts`. To watch or break storage writes, use `stubStorage()` from
   `test/unit/fixtures/storage.ts`; spying on `Storage.prototype` leaks between tests under happy-dom.
+- Component tests mount with `mountInApp` from `test/unit/fixtures/mount.ts` (`@vue/test-utils`, the test's
+  Pinia, Nuxt UI and the bundled icons, attached to the document). Modals and slideovers teleport to
+  `document.body`, so query the document (`buttonNamed`), not the wrapper, and call `unmountAll` in `afterEach`.
+  Test a component where its logic lives in it; gestures and layout stay with the end-to-end tests.
 - A test for a known, unfixed bug asserts the correct behaviour and is marked `it.fails`, with the issue number
   in its name. When the fix lands it fails loudly; change it to `it`.
 

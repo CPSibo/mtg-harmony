@@ -7,6 +7,7 @@
 
       <GlobalButtons
         @open-settings-requested="openSettings"
+        @open-about-requested="aboutModal.open()"
         @clear-board-requested="showConfirmClearBoard = true"
         @new-game-requested="showConfirmNewGame = true"
         @reset-all-requested="showConfirmResetAppData = true"
@@ -79,6 +80,9 @@ const NewGameModal = defineAsyncComponent(
 const ResetAppDataModal = defineAsyncComponent(
   () => import('~/components/shared/ResetAppDataModal.vue'),
 );
+const AboutModal = defineAsyncComponent(
+  () => import('~/components/about/AboutModal.vue'),
+);
 const SettingsModal = defineAsyncComponent(
   () => import('~/components/settings/SettingsModal.vue'),
 );
@@ -105,6 +109,7 @@ onSaveError(() =>
 
 const overlay = useOverlay();
 const settingsModal = overlay.create(SettingsModal);
+const aboutModal = overlay.create(AboutModal);
 
 function openSettings() {
   settingsModal.open();
