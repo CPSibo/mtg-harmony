@@ -245,10 +245,10 @@ test('with card images off, cards show as text and no image loads', async ({
   // Reload first, so pending saves land before the settings are replaced.
   await page.reload();
   await page.evaluate(() =>
-    // devalue's format for { imagesEnabled: false }
+    // devalue's format for { imagesEnabled: false, version: 1 } (#154)
     localStorage.setItem(
       'mtg-harmony_settings',
-      JSON.stringify([{ imagesEnabled: 1 }, false]),
+      JSON.stringify([{ imagesEnabled: 1, version: 2 }, false, 1]),
     ),
   );
   const images: string[] = [];
@@ -654,17 +654,18 @@ async function ageTheLog(page: Page) {
       type: 'boardCleared',
       gameId: 'g1',
     };
-    // devalue's format for { entries: [entry], gameId: 'g1' }
+    // devalue's format for { entries: [entry], gameId: 'g1', version: 1 }
     localStorage.setItem(
       'mtg-harmony_eventLog',
       JSON.stringify([
-        { entries: 1, gameId: 6 },
+        { entries: 1, gameId: 6, version: 7 },
         [2],
         { id: 3, at: 4, type: 5, gameId: 6 },
         entry.id,
         entry.at,
         entry.type,
         entry.gameId,
+        1,
       ]),
     );
   });
@@ -767,10 +768,10 @@ test('with card outlines off, board cards have no visible border', async ({
 }) => {
   await page.reload();
   await page.evaluate(() =>
-    // devalue's format for { cardOutlineEnabled: false }
+    // devalue's format for { cardOutlineEnabled: false, version: 1 } (#154)
     localStorage.setItem(
       'mtg-harmony_settings',
-      JSON.stringify([{ cardOutlineEnabled: 1 }, false]),
+      JSON.stringify([{ cardOutlineEnabled: 1, version: 2 }, false, 1]),
     ),
   );
   await page.reload();

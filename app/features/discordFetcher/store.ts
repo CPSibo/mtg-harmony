@@ -8,7 +8,11 @@ import { useScryfall } from '~/composables/useScryfall';
 import { useOnline } from '@vueuse/core';
 import { defineStore } from 'pinia';
 import { computed, ref, shallowRef, triggerRef, watch } from 'vue';
-import { cardData, createBoardCard } from '~/features/battlefield';
+import {
+  cardImage,
+  createBoardCard,
+  readSavedCard,
+} from '~/features/battlefield';
 import { useSettingsStore } from '~/stores/settings';
 import type { BoardCard } from '~/types/PlayArea';
 
@@ -21,6 +25,8 @@ export interface DiscordFetcherStore {
 }
 
 const STORAGE_KEY = 'mtg-harmony_discordFetcher';
+/** Bump when the saved shape changes (#154). */
+const SAVE_VERSION = 1;
 
 /** Why Next card can't fetch while offline (#169). */
 export const OFFLINE_MESSAGE =
@@ -272,7 +278,7 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
   }
 
   watch(
-    () => queue.value[0]?.image_uri,
+    () => queue.value[0] && cardImage(queue.value[0]),
     (url) => {
       // No images shown, so none to preload (#42).
       if (settings.preloadImagesEnabled && settings.imagesEnabled && url)
@@ -313,31 +319,40 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
 
   function save() {
     const { save: persist } = useLocalStorage();
-    persist(STORAGE_KEY, {
-      queue: queue.value,
-      current: current.value,
-      stepsBack: stepsBack.value,
-      historyStart: historyStart.value,
-      cardCleared: cardCleared.value,
-    });
+    persist(
+      STORAGE_KEY,
+      {
+        queue: queue.value,
+        current: current.value,
+        stepsBack: stepsBack.value,
+        historyStart: historyStart.value,
+        cardCleared: cardCleared.value,
+      },
+      SAVE_VERSION,
+    );
   }
 
   function load(): boolean {
     const { load: retrieve } = useLocalStorage();
-    const data = retrieve<Partial<DiscordFetcherStore>>(STORAGE_KEY);
+    const data = retrieve<Partial<Record<keyof DiscordFetcherStore, unknown>>>(
+      STORAGE_KEY,
+      SAVE_VERSION,
+    );
 
     if (!data) return false;
 
-    if (Array.isArray(data.queue)) {
-      for (const card of data.queue)
-        card.scryfallInfo = cardData(card.scryfallInfo);
-      queue.value = data.queue;
-    }
+    // A card this version can't read is dropped, not the whole save (#154).
+    const read = (value: unknown) => {
+      const card = readSavedCard(value);
+      if (!card)
+        console.warn('Dropping a saved card this version can’t read.', value);
+      return card;
+    };
 
-    if (data.current && typeof data.current === 'object') {
-      data.current.scryfallInfo = cardData(data.current.scryfallInfo);
-      current.value = data.current;
-    }
+    if (Array.isArray(data.queue))
+      queue.value = data.queue.flatMap((value) => read(value) ?? []);
+
+    if (data.current != null) current.value = read(data.current);
 
     if (typeof data.stepsBack === 'number') stepsBack.value = data.stepsBack;
 

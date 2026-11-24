@@ -36,7 +36,7 @@
           :landscape="landscape"
           :frame-style="{ width: 'min(100cqw, 100cqh * 17 / 12)' }"
           :src="imageUri"
-          :alt="card?.name ?? 'Missing card'"
+          :alt="card?.scryfallInfo.name ?? 'Missing card'"
           class="mtg-card-display fit cursor-grab touch-none select-none"
           :class="{ 'opacity-40': ghost }"
           draggable="false"
@@ -54,7 +54,7 @@
           v-else-if="!!card"
           :card="card.scryfallInfo"
           role="img"
-          :aria-label="card.name"
+          :aria-label="card.scryfallInfo.name"
           class="h-full cursor-grab touch-none select-none"
           :class="{ 'opacity-40': ghost }"
           title="Drag onto the board to cast"
@@ -164,14 +164,14 @@
     v-if="imageUri"
     v-model:open="enlarged"
     :src="imageUri"
-    :alt="card?.name ?? ''"
+    :alt="card?.scryfallInfo.name ?? ''"
     :landscape="landscape"
   />
 
   <SharedCastDragGhost
     v-if="card"
     :card="card.scryfallInfo"
-    :image-uri="card.image_uri"
+    :image-uri="cardImage(card)"
     :at="ghost"
     :width="ghostWidth"
   />
@@ -200,7 +200,7 @@ import {
   useGraveyardAnimation,
 } from '~/features/castAnimation';
 import { useDragToCast } from '~/composables/useDragToCast';
-import { useBattlefieldStore } from '~/features/battlefield';
+import { cardImage, useBattlefieldStore } from '~/features/battlefield';
 import { OFFLINE_MESSAGE, useDiscordFetcherStore } from '..';
 
 const toast = useToast();
@@ -220,7 +220,7 @@ const settings = useSettingsStore();
 
 const loading = ref(false);
 
-const imageUri = computed(() => card.value?.image_uri ?? '');
+const imageUri = computed(() => (card.value ? cardImage(card.value) : ''));
 const landscape = computed(() => !!card.value && isLandscape(card.value));
 
 // The On-deck card blown up to fill the screen, for reading it (#176).

@@ -1,4 +1,5 @@
 import { pickImageUri } from '~/composables/useScryfall';
+import { cardImage } from './boardCard';
 import type { BoardCard } from '~/types/PlayArea';
 import type { ScryfallCard, ScryfallCardFace } from '~/types/Scryfall';
 
@@ -22,7 +23,7 @@ export function showsImage(card: BoardCard, imagesEnabled: boolean): boolean {
 
 /** The image the card shows: its front, its back face, or the standard back. */
 export function shownImageUri(card: BoardCard): string {
-  if (!card.flipped) return card.image_uri;
+  if (!card.flipped) return cardImage(card);
   const back = backFace(card.scryfallInfo);
   return (
     (back && pickImageUri({ image_uris: back.image_uris } as ScryfallCard)) ??

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { isReactive, reactive } from 'vue';
-import { createBoardCard, entersPrepared } from '~/features/battlefield';
+import {
+  cardImage,
+  createBoardCard,
+  entersPrepared,
+} from '~/features/battlefield';
 import { makeScryfallCard } from '../fixtures/cards';
 
 describe('createBoardCard', () => {
@@ -11,13 +15,10 @@ describe('createBoardCard', () => {
 
     expect(card).toMatchObject({
       scryfallInfo: scryfallCard,
-      name: 'Pacifism',
-      mana_cost: scryfallCard.mana_cost,
-      scryfall_uri: scryfallCard.scryfall_uri,
-      image_uri: scryfallCard.image_uris!.border_crop,
       tapped: false,
       faceNumber: 0,
     });
+    expect(cardImage(card)).toBe(scryfallCard.image_uris!.border_crop);
     expect(card.modifiers.size).toBe(0);
     expect(card.stack).toBeUndefined();
   });
@@ -76,6 +77,15 @@ describe('createBoardCard', () => {
     expect(Object.isFrozen(card.scryfallInfo)).toBe(true);
   });
 
+  // #155: name, cost, image and link come from the Scryfall data, not copies.
+  it('keeps no copies of the Scryfall fields on the card', () => {
+    const card = createBoardCard(makeScryfallCard());
+
+    expect(Object.keys(card).sort()).toEqual(
+      ['faceNumber', 'id', 'modifiers', 'scryfallInfo', 'tapped'].sort(),
+    );
+  });
+
   it("keeps each face's images and shows the front of a double-faced card", () => {
     const scryfallCard = makeScryfallCard({
       image_uris: undefined,
@@ -92,7 +102,7 @@ describe('createBoardCard', () => {
 
     const card = createBoardCard(scryfallCard);
 
-    expect(card.image_uri).toBe('fb');
+    expect(cardImage(card)).toBe('fb');
     expect(card.scryfallInfo.card_faces).toEqual([
       {
         name: 'Front',
@@ -102,10 +112,10 @@ describe('createBoardCard', () => {
     ]);
   });
 
-  it('leaves image_uri empty when the card has no image', () => {
+  it('has an empty image when the card has none', () => {
     const card = createBoardCard(makeScryfallCard({ image_uris: undefined }));
 
-    expect(card.image_uri).toBe('');
+    expect(cardImage(card)).toBe('');
   });
 });
 
@@ -194,8 +204,6 @@ describe('entersPrepared', () => {
       makeScryfallCard({ oracle_text: 'This creature enters prepared.' }),
     );
 
-    expect([...card.modifiers]).toEqual([
-      { modifier: expect.objectContaining({ name: 'Prepared' }), count: 1 },
-    ]);
+    expect([...card.modifiers]).toEqual([['prepared', 1]]);
   });
 });

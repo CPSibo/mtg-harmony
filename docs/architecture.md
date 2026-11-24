@@ -107,7 +107,19 @@ watch([…state], save);  // On every change; deep only where data changes in pl
   queue and shown card are only ever replaced, so they're shallow refs (the queue is triggered after a push or
   shift). The board centre is watched shallowly, so a pan doesn't walk every card.
 
-- `load()` checks every field's type before using it, so stale or hand-edited storage can't break the app.
+- **Versions (#154).** Every save is stamped with its store's `SAVE_VERSION` (`useLocalStorage().save(key,
+value, version)`), and `load(key, version)` ignores, with a warning, a save of any other version or none. A
+  store that changes its saved shape bumps its version, and either lets old saves go or migrates them before
+  loading. Archived games carry `RECORD_VERSION` the same way; `loadArchive()` skips other versions.
+- **What `load()` checks.** Each top-level field's type, and every board card and stack: a stack needs an ID,
+  a position, a valid primary card and `Set`s of attachments and unders; a card needs an ID, Scryfall data with
+  an ID and name that `cardData()` can trim, `tapped`, `faceNumber` and a `Map` of modifiers. A malformed stack
+  or primary card drops the stack; a malformed attachment, under or On-deck card drops just that card; an unknown
+  modifier key drops just that modifier. Each drop is logged with `console.warn`. Event log entries need an ID,
+  time, game ID and known type. Settings are checked value by value.
+- **If the app still can't start**, `main.ts`'s `errorHandler` catches the error and `startupRecovery.ts` covers
+  the page with what went wrong, **Reload** and **Reset app data** (deletes every `mtg-harmony_*` key and the
+  archive, then reloads). Errors after startup are only logged.
 - Stores build their defaults from a `createDefaults()` factory where the defaults hold objects or arrays, so no
   two store instances share them.
 - `reset()` returns a store to its defaults. `useReset()` builds the menu's three levels from these: **Clear
@@ -220,12 +232,16 @@ The model is in `types/PlayArea.ts`; the terms are defined in [domain.md](domain
 - `Battlefield` holds `stacks`, `zOrder`, `center` and `snapScale`.
 - A `BoardCardStack` has an `id`, a `position`, one `primary` card, and two `Set`s: `attachments` and `unders`.
 - A `BoardCard` holds its Scryfall data (`scryfallInfo`), `tapped`, `faceNumber` (a big number shown on the card; 0 hides it), a
-  `Set` of `modifiers`, and a back-reference to its `stack`.
+  `Map` of `modifiers`, and a back-reference to its `stack`. Its name, mana cost, image (`cardImage()`) and
+  Scryfall link come from `scryfallInfo`; the card keeps no copies of them (#155), so `swapPrinting` only
+  replaces `scryfallInfo`.
 - `scryfallInfo` keeps only the fields in `ScryfallCard` (`types/Scryfall.ts`), not the whole API response.
   `cardData()` trims it, freezes it and marks it raw, so Vue never tracks it and deep watchers and saves skip it.
   `createBoardCard` and the stores' `load()` run every card's data through it. To use another Scryfall field, add
   it to `ScryfallCard` and `cardData()`.
-- A `BoardCardModifier` is one entry from `MODIFIERS` (`types/MtgConcepts.ts`) with a count.
+- `modifiers` maps a modifier's `key` to its count (above 0). Names and mana-font classes are looked up in
+  `MODIFIERS` (`types/MtgConcepts.ts`), so they can change without touching saved cards; keys never change once
+  shipped. `setModifierCount` and `clearModifiers` change them.
 
 Rules the battlefield store enforces:
 

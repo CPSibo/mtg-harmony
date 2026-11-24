@@ -1,12 +1,12 @@
 import { pickImageUri } from '~/composables/useScryfall';
 import { isRoom } from '~/features/battlefield/cardFaces';
-import type { BoardCard, BoardCardModifier } from '~/types/PlayArea';
+import { isModifierKey, type ModifierKey } from '~/types/MtgConcepts';
+import type { BoardCard } from '~/types/PlayArea';
 import type {
   ScryfallCard,
   ScryfallImageUris,
   ScryfallRelatedCard,
 } from '~/types/Scryfall';
-import { MODIFIERS } from '~/types/MtgConcepts';
 import { randomUUID } from '~/utils/randomUUID';
 import { markRaw } from 'vue';
 
@@ -114,7 +114,7 @@ export function entersPrepared(card: ScryfallCard): boolean {
   );
 }
 
-const PREPARED = MODIFIERS.find((m) => m.name === 'Prepared')!;
+const PREPARED: ModifierKey = 'prepared';
 
 /**
  * A new card instance for a Scryfall card: untapped, no modifiers (but
@@ -128,12 +128,8 @@ export function createBoardCard(card: ScryfallCard): BoardCard {
     ...(isRoom(scryfallCard) && { lockedDoors: [0, 1] }),
     id: randomUUID(),
     scryfallInfo: scryfallCard,
-    name: scryfallCard.name,
-    mana_cost: scryfallCard.mana_cost,
-    image_uri: pickImageUri(scryfallCard) ?? '',
-    scryfall_uri: scryfallCard.scryfall_uri,
-    modifiers: new Set<BoardCardModifier>(
-      entersPrepared(scryfallCard) ? [{ modifier: PREPARED, count: 1 }] : [],
+    modifiers: new Map<ModifierKey, number>(
+      entersPrepared(scryfallCard) ? [[PREPARED, 1]] : [],
     ),
     tapped: false,
     faceNumber: 0,
@@ -156,6 +152,70 @@ export function copyBoardCard(card: BoardCard, keepState: boolean): BoardCard {
     turned: card.turned,
     shownAs: card.shownAs,
     ...(card.lockedDoors && { lockedDoors: [...card.lockedDoors] }),
-    modifiers: new Set([...card.modifiers].map((m) => ({ ...m }))),
+    modifiers: new Map(card.modifiers),
   };
+}
+
+const isObject = (v: unknown): v is Record<string, unknown> =>
+  !!v && typeof v === 'object';
+const isOptional = (v: unknown, type: 'boolean') =>
+  v === undefined || typeof v === type;
+
+/**
+ * A card from saved data, ready to use, or null if it isn't a card this
+ * version can show (#154). Its Scryfall data goes through `cardData()`;
+ * counters this version doesn't know are dropped rather than the card. The
+ * stack back-reference is left to the caller.
+ */
+export function readSavedCard(value: unknown): BoardCard | null {
+  if (!isObject(value)) return null;
+  const info = value.scryfallInfo;
+  if (
+    typeof value.id !== 'string' ||
+    !isObject(info) ||
+    typeof info.id !== 'string' ||
+    typeof info.name !== 'string' ||
+    typeof value.tapped !== 'boolean' ||
+    typeof value.faceNumber !== 'number' ||
+    !(value.modifiers instanceof Map) ||
+    !isOptional(value.flipped, 'boolean') ||
+    !isOptional(value.turned, 'boolean') ||
+    ![undefined, 'art', 'text'].includes(value.shownAs as string) ||
+    !(
+      value.lockedDoors === undefined ||
+      (Array.isArray(value.lockedDoors) &&
+        value.lockedDoors.every((door) => door === 0 || door === 1))
+    )
+  )
+    return null;
+
+  const card = value as unknown as BoardCard;
+  try {
+    card.scryfallInfo = cardData(card.scryfallInfo);
+  } catch {
+    return null; // Faces or images of the wrong shape.
+  }
+  for (const [key, count] of value.modifiers as Map<unknown, unknown>)
+    if (
+      !isModifierKey(key) ||
+      !Number.isInteger(count) ||
+      (count as number) < 1
+    )
+      card.modifiers.delete(key as ModifierKey);
+  // Halves it can't read only cost the melded card its Unmeld (#143).
+  if (value.meldedFrom !== undefined) {
+    const halves = Array.isArray(value.meldedFrom)
+      ? value.meldedFrom.map(readSavedCard)
+      : [];
+    card.meldedFrom =
+      halves.length === 2 && halves.every((half) => half)
+        ? (halves as [BoardCard, BoardCard])
+        : undefined;
+  }
+  return card;
+}
+
+/** The card's front image, or '' when its printing has none. */
+export function cardImage(card: BoardCard): string {
+  return pickImageUri(card.scryfallInfo) ?? '';
 }

@@ -4,7 +4,7 @@
   <UModal
     :open="!!card"
     title="Which door opens?"
-    :description="card?.name"
+    :description="card?.scryfallInfo.name"
     :ui="{ body: 'flex flex-col gap-2', footer: 'flex justify-end' }"
     @update:open="(open) => !open && battlefield.chooseDoors()"
   >

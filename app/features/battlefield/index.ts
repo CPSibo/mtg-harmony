@@ -1,4 +1,10 @@
-export { cardData, createBoardCard, entersPrepared } from './boardCard';
+export {
+  cardData,
+  cardImage,
+  createBoardCard,
+  entersPrepared,
+  readSavedCard,
+} from './boardCard';
 export {
   createDragMenu,
   dragMenu,

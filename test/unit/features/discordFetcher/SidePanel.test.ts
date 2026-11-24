@@ -70,7 +70,7 @@ describe('SidePanel (#171)', () => {
     buttonNamed('Next card').click();
     await flushPromises();
 
-    expect(useDiscordFetcherStore().card?.name).toBe('Bear 1');
+    expect(useDiscordFetcherStore().card?.scryfallInfo.name).toBe('Bear 1');
     expect(buttonNamed('Cast to board').disabled).toBe(false);
   });
 
@@ -82,7 +82,7 @@ describe('SidePanel (#171)', () => {
       .click();
     await flushPromises();
 
-    expect(useDiscordFetcherStore().card?.name).toBe('Bear 1');
+    expect(useDiscordFetcherStore().card?.scryfallInfo.name).toBe('Bear 1');
   });
 
   it('shows a toast when the fetch fails', async () => {
@@ -104,9 +104,9 @@ describe('SidePanel (#171)', () => {
     buttonNamed('Cast to board').click();
     await flushPromises();
 
-    expect(useBattlefieldStore().stacks.map((s) => s.primary.name)).toEqual([
-      'Bear 1',
-    ]);
+    expect(
+      useBattlefieldStore().stacks.map((s) => s.primary.scryfallInfo.name),
+    ).toEqual(['Bear 1']);
     expect(useDiscordFetcherStore().card).toBeNull();
     expect(document.body.textContent).not.toContain('Cast to board');
   });
@@ -121,6 +121,6 @@ describe('SidePanel (#171)', () => {
     buttonNamed('Prev card').click();
     await flushPromises();
 
-    expect(useDiscordFetcherStore().card?.name).toBe('Bear 1');
+    expect(useDiscordFetcherStore().card?.scryfallInfo.name).toBe('Bear 1');
   });
 });

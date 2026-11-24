@@ -18,7 +18,7 @@
         ref="cardImageSection"
         class="card-image"
         role="img"
-        :aria-label="card.name"
+        :aria-label="card.scryfallInfo.name"
         tabindex="0"
         :aria-description="lockedDescription"
         :style="
@@ -95,20 +95,20 @@
         </span>
       </template>
       <button
-        v-for="modifier in card.modifiers"
-        :key="modifier.modifier.name"
+        v-for="{ modifier, count } in modifiers"
+        :key="modifier.key"
         type="button"
         class="modifier-icon gap-1 flex items-center bg-gray-950/90 px-1 py-0.5 rounded-sm cursor-pointer"
-        :title="modifier.modifier.name"
-        :aria-label="modifierLabel(modifier)"
+        :title="modifier.name"
+        :aria-label="modifierLabel(modifier, count)"
         @click.stop="emits('showCardModifiers', card)"
       >
-        <span :class="['ms', modifier.modifier.symbol]" />
+        <span :class="['ms', modifier.symbol]" />
         <span
-          v-if="modifier.count > 1"
+          v-if="count > 1"
           class="modifier-icon-count whitespace-nowrap"
         >
-          x{{ modifier.count }}
+          x{{ count }}
         </span>
       </button>
     </div>
@@ -131,11 +131,20 @@ import {
   shownImageUri,
   showsImage,
 } from '~/features/battlefield/cardFaces';
-import type { BoardCard, BoardCardModifier } from '~/types/PlayArea';
+import { modifierByKey } from '~/types/MtgConcepts';
+import type { BoardCard, Modifier } from '~/types/PlayArea';
 
 const props = defineProps<{
   card: BoardCard;
 }>();
+
+/** The card's modifiers in the order they were added. */
+const modifiers = computed(() =>
+  [...props.card.modifiers].flatMap(([key, count]) => {
+    const modifier = modifierByKey(key);
+    return modifier ? [{ modifier, count }] : [];
+  }),
+);
 
 const emits = defineEmits<{
   showCardDetails: [BoardCard];
@@ -208,7 +217,7 @@ function onKey(ev: KeyboardEvent) {
 }
 
 /** A counter's name for screen readers, with its count when more than one. */
-function modifierLabel({ modifier, count }: BoardCardModifier) {
+function modifierLabel(modifier: Modifier, count: number) {
   return count > 1 ? `${modifier.name} ×${count}` : modifier.name;
 }
 </script>

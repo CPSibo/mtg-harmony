@@ -34,7 +34,7 @@
           :landscape="landscape"
           frame-class="w-full"
           :src="shownImageUri(card)"
-          :alt="card.name"
+          :alt="card.scryfallInfo.name"
           class="mtg-card-display"
           :class="landscape ? 'max-h-[80svh]' : 'details-portrait'"
         />
@@ -48,7 +48,7 @@
           v-else
           :card="card.scryfallInfo"
           role="img"
-          :aria-label="card.name"
+          :aria-label="card.scryfallInfo.name"
           class="w-72 max-w-full shrink-0"
         />
       </div>
@@ -432,7 +432,9 @@ const showImage = computed(
 const landscape = computed(() => !!props.card && isLandscape(props.card));
 
 /** Only a scryfall.com page becomes a link (#157). */
-const scryfallUrl = computed(() => scryfallLink(props.card?.scryfall_uri));
+const scryfallUrl = computed(() =>
+  scryfallLink(props.card?.scryfallInfo.scryfall_uri),
+);
 
 const hasAttachments = computed(() => {
   if (!props.card || !props.card.stack?.primary) return false;

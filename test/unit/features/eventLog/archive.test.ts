@@ -1,3 +1,4 @@
+import { openDB } from 'idb';
 import { describe, expect, it, vi } from 'vitest';
 import {
   ARCHIVE_MAX_AGE_MS,
@@ -95,6 +96,24 @@ describe('event log archive', () => {
     await clearArchive();
 
     expect(await loadArchive()).toEqual([]);
+  });
+
+  // #154: records carry a version, so a later shape change knows them.
+  it('skips archived games of another version', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await archiveEntries([entry('current', 1)]);
+    const db = await openDB('mtg-harmony', 1);
+    await db.put('games', { gameId: 'future', end: T, count: 1 });
+    await db.put('gameEntries', {
+      gameId: 'future',
+      version: 99,
+      entries: [entry('future', 2)],
+    });
+    db.close();
+
+    const loaded = await loadArchive();
+
+    expect(loaded!.map((e) => e.gameId)).toEqual(['current']);
   });
 
   it('reports no archive when IndexedDB is unavailable', async () => {
