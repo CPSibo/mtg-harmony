@@ -14,3 +14,8 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: screen-wake-lock=(self), camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()
+
+# The service worker (#169). Browsers check it for updates on each visit; never
+# let a cache hold an old one.
+/sw.js
+  Cache-Control: no-cache

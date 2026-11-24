@@ -861,3 +861,38 @@ test('a board card and its actions can be used from the keyboard', async ({
   await expect(details).toBeHidden();
   await expect(boardCard).toBeFocused();
 });
+
+// #169: the installed app opens without a network.
+test.describe('offline', () => {
+  test.use({ serviceWorkers: 'allow' });
+
+  test('the app opens offline, with what was on the board', async ({
+    page,
+    context,
+  }) => {
+    await page.getByRole('button', { name: 'On-deck' }).click();
+    await page.getByRole('button', { name: 'Next card' }).click();
+    await page.getByRole('button', { name: 'Cast to board' }).click();
+    const boardCard = page.locator('.board-card').getByRole('img', {
+      name: card.name,
+    });
+    await expect(boardCard).toBeVisible();
+    // The worker controls the page once it has precached the shell: it only
+    // activates after its install, and then claims the page.
+    await page.waitForFunction(() => {
+      const sw = (
+        navigator as unknown as { serviceWorker?: { controller: unknown } }
+      ).serviceWorker;
+      return !!sw?.controller;
+    });
+
+    await context.setOffline(true);
+    await page.reload();
+
+    await expect(boardCard).toBeVisible();
+    await page.getByRole('button', { name: 'On-deck' }).click();
+    await expect(page.getByText("You're offline.")).toBeVisible();
+    // Whether Next card still works depends on what On-deck had queued in
+    // time; the store's unit tests cover both.
+  });
+});

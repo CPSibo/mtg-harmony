@@ -1,9 +1,12 @@
 import { execSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { readdirSync, readFileSync } from 'node:fs';
+import { sep } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
 import vue from '@vitejs/plugin-vue';
 import ui from '@nuxt/ui/vite';
 import { defineConfig, type Plugin } from 'vite';
+import { precacheList, serviceWorkerSource } from './app/pwa/serviceWorker.ts';
 
 /**
  * Preloads the Latin Public Sans font. Otherwise the browser only finds it
@@ -65,6 +68,35 @@ function buildInfo() {
 
 const { version, commit } = buildInfo();
 
+/**
+ * Emits `/sw.js`, which precaches this build's app shell (#169). Its version
+ * is a hash of the shell's files, so any change gives a new worker.
+ */
+function serviceWorker(): Plugin {
+  return {
+    name: 'service-worker',
+    apply: 'build',
+    enforce: 'post',
+    generateBundle(_, bundle) {
+      const publicDir = fileURLToPath(new URL('./public', import.meta.url));
+      // Relative to public/, with / on every OS.
+      const publicFiles = readdirSync(publicDir, { recursive: true }).map((f) =>
+        String(f).split(sep).join('/'),
+      );
+      const files = precacheList(Object.keys(bundle), publicFiles);
+      const hash = createHash('sha256');
+      for (const file of files) hash.update(file);
+      const html = bundle['index.html'];
+      if (html?.type === 'asset') hash.update(html.source);
+      this.emitFile({
+        type: 'asset',
+        fileName: 'sw.js',
+        source: serviceWorkerSource(hash.digest('hex').slice(0, 12), files),
+      });
+    },
+  };
+}
+
 export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(version),
@@ -73,6 +105,7 @@ export default defineConfig({
   plugins: [
     vue(),
     preloadFont(),
+    serviceWorker(),
     ui({
       // Single-page app: no vue-router, so links render as plain <a>.
       router: false,

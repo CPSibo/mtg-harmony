@@ -5,6 +5,7 @@ import {
 } from '~/features/eventLog';
 import { useLocalStorage } from '~/composables/useLocalStorage';
 import { useScryfall } from '~/composables/useScryfall';
+import { useOnline } from '@vueuse/core';
 import { defineStore } from 'pinia';
 import { computed, ref, shallowRef, triggerRef, watch } from 'vue';
 import { cardData, createBoardCard } from '~/features/battlefield';
@@ -20,6 +21,10 @@ export interface DiscordFetcherStore {
 }
 
 const STORAGE_KEY = 'mtg-harmony_discordFetcher';
+
+/** Why Next card can't fetch while offline (#169). */
+export const OFFLINE_MESSAGE =
+  "You're offline. On-deck fetches new cards when you're back online.";
 
 /** Fresh default state. A factory, so no store shares (and mutates) it. */
 function createDefaults(): DiscordFetcherStore {
@@ -100,6 +105,17 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
   type FetchResult = { success: boolean; error?: string };
   /** A fetch stopped by a reset: not an error, and nothing to show. */
   const CANCELLED: FetchResult = { success: true };
+
+  const online = useOnline();
+  /** Next card has to fetch: nothing queued, and no later card to step to. */
+  const nextNeedsNetwork = computed(
+    () => stepsBack.value === 0 && queue.value.length === 0,
+  );
+  // Back online: top up a queue that ran low while offline (#169).
+  watch(online, (isOnline) => {
+    if (isOnline && queue.value.length < settings.minQueuedCardCount)
+      void fetchCards(settings.fetchCardCount);
+  });
 
   // Tracks an in-flight fetchCards() call so concurrent callers (e.g. a
   // manual "next" racing next's own background top-up) await the same
@@ -212,6 +228,9 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
       return { success: true };
     }
 
+    if (!online.value && nextNeedsNetwork.value)
+      return { success: false, error: OFFLINE_MESSAGE };
+
     const startedIn = generation;
     const result = await ensureQueuedCard();
     // New game while waiting: that card belonged to the old game.
@@ -224,7 +243,7 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
     cardCleared.value = false;
     log.record('fetched', { card: shown });
 
-    if (queue.value.length < settings.minQueuedCardCount) {
+    if (online.value && queue.value.length < settings.minQueuedCardCount) {
       fetchCards(settings.fetchCardCount);
     }
 
@@ -343,6 +362,7 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
     card,
     queue,
     canGoPrevious,
+    nextNeedsNetwork,
     fetchingCards,
     fetchCards,
     next,

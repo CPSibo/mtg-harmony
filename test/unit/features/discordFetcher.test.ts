@@ -3,7 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick, isReactive } from 'vue';
 import { flushSaves } from '~/composables/useLocalStorage';
 import type { ScryfallCardResponse } from '~/composables/useScryfall';
-import { useDiscordFetcherStore } from '~/features/discordFetcher';
+import {
+  OFFLINE_MESSAGE,
+  useDiscordFetcherStore,
+} from '~/features/discordFetcher';
 import { useBattlefieldStore } from '~/features/battlefield';
 import { useEventLogStore } from '~/features/eventLog';
 import { useSettingsStore } from '~/stores/settings';
@@ -493,6 +496,53 @@ describe('discord fetcher store', () => {
     useEventLogStore().record('boardCleared', {});
 
     expect(store.card).toBe(before);
+  });
+
+  describe('offline (#169)', () => {
+    /** Sets what navigator.onLine says and tells the page, as browsers do. */
+    function setOnline(online: boolean) {
+      vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(online);
+      window.dispatchEvent(new Event(online ? 'online' : 'offline'));
+    }
+
+    it('says it is offline instead of fetching when nothing is queued', async () => {
+      setOnline(false);
+      const store = useDiscordFetcherStore();
+
+      const result = await store.next();
+
+      expect(result).toEqual({ success: false, error: OFFLINE_MESSAGE });
+      expect(store.nextNeedsNetwork).toBe(true);
+      expect(fetchMany).not.toHaveBeenCalled();
+    });
+
+    it('still shows queued cards, without topping up', async () => {
+      const store = useDiscordFetcherStore();
+      useSettingsStore().fetchCardCount = 2;
+      await store.next();
+      await settle(store);
+      const fetches = fetchMany.mock.calls.length;
+      setOnline(false);
+
+      await store.next();
+
+      expect(store.card?.name).toBe('Card 2');
+      expect(fetchMany).toHaveBeenCalledTimes(fetches);
+    });
+
+    it('tops the queue up when the connection comes back', async () => {
+      setOnline(false);
+      const store = useDiscordFetcherStore();
+      await nextTick();
+
+      setOnline(true);
+      await nextTick();
+      await settle(store);
+
+      expect(fetchMany).toHaveBeenCalled();
+      expect(store.queue.length).toBeGreaterThan(0);
+      expect(store.nextNeedsNetwork).toBe(false);
+    });
   });
 
   describe('persistence', () => {
