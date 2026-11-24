@@ -9,6 +9,7 @@
     :ui="{
       overlay: 'bg-elevated',
       content: 'border-primary-900! border-r-3',
+      body: 'flex flex-col',
     }"
   >
     <UButton
@@ -28,22 +29,26 @@
       >
         <USkeleton
           v-if="loading"
-          class="mtg-card-display vertical"
+          class="mtg-card-display fit"
         />
         <SharedCardImage
-          v-else-if="!!card?.image_uri && settings.imagesEnabled"
-          :landscape="isLandscape(card)"
-          frame-class="w-full"
-          :src="card?.image_uri"
+          v-else-if="!!imageUri && settings.imagesEnabled"
+          :landscape="landscape"
+          :frame-style="{ width: 'min(100cqw, 100cqh * 17 / 12)' }"
+          :src="imageUri"
           :alt="card?.name ?? 'Missing card'"
-          class="mtg-card-display vertical cursor-grab touch-none select-none"
+          class="mtg-card-display fit cursor-grab touch-none select-none"
           :class="{ 'opacity-40': ghost }"
           draggable="false"
-          title="Drag onto the board to cast"
+          tabindex="0"
+          title="Tap to enlarge, or drag onto the board to cast"
           @pointerdown="onPointerDown"
           @pointermove="onPointerMove"
           @pointerup="onPointerUp"
           @pointercancel="cancelDrag"
+          @click="enlarged = true"
+          @keydown.enter.prevent="enlarged = true"
+          @keydown.space.prevent="enlarged = true"
         />
         <SharedCardText
           v-else-if="!!card"
@@ -60,7 +65,7 @@
         />
         <SharedPlaceholder
           v-else
-          class="cursor-pointer mtg-card-display vertical"
+          class="cursor-pointer mtg-card-display fit"
           @click="goNext"
         >
           <div class="flex flex-col gap-3 items-center">
@@ -73,7 +78,7 @@
         </SharedPlaceholder>
       </div>
 
-      <div class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="mt-5 grid shrink-0 grid-cols-1 md:grid-cols-2 gap-4">
         <UButton
           color="secondary"
           variant="subtle"
@@ -139,6 +144,14 @@
     </template>
   </USlideover>
 
+  <SharedCardLightbox
+    v-if="imageUri"
+    v-model:open="enlarged"
+    :src="imageUri"
+    :alt="card?.name ?? ''"
+    :landscape="landscape"
+  />
+
   <SharedCastDragGhost
     v-if="card"
     :card="card.scryfallInfo"
@@ -156,6 +169,7 @@ import UButton from '@nuxt/ui/components/Button.vue';
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
 import USkeleton from '@nuxt/ui/components/Skeleton.vue';
 import USlideover from '@nuxt/ui/components/Slideover.vue';
+import SharedCardLightbox from '~/components/shared/CardLightbox.vue';
 import SharedCardText from '~/components/shared/CardText.vue';
 import SharedCastDragGhost from '~/components/shared/CastDragGhost.vue';
 import SharedPlaceholder from '~/components/shared/Placeholder.vue';
@@ -163,7 +177,7 @@ import { useSettingsStore } from '~/stores/settings';
 import { useToast } from '@nuxt/ui/composables';
 import { storeToRefs } from 'pinia';
 import type { Position } from '@vueuse/core';
-import { ref, useTemplateRef } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import {
   castSource,
   useCastAnimation,
@@ -184,6 +198,13 @@ const board = useBattlefieldStore();
 const settings = useSettingsStore();
 
 const loading = ref(false);
+
+const imageUri = computed(() => card.value?.image_uri ?? '');
+const landscape = computed(() => !!card.value && isLandscape(card.value));
+
+// The On-deck card blown up to fill the screen, for reading it (#176).
+const enlarged = ref(false);
+watch(card, () => (enlarged.value = false));
 
 const display = useTemplateRef<HTMLDivElement>('display');
 const animateCast = useCastAnimation();
@@ -245,10 +266,21 @@ const {
 </script>
 
 <style lang="scss" scoped>
+/* Takes all the height the buttons leave, not a fixed share of it, so the
+   card is as big as the panel allows (#176). */
 .on-deck-display {
-  height: 50%;
+  flex: 1 1 0;
+  min-height: 12rem;
+  container-type: size;
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+/* As big as fits both ways. */
+.on-deck-display > .fit {
+  width: min(100cqw, 100cqh * 12 / 17);
+  height: auto;
+  aspect-ratio: var(--card-ratio-vertical);
 }
 </style>

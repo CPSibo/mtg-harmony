@@ -414,7 +414,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     card.shownAs = showsImage(card, imagesEnabled) ? 'text' : 'art';
   }
 
-  /** Turns a card 180� and back (Kamigawa flip cards). */
+  /** Turns a card 180° and back (Kamigawa flip cards). */
   function toggleTurned(card: BoardCard) {
     card.turned = !card.turned;
   }

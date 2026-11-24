@@ -429,7 +429,7 @@ describe('battlefield store', () => {
       expect(card.flipped).toBe(false);
     });
 
-    it('turns a card 180� and back', () => {
+    it('turns a card 180° and back', () => {
       const board = useBattlefieldStore();
       board.addStackByCard(makeCard());
       const card = board.stacks[0]!.primary;

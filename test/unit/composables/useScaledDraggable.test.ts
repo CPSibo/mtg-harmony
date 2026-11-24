@@ -110,4 +110,29 @@ describe('useBoardDraggable', () => {
     expect(onMove).toHaveBeenCalledTimes(2);
     scope.stop();
   });
+
+  // #160: a stack removed mid-drag left the board thinking a card was dragged.
+  it('ends a drag cut short by disposal and reports the cancel', () => {
+    const onCancel = vi.fn();
+    const onEnd = vi.fn();
+    const { el, drag, scope } = setup({ onCancel, onEnd });
+
+    el.dispatchEvent(pointer('pointerdown', 0, 0));
+    scope.stop();
+
+    expect(drag.isDragging.value).toBe(false);
+    expect(onCancel).toHaveBeenCalledOnce();
+    expect(onEnd).not.toHaveBeenCalled();
+  });
+
+  it("doesn't report a cancel when disposed between drags", () => {
+    const onCancel = vi.fn();
+    const { el, scope } = setup({ onCancel });
+
+    el.dispatchEvent(pointer('pointerdown', 0, 0));
+    window.dispatchEvent(pointer('pointerup', 0, 0));
+    scope.stop();
+
+    expect(onCancel).not.toHaveBeenCalled();
+  });
 });
