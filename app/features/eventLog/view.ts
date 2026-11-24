@@ -46,6 +46,21 @@ function cardNames(entry: EventEntry): string[] {
   return names;
 }
 
+/**
+ * The first `max` of `newer` followed by `older`, both already newest first,
+ * without copying the rest (#173): the log window shows the newest 200 of
+ * the current game and past games.
+ */
+export function takeNewest<T>(
+  newer: readonly T[],
+  older: readonly T[],
+  max: number,
+): T[] {
+  return newer.length >= max
+    ? newer.slice(0, max)
+    : [...newer, ...older.slice(0, max - newer.length)];
+}
+
 /** The entries that match `filter`, newest first. */
 export function filterEntries(
   entries: readonly EventEntry[],

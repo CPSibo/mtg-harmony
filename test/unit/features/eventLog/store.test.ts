@@ -118,6 +118,36 @@ describe('event log store', () => {
     ]);
   });
 
+  // #173: the log window used to keep every past game in memory for good,
+  // and copy them all on each new event.
+  it('lets go of past games once the log window is done with them', async () => {
+    const log = useEventLogStore();
+    log.record('fetched', { card: makeScryfallCard({ name: 'Last game' }) });
+    log.startNewGame('newGame');
+    await log.loadHistory();
+    expect(log.history.map(cardName)).toContain('Last game');
+
+    log.unloadHistory();
+    await log.settled();
+    expect(log.history.map(cardName)).not.toContain('Last game');
+
+    await log.loadHistory();
+    expect(log.history.map(cardName)).toContain('Last game');
+  });
+
+  it("doesn't rebuild past games on each new event (#173)", async () => {
+    const log = useEventLogStore();
+    log.record('fetched', { card: makeScryfallCard() });
+    log.startNewGame('newGame');
+    await log.loadHistory();
+    const past = log.pastEntries;
+
+    log.record('fetched', { card: makeScryfallCard() });
+
+    expect(log.pastEntries).toBe(past);
+    expect(past.map((e) => e.type)).toEqual(['fetched']);
+  });
+
   it('when the current game fills, keeps only the newest 250 of a recent game', () => {
     const log = useEventLogStore();
     for (let i = 0; i <= MAX_ENTRIES; i++) log.record('boardCleared', {});

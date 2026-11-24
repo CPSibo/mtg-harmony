@@ -10,8 +10,12 @@ import type { EventEntry } from './types';
 
 /** Archived games older than this are dropped. */
 export const ARCHIVE_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000;
-/** At most this many archived entries are kept; the oldest games go first. */
-export const ARCHIVE_MAX_ENTRIES = 500_000;
+/**
+ * At most this many archived entries are kept; the oldest games go first.
+ * About 100 long games. The log window holds them all in memory while it's
+ * open, so not more (#173).
+ */
+export const ARCHIVE_MAX_ENTRIES = 100_000;
 
 const DB_NAME = 'mtg-harmony';
 

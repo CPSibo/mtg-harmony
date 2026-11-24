@@ -3,6 +3,7 @@ import {
   describeEntry,
   filterEntries,
   scryfallCardFromSnapshot,
+  takeNewest,
   useEventLogStore,
   type EventEntry,
 } from '~/features/eventLog';
@@ -91,6 +92,15 @@ describe('describeEntry', () => {
       'Cast E to the graveyard',
       'New game (from the menu)',
     ]);
+  });
+});
+
+// #173
+describe('takeNewest', () => {
+  it('takes from the newer list first, then the older, up to the limit', () => {
+    expect(takeNewest([3, 2], [1, 0], 3)).toEqual([3, 2, 1]);
+    expect(takeNewest([5, 4, 3, 2], [1], 3)).toEqual([5, 4, 3]);
+    expect(takeNewest([], [1, 0], 5)).toEqual([1, 0]);
   });
 });
 

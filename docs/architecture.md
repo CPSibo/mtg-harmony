@@ -269,8 +269,11 @@ The log is split in two (#81):
   prompt and anything else in play only ever need this game. `entries` is a `shallowRef`: entries never change
   once recorded, and deep reactivity over thousands of them cost tens of milliseconds per event.
 - **Finished games** move to an IndexedDB archive (`archive.ts`, database `mtg-harmony`) when a new game starts.
-  Each game is one record, so a card is stored once per game. Only the log window and export read it, through
-  `loadHistory()` (once; archiving and clearing keep it up to date) and `history` (archive, then current game).
+  Each game is one record, so a card is stored once per game. Only the log window and export read it. The window
+  calls `loadHistory()` when it opens (archiving and clearing then keep it up to date) and `unloadHistory()` when
+  it closes, so past games aren't held in memory otherwise. It filters `pastEntries` (archive and `pending`) and
+  `entries` apart, so a new event refilters only the current game. Export reads `history`, which joins all three
+  (#173).
 - Archive work runs one task at a time (`settled()` resolves when it's done). A finished game waits in `pending`,
   saved with the current game, until its archive write lands, so a tab closed mid-write archives it on the next
   start. Archiving a game again replaces it.
@@ -321,7 +324,7 @@ The log is split in two (#81):
   covers what a card name doesn't: an attachment's target, a copy's mode, a new game's reason.
 - **Limits.** The current game keeps at most 2,000 entries (`MAX_ENTRIES`); a realistic long game, six players
   over two sittings, logs about 1,000. Past that, it keeps whichever is smaller: the last 24 hours or the newest
-  250 entries. The archive keeps a year and at most 500,000 entries (`ARCHIVE_MAX_AGE_MS`,
+  250 entries. The archive keeps a year and at most 100,000 entries (`ARCHIVE_MAX_AGE_MS`,
   `ARCHIVE_MAX_ENTRIES`), dropping whole games, oldest first, whenever a game is archived.
 
 ## Scryfall
