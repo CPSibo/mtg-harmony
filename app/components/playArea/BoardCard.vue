@@ -20,6 +20,7 @@
         role="img"
         :aria-label="card.name"
         tabindex="0"
+        :aria-description="lockedDescription"
         :style="
           showImage ? { backgroundImage: `url('${imageUri}')` } : undefined
         "
@@ -34,6 +35,24 @@
           :card="card.scryfallInfo"
           class="size-full"
         />
+
+        <!-- A Room's locked doors, dimmed under a padlock (#145). In the
+             image's own frame, before it turns to read: the first door is
+             its bottom half. -->
+        <template v-if="showImage && !card.flipped">
+          <div
+            v-for="door in card.lockedDoors"
+            :key="door"
+            class="door-lock"
+            :class="door === 0 ? 'bottom-0' : 'top-0'"
+            aria-hidden="true"
+          >
+            <UIcon
+              name="i-lucide-lock"
+              class="door-lock-icon"
+            />
+          </div>
+        </template>
 
         <div
           v-if="!!card.faceNumber"
@@ -63,6 +82,18 @@
     </div>
 
     <div class="modifiers grid grid-flow-col gap-1 place-items-start">
+      <!-- As text, there are no halves to dim: name the locked doors. -->
+      <template v-if="!showImage">
+        <span
+          v-for="name in lockedNames"
+          :key="name"
+          class="modifier-icon gap-1 flex items-center bg-gray-950/90 px-1 py-0.5 rounded-sm"
+          :title="`${name} is locked`"
+        >
+          <UIcon name="i-lucide-lock" />
+          {{ name }}
+        </span>
+      </template>
       <button
         v-for="modifier in card.modifiers"
         :key="modifier.modifier.name"
@@ -95,6 +126,7 @@ import { useSettingsStore } from '~/stores/settings';
 import { computed, useTemplateRef } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import {
+  doorNames,
   isLandscape,
   shownImageUri,
   showsImage,
@@ -120,6 +152,15 @@ const showImage = computed(() =>
   showsImage(props.card, settings.imagesEnabled),
 );
 const imageUri = computed(() => shownImageUri(props.card));
+const lockedNames = computed(() => {
+  const names = doorNames(props.card);
+  return (props.card.lockedDoors ?? []).map((door) => names[door]!);
+});
+const lockedDescription = computed(() =>
+  lockedNames.value.length
+    ? `Locked: ${lockedNames.value.join(', ')}`
+    : undefined,
+);
 const landscape = computed(() => isLandscape(props.card));
 // Lies on its long side: a landscape card untapped, or any other card tapped.
 const sideways = computed(() => landscape.value !== props.card.tapped);
@@ -216,6 +257,28 @@ function modifierLabel({ modifier, count }: BoardCardModifier) {
       &:focus-visible {
         outline: 3px solid var(--ui-primary);
         outline-offset: 2px;
+      }
+
+      .door-lock {
+        position: absolute;
+        left: 0;
+        width: 100%;
+        height: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgb(0 0 0 / 55%);
+        pointer-events: none;
+      }
+
+      .door-lock-icon {
+        width: 30%;
+        height: auto;
+        aspect-ratio: 1;
+        color: white;
+        filter: drop-shadow(0 0 0.15em black);
+        /* Upright however the card has turned. */
+        rotate: calc(var(--rotate, 0deg) * -1);
       }
     }
   }

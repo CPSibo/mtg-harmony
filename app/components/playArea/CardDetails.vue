@@ -76,6 +76,19 @@
           Flip over
         </UButton>
 
+        <!-- A Room's doors lock and unlock one at a time (#145). -->
+        <UButton
+          v-for="(door, i) in doorNames(card)"
+          :key="door"
+          :icon="isLocked(i) ? 'i-lucide-lock-open' : 'i-lucide-lock'"
+          color="neutral"
+          variant="soft"
+          size="xl"
+          @click="battlefield.setDoorLocked(card!, i, !isLocked(i))"
+        >
+          {{ isLocked(i) ? 'Unlock' : 'Lock' }} {{ door }}
+        </UButton>
+
         <UButton
           :icon="showImage ? 'i-lucide-text' : 'i-lucide-image'"
           color="neutral"
@@ -273,6 +286,7 @@ import { useBattlefieldStore } from '~/features/battlefield';
 import SharedCardImage from '~/components/shared/CardImage.vue';
 import {
   canTurn,
+  doorNames,
   isLandscape,
   shownFaces,
   shownImageUri,
@@ -286,6 +300,9 @@ const open = defineModel<boolean>('open', { default: false });
 
 // Swap art lists printings from Scryfall (#169).
 const online = useOnline();
+
+/** Whether door `i` of the Room shown is locked (#145). */
+const isLocked = (i: number) => !!props.card?.lockedDoors?.includes(i);
 
 const props = defineProps<{
   card: BoardCard | undefined;

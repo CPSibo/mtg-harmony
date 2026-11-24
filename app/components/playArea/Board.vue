@@ -65,6 +65,8 @@
     v-model:open="cardModifiersIsOpen"
     :card="selectedCard"
   />
+
+  <PlayAreaRoomDoorsModal v-if="battlefield.doorChoice" />
 </template>
 
 <script setup lang="ts">
@@ -103,6 +105,10 @@ const loadModifiersMenu = () =>
   import('~/components/playArea/ModifiersMenu.vue');
 const PlayAreaCardDetails = defineAsyncComponent(loadCardDetails);
 const PlayAreaModifiersMenu = defineAsyncComponent(loadModifiersMenu);
+// Only a Room cast to the board opens it (#145).
+const PlayAreaRoomDoorsModal = defineAsyncComponent(
+  () => import('~/components/playArea/RoomDoorsModal.vue'),
+);
 whenIdle(() => {
   void loadCardDetails();
   void loadModifiersMenu();

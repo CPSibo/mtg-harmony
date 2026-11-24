@@ -38,6 +38,11 @@ export interface BoardCard {
   turned?: boolean;
   /** Shown as art or text whatever the setting says; unset follows it (#150). */
   shownAs?: 'art' | 'text';
+  /**
+   * A Room's locked doors, by face index: 0 is the first door, on the left
+   * (#145). Unset for cards that aren't Rooms.
+   */
+  lockedDoors?: number[];
 }
 
 export interface Modifier {
