@@ -469,7 +469,7 @@ export async function playRemoveAnimation(cardId: string) {
     ];
     const buttons = leads
       ? stackEl!.querySelector<HTMLElement>(
-          '.primary-card-wrapper > :first-child',
+          '.primary-card-wrapper > .stack-actions',
         )
       : null;
     if (buttons && buttons !== root)

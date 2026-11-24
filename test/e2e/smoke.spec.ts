@@ -828,3 +828,36 @@ test('About shows the fan content notice and credits', async ({ page }) => {
     'https://mana.andrewgioia.com',
   );
 });
+
+// #170: board cards and their actions work from the keyboard.
+test('a board card and its actions can be used from the keyboard', async ({
+  page,
+}) => {
+  await page.getByRole('button', { name: 'On-deck' }).click();
+  await page.getByRole('button', { name: 'Next card' }).click();
+  await page.getByRole('button', { name: 'Cast to board' }).click();
+  const boardCard = page.locator('.board-card').getByRole('img', {
+    name: card.name,
+  });
+  await expect(boardCard).toBeVisible();
+
+  // Tab reaches the card, then its actions, which show while focused.
+  await boardCard.focus();
+  await page.keyboard.press('Tab');
+  const tap = page.getByRole('button', { name: 'Tap', exact: true });
+  await expect(tap).toBeFocused();
+  await expect(tap).toHaveCSS('opacity', '1');
+  await page.keyboard.press('Enter');
+  await expect(
+    page.getByRole('button', { name: 'Untap', exact: true }),
+  ).toBeVisible();
+
+  // Enter on the card opens its details; closing them returns focus.
+  await boardCard.focus();
+  await page.keyboard.press('Enter');
+  const details = page.getByRole('dialog', { name: 'Card details' });
+  await expect(details).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(details).toBeHidden();
+  await expect(boardCard).toBeFocused();
+});
