@@ -152,5 +152,12 @@ export function usePrintings(
     }
   });
 
-  return { visible, page, pageCount, status, total };
+  /**
+   * Whether the grid may change page. Not while a request is pending: the
+   * page watcher skips then, so paging past what's loaded would never fetch
+   * the next page (#163).
+   */
+  const canPage = computed(() => status.value !== 'pending');
+
+  return { visible, page, pageCount, status, total, canPage };
 }

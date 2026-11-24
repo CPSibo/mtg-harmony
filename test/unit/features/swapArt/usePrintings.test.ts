@@ -129,6 +129,20 @@ describe('usePrintings (#114)', () => {
     expect(p.visible.value.at(-1)!.collectorNumber).toBe('999');
   });
 
+  // #163: paging past what's loaded while a request was pending never
+  // requested the next page, so the pager waits for each request.
+  it("doesn't let the grid page while a request is pending", async () => {
+    let resolve!: (r: Response) => void;
+    stubFetch(() => new Promise((r) => (resolve = r)));
+
+    const p = usePrintings({ name: 'Bolt' }, ref(''));
+    expect(p.canPage.value).toBe(false);
+
+    resolve(jsonResponse(200, { data: [printing(1)], total_cards: 1 }));
+    await vi.waitFor(() => expect(p.status.value).toBe('success'));
+    expect(p.canPage.value).toBe(true);
+  });
+
   it('goes back to the first page when the filter changes', async () => {
     const many = Array.from({ length: PRINTINGS_PAGE_SIZE + 1 }, (_, i) =>
       printing(i),

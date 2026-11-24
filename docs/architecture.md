@@ -246,7 +246,8 @@ Rules the battlefield store enforces:
 - **Swap art** in card details (#114, `features/swapArt`, loaded on first use) lists the card's printings newest
   first (`order=released&dir=desc`), 24 per page; `unique=prints` already folds foil and non-foil into one entry.
   The set box filters on Scryfall (`e:<code>`, debounced 500 ms). Scryfall sends 175 per request, and the next
-  request is made only when the grid pages past what's loaded. Picking one calls `swapPrinting`, which replaces
+  request is made only when the grid pages past what's loaded. The pager is disabled while a request is
+  pending, so it can't skip past a page that's still loading (#163). Picking one calls `swapPrinting`, which replaces
   the card's `scryfallInfo`, image and link and keeps its ID, stack and state. It isn't logged; the log's
   snapshots keep the art each event saw.
 - Card and stack IDs come from `randomUUID` (`utils/randomUUID.ts`). It falls back to `crypto.getRandomValues`
