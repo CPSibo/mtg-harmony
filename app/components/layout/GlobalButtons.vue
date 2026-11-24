@@ -12,6 +12,7 @@
 
     <LayoutMenu
       @open-settings-requested="emit('openSettingsRequested')"
+      @open-about-requested="emit('openAboutRequested')"
       @clear-board-requested="emit('clearBoardRequested')"
       @new-game-requested="emit('newGameRequested')"
       @reset-all-requested="emit('resetAllRequested')"
@@ -27,6 +28,7 @@ import DiscordFetch from '../../features/discordFetcher/components/SidePanel.vue
 
 const emit = defineEmits<{
   openSettingsRequested: [];
+  openAboutRequested: [];
   clearBoardRequested: [];
   newGameRequested: [];
   resetAllRequested: [];

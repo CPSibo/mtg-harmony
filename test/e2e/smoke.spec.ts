@@ -762,3 +762,23 @@ test('the log keeps the last game after a new game and a reload', async ({
   await expect(events.getByText('New game (from the menu)')).toBeVisible();
   await expect(events.getByText(`Cast ${card.name}`)).toBeVisible();
 });
+
+// #167: the app shows Wizards' card names and art, so it carries their notice.
+test('About shows the fan content notice and credits', async ({ page }) => {
+  await page.getByRole('button', { name: 'Open menu' }).click();
+  await page.getByRole('menuitem', { name: 'About' }).click();
+
+  const about = page.getByRole('dialog', { name: 'About MTG Harmony' });
+  await expect(about.getByText(/unofficial Fan Content/)).toBeVisible();
+  await expect(
+    about.getByText(/Not approved\/endorsed by Wizards/),
+  ).toBeVisible();
+  await expect(about.getByRole('link', { name: 'Scryfall' })).toHaveAttribute(
+    'href',
+    'https://scryfall.com',
+  );
+  await expect(about.getByRole('link', { name: 'Mana' })).toHaveAttribute(
+    'href',
+    'https://mana.andrewgioia.com',
+  );
+});
