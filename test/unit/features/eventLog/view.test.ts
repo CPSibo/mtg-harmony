@@ -73,6 +73,10 @@ describe('describeEntry', () => {
     });
     log.record('removed', { card: makeCard({ name: 'C' }) });
     log.record('added', { card: makeCard({ name: 'D' }) });
+    log.record('cast', {
+      card: makeScryfallCard({ name: 'E' }),
+      toGraveyard: true,
+    });
     log.startNewGame('newGame');
 
     expect(log.history.map((e: EventEntry) => describeEntry(e))).toEqual([
@@ -84,6 +88,7 @@ describe('describeEntry', () => {
       'Put A under B',
       'Removed C',
       'Added D',
+      'Cast E to the graveyard',
       'New game (from the menu)',
     ]);
   });

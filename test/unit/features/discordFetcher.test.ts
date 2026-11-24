@@ -4,6 +4,7 @@ import { nextTick, isReactive } from 'vue';
 import { flushSaves } from '~/composables/useLocalStorage';
 import type { ScryfallCardResponse } from '~/composables/useScryfall';
 import { useDiscordFetcherStore } from '~/features/discordFetcher';
+import { useBattlefieldStore } from '~/features/battlefield';
 import { useEventLogStore } from '~/features/eventLog';
 import { useSettingsStore } from '~/stores/settings';
 import { makeScryfallCard } from '../fixtures/cards';
@@ -231,6 +232,34 @@ describe('discord fetcher store', () => {
       await store.next();
 
       expect(shownNames()).toEqual(['Card 1', 'Card 2']);
+    });
+  });
+
+  // #175: for instants, sorceries and anything else that doesn't stay.
+  describe('castToGraveyard', () => {
+    it('logs the card as cast to the graveyard and clears it, with no stack', async () => {
+      const store = useDiscordFetcherStore();
+      await store.next();
+      await settle(store);
+
+      store.castToGraveyard();
+
+      const last = useEventLogStore().entries.at(-1)!;
+      expect(last).toMatchObject({
+        type: 'cast',
+        toGraveyard: true,
+        card: { name: 'Card 1' },
+      });
+      expect(store.card).toBeNull();
+      expect(useBattlefieldStore().stacks).toHaveLength(0);
+    });
+
+    it('does nothing without a card', () => {
+      const store = useDiscordFetcherStore();
+
+      store.castToGraveyard();
+
+      expect(useEventLogStore().entries).toHaveLength(0);
     });
   });
 
