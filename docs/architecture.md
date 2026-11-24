@@ -405,11 +405,20 @@ drops anything that isn't a `https://scryfall.com/` page.
 
 ## Version
 
-Settings' footer shows the build's version, `v<version> (<short commit>)`, for bug reports (`utils/appVersion.ts`).
+Settings' footer and the About dialog show the build's version, `v<version> (<short commit>)`, for bug reports
+(`utils/appVersion.ts`).
 `buildInfo()` in `vite.config.ts` reads `version` from `package.json`. It takes the commit from
 `CF_PAGES_COMMIT_SHA` or `GITHUB_SHA`, else from `git rev-parse`. It passes both to the app through Vite's `define`
-(`__APP_VERSION__`, `__APP_COMMIT__`, declared in `app/env.d.ts`). A release bumps `version` and tags `v<version>`
-on `main`.
+(`__APP_VERSION__`, `__APP_COMMIT__`, declared in `app/env.d.ts`).
+
+The version stays below 1.0.0 until the owner calls 1.0 done. There is no changelog file: GitHub releases are the
+changelog, with notes generated from the merged PRs and grouped by label (`.github/release.yml`). To release:
+
+1. On a branch from `dev`, bump `version` in `package.json` and the lockfile's root entries
+   (`npm version <x.y.z> --no-git-tag-version`), and merge it.
+2. Release `dev` to `main`.
+3. Create a GitHub release with a new tag `v<x.y.z>` on `main`, and **Generate release notes**. Or from the CLI:
+   `gh release create v<x.y.z> --target main --generate-notes`.
 
 ## Offline
 
