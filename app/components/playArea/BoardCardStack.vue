@@ -49,7 +49,10 @@
 
     <div
       class="attachments"
-      :style="`--total: ${stack.attachments.size}`"
+      :style="{
+        '--total': stack.attachments.size,
+        '--sideways': sidewaysAttachments,
+      }"
     >
       <PlayAreaBoardCard
         v-for="(card, index) in stack.attachments"
@@ -101,6 +104,13 @@ const battlefield = useBattlefieldStore();
 const primarySideways = computed(
   () => isLandscape(props.stack.primary) !== props.stack.primary.tapped,
 );
+/** Attachments lying on their long side, which are only a card's width tall. */
+const sidewaysAttachments = computed(() => {
+  let count = 0;
+  for (const card of props.stack.attachments)
+    if (isLandscape(card) !== card.tapped) count++;
+  return count;
+});
 const settings = useSettingsStore();
 const selection = useSelectionStore();
 const animateMove = useMoveAnimation();
@@ -428,9 +438,13 @@ watch(myIsDragging, (value) => {
      evenly and stays centred on the primary (#127). */
   width: var(--w);
 
-  /* Need to cap the height, or else the `top` makes a big, invisible chin. */
-  /* TODO: This doesn't account for tapped attachments. */
-  height: calc((var(--total) * var(--h)) + var(--vertical-offset));
+  /* Cap the height at where the last card ends, or the offsets leave a big,
+     invisible chin (#186). Each card is a card's height tall, or its width
+     when it lies sideways, and each rides up by the offset. */
+  height: calc(
+    (var(--total) - var(--sideways)) * var(--h) + var(--sideways) * var(--w) +
+      var(--total) * var(--vertical-offset)
+  );
 
   > .board-card {
     top: calc(var(--vertical-offset) * var(--index));

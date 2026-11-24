@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 const IMAGE_URL = 'https://cards.scryfall.io/border_crop/front/test-card.jpg';
 
@@ -894,5 +894,76 @@ test.describe('offline', () => {
     await expect(page.getByText("You're offline.")).toBeVisible();
     // Whether Next card still works depends on what On-deck had queued in
     // time; the store's unit tests cover both.
+  });
+});
+
+// #186: the stack's box ends where its lowest attachment does.
+test.describe('a stack with attachments', () => {
+  /**
+   * Casts `count` cards and attaches all but the first to the first, each
+   * as it's cast: only a few cards fit in view.
+   */
+  async function stackWithAttachments(page: Page, count: number) {
+    const stacks = page.locator('.board-card-stack');
+    const details = page.getByRole('dialog', { name: 'Card details' });
+    for (let i = 0; i < count; i++) {
+      await page.getByRole('button', { name: 'On-deck' }).click();
+      await page.getByRole('button', { name: 'Next card' }).click();
+      await page.getByRole('button', { name: 'Cast to board' }).click();
+      if (i === 0) continue;
+      await expect(stacks).toHaveCount(2);
+      await stacks.nth(1).locator('.primary-card').getByRole('img').dblclick();
+      await details.getByRole('button', { name: 'Attach to...' }).click();
+      await stacks.nth(0).locator('.primary-card').getByRole('img').click();
+      await expect(stacks).toHaveCount(1);
+    }
+    return stacks.first();
+  }
+
+  /** Taps an attachment from its bottom edge, which nothing covers. */
+  async function tapAttachment(page: Page, index: number) {
+    const attachment = page.locator('.attachment').nth(index);
+    const image = attachment.getByRole('img');
+    const box = (await image.boundingBox())!;
+    await image.dblclick({ position: { x: box.width / 2, y: box.height - 5 } });
+    await page
+      .getByRole('dialog', { name: 'Card details' })
+      .getByRole('button', { name: 'Tap' })
+      .click();
+    await expect(attachment).toHaveClass(/tapped/);
+  }
+
+  /** How far the stack's box ends from its lowest card, in screen px. */
+  async function chin(stack: Locator) {
+    const cards = await stack.locator('.card-image-wrapper').all();
+    let lowest = -Infinity;
+    for (const card of cards) {
+      const b = (await card.boundingBox())!;
+      lowest = Math.max(lowest, b.y + b.height);
+    }
+    const box = (await stack.boundingBox())!;
+    return box.y + box.height - lowest;
+  }
+
+  test('fits untapped attachments', async ({ page }) => {
+    const stack = await stackWithAttachments(page, 4);
+
+    await expect.poll(() => chin(stack)).toBeCloseTo(0, 0);
+  });
+
+  test('fits tapped and untapped attachments mixed', async ({ page }) => {
+    const stack = await stackWithAttachments(page, 4);
+    await tapAttachment(page, 0);
+    await tapAttachment(page, 2);
+
+    // Tapping eases (#124), so wait for it to settle.
+    await expect.poll(() => chin(stack)).toBeCloseTo(0, 0);
+  });
+
+  test('fits a lone tapped attachment', async ({ page }) => {
+    const stack = await stackWithAttachments(page, 2);
+    await tapAttachment(page, 0);
+
+    await expect.poll(() => chin(stack)).toBeCloseTo(0, 0);
   });
 });
