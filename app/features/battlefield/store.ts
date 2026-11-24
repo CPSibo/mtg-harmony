@@ -58,9 +58,6 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
   const log = useEventLogStore();
 
   const stacks = ref<BoardCardStack[]>(defaults.stacks);
-  function setStacks(value: BoardCardStack[]) {
-    stacks.value = value;
-  }
 
   // MRU order of the stacks for display purposes.
   const zOrder = ref<string[]>(defaults.zOrder);
@@ -68,9 +65,10 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
   function bringToFront(stack: BoardCardStack) {
     const idx = zOrder.value.indexOf(stack.id);
 
-    if (idx === zOrder.value.length - 1) return; // Already front.
-
-    if (idx !== -1) zOrder.value.splice(idx, 1);
+    if (idx !== -1) {
+      if (idx === zOrder.value.length - 1) return; // Already front.
+      zOrder.value.splice(idx, 1);
+    }
 
     zOrder.value.push(stack.id);
   }
@@ -169,9 +167,6 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
   }
 
   const snapScale = ref<number>(defaults.snapScale);
-  function setSnapScale(value: number) {
-    snapScale.value = value;
-  }
 
   function addStackByCard(card: BoardCard, position = center.value) {
     const newStack: BoardCardStack = {
@@ -443,7 +438,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     card.shownAs = showsImage(card, imagesEnabled) ? 'text' : 'art';
   }
 
-  /** Turns a card 180� and back (Kamigawa flip cards). */
+  /** Turns a card 180° and back (Kamigawa flip cards). */
   function toggleTurned(card: BoardCard) {
     card.turned = !card.turned;
   }
@@ -650,7 +645,6 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     reset,
 
     snapScale,
-    setSnapScale,
 
     untapAll,
     toggleTapped,
@@ -665,8 +659,6 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     setStackPosition,
     orderedStacks,
     stackZIndex,
-    setStacks,
-    addStackByCard,
     castCard,
     setView,
     setTransform,
@@ -680,12 +672,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     clearBoard,
     copyCard,
     swapPrinting,
-    clearStacks,
-    removeStack,
-    removeCardFromStack,
     explodeStack,
-    cardIsInStack,
-    getStackByCard,
 
     center,
     setCenter,

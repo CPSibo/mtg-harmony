@@ -1,13 +1,81 @@
 {
-  "extends": ["github>nuxt/renovate-config-nuxt"],
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":semanticCommitsDisabled"],
+  "description": "Dependency updates as PRs against dev (the default branch), once a week. See AGENTS.md, Dependencies.",
+  "timezone": "Etc/UTC",
+  "schedule": ["* 0-5 * * 1"],
+  "labels": ["chore", "area:infra"],
+  "prConcurrentLimit": 5,
+  "minimumReleaseAge": "3 days",
+  "rangeStrategy": "bump",
+  "constraints": {
+    "npm": "^10"
+  },
   "lockFileMaintenance": {
-    "enabled": true
+    "enabled": true,
+    "schedule": ["* 0-5 1 * *"]
   },
   "packageRules": [
     {
-      "matchDepTypes": ["resolutions"],
+      "description": "Minor and patch updates of dev tooling in one PR.",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "dev tooling"
+    },
+    {
+      "description": "GitHub Actions in one PR.",
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions"
+    },
+    {
+      "description": "Node majors move together: .node-version (the single source), package.json engines and @types/node.",
+      "matchPackageNames": ["node", "@types/node"],
+      "matchUpdateTypes": ["major"],
+      "groupName": "Node.js"
+    },
+    {
+      "description": "Node minors and patches need no change: .node-version holds only the major.",
+      "matchPackageNames": ["node"],
+      "matchUpdateTypes": ["minor", "patch"],
       "enabled": false
+    },
+    {
+      "description": "Vue and its tooling move together.",
+      "matchPackageNames": [
+        "vue",
+        "vue-tsc",
+        "@vitejs/plugin-vue",
+        "@vue/**",
+        "eslint-plugin-vue",
+        "vue-eslint-parser"
+      ],
+      "groupName": "Vue"
+    },
+    {
+      "description": "Vite and Vitest move together.",
+      "matchPackageNames": ["vite", "vitest", "@vitest/**"],
+      "groupName": "Vite and Vitest"
+    },
+    {
+      "description": "The bundled icons are generated from Nuxt UI's and Lucide's.",
+      "matchPackageNames": ["@nuxt/ui", "@iconify-json/lucide"],
+      "prBodyNotes": [
+        "Run `npm run icons:lucide` on this branch and commit the result; a unit test fails until the bundled icons match."
+      ]
+    },
+    {
+      "description": "The mana font is a generated subset.",
+      "matchPackageNames": ["mana-font"],
+      "prBodyNotes": [
+        "Run `npm run fonts:mana` on this branch and commit `app/assets/css/mana.css` and `app/assets/fonts/mana.woff2`."
+      ]
+    },
+    {
+      "description": "Playwright's browsers come with the package.",
+      "matchPackageNames": ["@playwright/test"],
+      "prBodyNotes": [
+        "Run `npx playwright install chromium` locally before `npm run test:e2e`."
+      ]
     }
-  ],
-  "postUpdateOptions": ["pnpmDedupe"]
+  ]
 }
