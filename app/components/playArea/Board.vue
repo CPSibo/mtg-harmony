@@ -93,6 +93,7 @@ import {
 } from '~/features/battlefield';
 import { useSettingsStore } from '~/stores/settings';
 import { gridLevels } from '~/utils/gridLevels';
+import { whenIdle } from '~/utils/whenIdle';
 import type { BoardCard } from '~/types/PlayArea';
 
 // Card details and modifiers (with the number input) load when the browser is
@@ -102,7 +103,7 @@ const loadModifiersMenu = () =>
   import('~/components/playArea/ModifiersMenu.vue');
 const PlayAreaCardDetails = defineAsyncComponent(loadCardDetails);
 const PlayAreaModifiersMenu = defineAsyncComponent(loadModifiersMenu);
-window.requestIdleCallback?.(() => {
+whenIdle(() => {
   void loadCardDetails();
   void loadModifiersMenu();
 });

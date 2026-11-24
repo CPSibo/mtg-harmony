@@ -112,13 +112,15 @@ watch([…state], save);  // On every change; deep only where data changes in pl
   two store instances share them.
 - `reset()` returns a store to its defaults. `useReset()` builds the menu's three levels from these: **Clear
   board** (battlefield, for board wipes), **New game** (plus On-deck's queue and shown card, and a new game in the
-  event log) and **Reset app** (plus settings and the whole event log). Each shows one toast.
+  event log) and **Reset app** (plus settings, the input mode and the whole event log). Each shows one toast. Every setting,
+  On-deck's batch size, minimum queue and image preload included, lives in `useSettingsStore`, so Reset app
+  restores them all (#159); the input mode goes back to its guess from the device.
 
 | Key                          | Store                    | Holds                                                                        |
 | ---------------------------- | ------------------------ | ---------------------------------------------------------------------------- |
 | `mtg-harmony_battlefield`    | `useBattlefieldStore`    | Stacks, z-order, board centre, snap size                                     |
-| `mtg-harmony_discordFetcher` | `useDiscordFetcherStore` | Queued cards, the shown card, settings                                       |
-| `mtg-harmony_settings`       | `useSettingsStore`       | App settings                                                                 |
+| `mtg-harmony_discordFetcher` | `useDiscordFetcherStore` | Queued cards, the shown card, the place in history                           |
+| `mtg-harmony_settings`       | `useSettingsStore`       | App settings, On-deck's included                                             |
 | `mtg-harmony_inputMode`      | `useInputModeStore`      | Last input mode (touch or cursor)                                            |
 | `mtg-harmony_eventLog`       | `useEventLogStore`       | The current game's log entries, finished games not yet archived, the game ID |
 
@@ -165,7 +167,9 @@ starts; and a dragged stack is its own GPU layer. On drop it calls
 so a zoom doesn't re-render every stack. Drags and pans follow the **Pointer smoothing** setting
 (`pointerSmoothing.ts`): 0 jumps to each pointer update; otherwise they ease towards it with that time
 constant in ms. While a stack is dragged, the board's own touch handling stands down
-(`anyCardIsDragging`).
+(`anyCardIsDragging`). A stack removed mid-drag (another finger, a board wipe) gets no `pointerup`, so the
+composable ends the drag when it's disposed and calls `onCancel`, which hands the board back its touches and lets
+the group drag and radial menu go (#160).
 
 ### Z-order
 
@@ -247,7 +251,8 @@ Rules the battlefield store enforces:
 - **Swap art** in card details (#114, `features/swapArt`, loaded on first use) lists the card's printings newest
   first (`order=released&dir=desc`), 24 per page; `unique=prints` already folds foil and non-foil into one entry.
   The set box filters on Scryfall (`e:<code>`, debounced 500 ms). Scryfall sends 175 per request, and the next
-  request is made only when the grid pages past what's loaded. Picking one calls `swapPrinting`, which replaces
+  request is made only when the grid pages past what's loaded. The pager is disabled while a request is
+  pending, so it can't skip past a page that's still loading (#163). Picking one calls `swapPrinting`, which replaces
   the card's `scryfallInfo`, image and link and keeps its ID, stack and state. It isn't logged; the log's
   snapshots keep the art each event saw.
 - Card and stack IDs come from `randomUUID` (`utils/randomUUID.ts`). It falls back to `crypto.getRandomValues`
@@ -271,6 +276,9 @@ The log is split in two (#81):
   start. Archiving a game again replaces it.
 - Without IndexedDB (some private windows), finished games are dropped, `archiveAvailable` is false, and the log
   window says it shows this game only.
+- A write that fails where IndexedDB exists (storage full, a transient error) keeps the game in `pending` and
+  leaves `archiveAvailable` alone; the next start or New game retries it (#156). `archiveEntries` returns
+  `archived`, `unavailable` or `failed` so the store can tell these apart.
 
 - `record(type, payload)` adds an entry with an ID, timestamp and the current game ID. Cards in the payload are
   stored as snapshots (`snapshotCard`: instance ID, Scryfall ID, name, image and Scryfall URI), so later changes
@@ -320,14 +328,22 @@ The log is split in two (#81):
 
 All calls go straight from the browser to `api.scryfall.com`. There is no proxy or API key.
 
+The site's security headers live in `public/_headers` (#157): a Content Security Policy that allows only the site's
+own scripts, styles and fonts, images from `*.scryfall.io` and API calls to `api.scryfall.com` (inline styles stay
+allowed for style bindings), plus `nosniff`, a referrer policy and a Permissions-Policy that allows only the screen
+wake lock. A new host the app talks to has to be added there. Links to Scryfall go through `scryfallLink()`, which
+drops anything that isn't a `https://scryfall.com/` page.
+
 | Use              | Endpoint                                              | Where                                    |
 | ---------------- | ----------------------------------------------------- | ---------------------------------------- |
 | On-deck fetching | `GET /cards/random?q=-t:land+game:paper`              | `useScryfall` → `useDiscordFetcherStore` |
 | Add Card search  | `GET /cards/search?q=…` (debounced 500 ms, cancelled) | `AddCardWindow.vue`                      |
 | Swap art         | `GET /cards/search?q=!"name" [e:set]&unique=prints`   | `usePrintings` → `SwapArtModal.vue`      |
 
-- **Rate limiting** (`useScryfall`): requests are spaced at least 600 ms apart, shared across all callers.
-  Scryfall allows about 2 per second. A 429 waits out Scryfall's 30-second cooldown once; a second 429 stops the
+- **Rate limiting** (`composables/scryfallFetch.ts`): every API request goes through `scryfallFetch`, which
+  queues them in one line spaced at least 600 ms apart, across On-deck, Add Card and Swap art (#158). A request
+  aborted while queued gives up its slot. Scryfall allows about 2 per second. Card images come from
+  `*.scryfall.io`, which has no rate limit, so they don't queue. A 429 waits out Scryfall's 30-second cooldown once; a second 429 stops the
   batch.
 - **Images**: a fetched card without a usable image is retried once, then skipped. `pickImageUri()` prefers
   `border_crop`, then `normal`, then `small`.
@@ -336,7 +352,18 @@ All calls go straight from the browser to `api.scryfall.com`. There is no proxy 
   background. Overlapping fetches share one request. The next queued card's image is preloaded.
 - **History**: the fetcher keeps only the queue and the newest card shown. Each shown card is logged as `fetched`,
   and "previous" steps back through those log entries (since the last New game), rebuilding each card from
-  its snapshot. "Next" steps forward through them again before taking a new card from the queue.
+  its snapshot (once per card, so it keeps its ID while shown). "Next" steps forward through them again before
+  taking a new card from the queue.
+- **New game** (`reset()`) abandons a fetch under way: it stops at its next card and keeps none of them, and a
+  `next()` that was waiting for it shows nothing (#162). The next fetch starts its own request.
+
+## Version
+
+Settings' footer shows the build's version, `v<version> (<short commit>)`, for bug reports (`utils/appVersion.ts`).
+`buildInfo()` in `vite.config.ts` reads `version` from `package.json`. It takes the commit from
+`CF_PAGES_COMMIT_SHA` or `GITHUB_SHA`, else from `git rev-parse`. It passes both to the app through Vite's `define`
+(`__APP_VERSION__`, `__APP_COMMIT__`, declared in `app/env.d.ts`). A release bumps `version` and tags `v<version>`
+on `main`.
 
 ## Gotchas
 
