@@ -411,14 +411,14 @@ Settings' footer and the About dialog show the build's version, `v<version> (<sh
 `CF_PAGES_COMMIT_SHA` or `GITHUB_SHA`, else from `git rev-parse`. It passes both to the app through Vite's `define`
 (`__APP_VERSION__`, `__APP_COMMIT__`, declared in `app/env.d.ts`).
 
-The version stays below 1.0.0 until the owner calls 1.0 done. There is no changelog file: GitHub releases are the
-changelog, with notes generated from the merged PRs and grouped by label (`.github/release.yml`). To release:
+Every PR to `dev` bumps the version once; `AGENTS.md` (Versioning) has the rule, and CI's `version` job
+(`scripts/version/check.mjs`) enforces it. The version stays below 1.0.0 until the owner calls 1.0 done.
 
-1. On a branch from `dev`, bump `version` in `package.json` and the lockfile's root entries
-   (`npm version <x.y.z> --no-git-tag-version`), and merge it.
-2. Release `dev` to `main`.
-3. Create a GitHub release with a new tag `v<x.y.z>` on `main`, and **Generate release notes**. Or from the CLI:
-   `gh release create v<x.y.z> --target main --generate-notes`.
+There is no changelog file: GitHub releases are the changelog, with notes generated from the merged PRs and grouped
+by the PRs' labels (`.github/release.yml`). An unlabelled PR lands under "Other changes". To release, release `dev`
+to `main`, then create a GitHub release with a new tag `v<version>` on `main` and **Generate release notes**. Or
+from the CLI: `gh release create v<version> --target main --generate-notes`. The first release has no earlier tag
+to start from, so its notes list every PR since the start.
 
 ## Offline
 

@@ -22,12 +22,13 @@ Follow these steps for every work item (a GitHub issue):
 4. Ask any clarifying questions before starting, and wait for the answers.
 5. Write red-green unit tests for the work: failing first, then passing. Skip this step when the change has nothing
    unit-testable (docs, config, CI), and say so in the PR.
-6. Implement the work.
+6. Implement the work, and bump the version (see [Versioning](#versioning)).
 7. Run every check in the [Definition of Done](#definition-of-done) locally.
-8. `git fetch origin` and merge `origin/dev` again in case anything landed meanwhile. If anything came in, re-run
-   step 7.
+8. `git fetch origin` and merge `origin/dev` again in case anything landed meanwhile. If anything came in, re-bump
+   the version from `dev`'s and re-run step 7.
 9. Push the branch and open a **draft** PR against `dev`. Link the issue (`Closes #N`) and any other issues, docs or
-   artefacts of note.
+   artefacts of note. Label the PR with its type (`enhancement`, `bug`, `documentation`, `chore`, `refactor` or
+   `test`): release notes are grouped by it. Say in the PR which bump you made and why.
 10. Before handing the task back, stop everything you started: dev and preview servers, background processes,
     containers, and browser tabs or panes. Check nothing still listens on the ports you used (`3000`, `4173`,
     `5173`), and delete temporary files outside the scratchpad. Stopping a background task can leave its child
@@ -44,6 +45,23 @@ npm run build         # production build into dist/
 ```
 
 `npm run test:e2e` runs the Playwright tests (CI runs them too). Run `npx playwright install chromium` once first.
+
+## Versioning
+
+Every PR to `dev` bumps the version in `package.json` exactly once, from `dev`'s version, with
+`npm version <x.y.z> --no-git-tag-version` (it updates the lockfile too). CI's `version` job fails otherwise.
+
+| Change                                                              | Before 1.0 | From 1.0 |
+| ------------------------------------------------------------------- | ---------- | -------- |
+| No change to intended behaviour (fixes, refactors, docs, tests, CI) | patch      | patch    |
+| A behaviour change or addition                                      | patch      | minor    |
+| A breaking change (e.g. saved data or settings that no longer load) | minor      | major    |
+
+The owner decides when the version becomes 1.0.0; don't bump to it otherwise.
+
+Open branches can bump from the same version. Git merges the identical lines without a conflict, so the second PR
+would land without a bump. Re-bump whenever you merge `dev` in. The `version` job only re-runs on a push, so update
+a PR's branch from `dev` before merging it if another bump has landed since.
 
 ## Unit tests
 
