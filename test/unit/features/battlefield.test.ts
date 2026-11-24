@@ -5,6 +5,7 @@ import { useBattlefieldStore } from '~/features/battlefield';
 import { useEventLogStore, type EventEntry } from '~/features/eventLog';
 import type { BoardCardModifier, BoardCardStack } from '~/types/PlayArea';
 import { makeCard, makeScryfallCard } from '../fixtures/cards';
+import { putOnBoard } from '../fixtures/board';
 import { stubStorage } from '../fixtures/storage';
 
 const STORAGE_KEY = 'mtg-harmony_battlefield';
@@ -17,9 +18,9 @@ function names(stacks: BoardCardStack[]) {
 function boardWithAttachments(count: number) {
   const board = useBattlefieldStore();
   board.setCenter({ x: 1000, y: 1000 });
-  board.addStackByCard(makeCard({ name: 'Host' }));
+  putOnBoard(board, makeCard({ name: 'Host' }));
   for (let i = 0; i < count; i++) {
-    board.addStackByCard(makeCard({ name: `Aura ${i}` }));
+    putOnBoard(board, makeCard({ name: `Aura ${i}` }));
     board.startAttaching(board.stacks[1]!.primary);
     board.finishAttaching(board.stacks[0]!);
   }
@@ -30,7 +31,7 @@ function boardWithAttachments(count: number) {
 function boardWithUnders(count: number) {
   const board = useBattlefieldStore();
   board.setCenter({ x: 1000, y: 1000 });
-  board.addStackByCard(makeCard({ name: 'Host' }));
+  putOnBoard(board, makeCard({ name: 'Host' }));
   const host = board.stacks[0]!;
   for (let i = 0; i < count; i++) {
     const under = makeCard({ name: `Under ${i}` });
@@ -42,36 +43,6 @@ function boardWithUnders(count: number) {
 
 describe('battlefield store', () => {
   describe('adding and removing stacks', () => {
-    it('adds a stack at the board centre and links the card to it', () => {
-      const board = useBattlefieldStore();
-      board.setCenter({ x: 40, y: 60 });
-
-      board.addStackByCard(makeCard({ name: 'New' }));
-
-      const stack = board.stacks[0]!;
-      expect(names(board.stacks)).toEqual(['New']);
-      expect(stack.primary.stack).toBe(stack);
-      expect(stack.position).toEqual({ x: 40, y: 60 });
-      expect(board.orderedStacks.map((s) => s.id)).toEqual([stack.id]);
-    });
-
-    it('copies the centre, so moving the board later leaves the stack put', () => {
-      const board = useBattlefieldStore();
-      board.addStackByCard(makeCard());
-
-      board.setCenter({ x: 999, y: 999 });
-
-      expect(board.stacks[0]!.position).toEqual({ x: 0, y: 0 });
-    });
-
-    it('gives every stack its own ID', () => {
-      const board = useBattlefieldStore();
-      board.addStackByCard(makeCard());
-      board.addStackByCard(makeCard());
-
-      expect(board.stacks[0]!.id).not.toBe(board.stacks[1]!.id);
-    });
-
     // #23: adding the same token twice used to give both copies one ID.
     it('casts a fresh card each time, even from the same Scryfall card', () => {
       const board = useBattlefieldStore();
@@ -90,46 +61,63 @@ describe('battlefield store', () => {
       expect(b.primary.tapped).toBe(false);
     });
 
-    it('removes a stack and its z-order entry', () => {
+    it('removes a card’s stack and its z-order entry', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard({ name: 'Keep' }));
-      board.addStackByCard(makeCard({ name: 'Drop' }));
+      putOnBoard(board, makeCard({ name: 'Keep' }));
+      putOnBoard(board, makeCard({ name: 'Drop' }));
       const [keep, drop] = board.stacks as [BoardCardStack, BoardCardStack];
 
-      expect(board.removeStack(drop)).toBe(true);
+      board.removeCard(drop.primary);
 
       expect(names(board.stacks)).toEqual(['Keep']);
       expect(board.orderedStacks.map((s) => s.id)).toEqual([keep.id]);
-      expect(board.removeStack(drop)).toBe(false);
+      expect(board.removeCard(drop.primary)).toBe(false);
     });
 
-    it('clears every stack', () => {
+    it('clears every stack on reset', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard());
-      board.addStackByCard(makeCard());
+      putOnBoard(board, makeCard());
+      putOnBoard(board, makeCard());
 
-      board.clearStacks();
+      board.reset();
 
       expect(board.stacks).toEqual([]);
       expect(board.orderedStacks).toEqual([]);
     });
   });
 
+  // #172: helpers that change the board without logging stay inside the store.
+  it('keeps its unlogged stack helpers private', () => {
+    const board = useBattlefieldStore();
+
+    for (const name of [
+      'setStacks',
+      'setSnapScale',
+      'addStackByCard',
+      'clearStacks',
+      'removeStack',
+      'removeCardFromStack',
+      'cardIsInStack',
+      'getStackByCard',
+    ])
+      expect(board).not.toHaveProperty(name);
+  });
+
   describe('z-order', () => {
     it('orders stacks by when they were added', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard({ name: 'A' }));
-      board.addStackByCard(makeCard({ name: 'B' }));
-      board.addStackByCard(makeCard({ name: 'C' }));
+      putOnBoard(board, makeCard({ name: 'A' }));
+      putOnBoard(board, makeCard({ name: 'B' }));
+      putOnBoard(board, makeCard({ name: 'C' }));
 
       expect(names(board.orderedStacks)).toEqual(['A', 'B', 'C']);
     });
 
     it('brings a stack to the front without reordering the stacks array', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard({ name: 'A' }));
-      board.addStackByCard(makeCard({ name: 'B' }));
-      board.addStackByCard(makeCard({ name: 'C' }));
+      putOnBoard(board, makeCard({ name: 'A' }));
+      putOnBoard(board, makeCard({ name: 'B' }));
+      putOnBoard(board, makeCard({ name: 'C' }));
 
       board.bringToFront(board.stacks[0]!);
 
@@ -139,8 +127,8 @@ describe('battlefield store', () => {
 
     it('leaves the order alone when the stack is already in front', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard({ name: 'A' }));
-      board.addStackByCard(makeCard({ name: 'B' }));
+      putOnBoard(board, makeCard({ name: 'A' }));
+      putOnBoard(board, makeCard({ name: 'B' }));
 
       board.bringToFront(board.stacks[1]!);
 
@@ -149,7 +137,7 @@ describe('battlefield store', () => {
 
     it('keeps an exploded stack in front, its cards just beneath it (#126)', () => {
       const board = boardWithAttachments(2);
-      board.addStackByCard(makeCard({ name: 'Neighbour' }));
+      putOnBoard(board, makeCard({ name: 'Neighbour' }));
       board.bringToFront(
         board.stacks.find((s) => s.primary.name === 'Neighbour')!,
       );
@@ -166,7 +154,7 @@ describe('battlefield store', () => {
 
     it('keeps a stack in front of a card detached from it (#126)', () => {
       const board = boardWithUnders(1);
-      board.addStackByCard(makeCard({ name: 'Neighbour' }));
+      putOnBoard(board, makeCard({ name: 'Neighbour' }));
 
       board.detach([...board.stacks[0]!.unders][0]!);
 
@@ -181,8 +169,8 @@ describe('battlefield store', () => {
   describe('attaching', () => {
     it('moves a card from its own stack onto another stack', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard({ name: 'Host' }));
-      board.addStackByCard(makeCard({ name: 'Aura' }));
+      putOnBoard(board, makeCard({ name: 'Host' }));
+      putOnBoard(board, makeCard({ name: 'Aura' }));
       const aura = board.stacks[1]!.primary;
 
       board.startAttaching(aura);
@@ -201,8 +189,8 @@ describe('battlefield store', () => {
     describe('dropping onto a stack (#108)', () => {
       it('offers the drag menu only for a single-card stack onto another stack', () => {
         const board = useBattlefieldStore();
-        board.addStackByCard(makeCard({ name: 'Host' }));
-        board.addStackByCard(makeCard({ name: 'Solo' }));
+        putOnBoard(board, makeCard({ name: 'Host' }));
+        putOnBoard(board, makeCard({ name: 'Solo' }));
         const [host, solo] = board.stacks as [BoardCardStack, BoardCardStack];
 
         expect(board.canOfferDragMenu(solo, host)).toBe(true);
@@ -217,16 +205,16 @@ describe('battlefield store', () => {
 
       it('refuses a stack with attachments as the dragged stack', () => {
         const board = boardWithAttachments(1);
-        board.addStackByCard(makeCard({ name: 'Other' }));
+        putOnBoard(board, makeCard({ name: 'Other' }));
         const [host, other] = board.stacks as [BoardCardStack, BoardCardStack];
         expect(board.canOfferDragMenu(host, other)).toBe(false);
       });
 
       it('attaches or puts under through dropCardOn', () => {
         const board = useBattlefieldStore();
-        board.addStackByCard(makeCard({ name: 'Host' }));
-        board.addStackByCard(makeCard({ name: 'Aura' }));
-        board.addStackByCard(makeCard({ name: 'Exiled' }));
+        putOnBoard(board, makeCard({ name: 'Host' }));
+        putOnBoard(board, makeCard({ name: 'Aura' }));
+        putOnBoard(board, makeCard({ name: 'Exiled' }));
         const [host, aura, exiled] = board.stacks as [
           BoardCardStack,
           BoardCardStack,
@@ -254,8 +242,8 @@ describe('battlefield store', () => {
 
     it('refuses to finish without a card, onto itself, or twice', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard({ name: 'Host' }));
-      board.addStackByCard(makeCard({ name: 'Aura' }));
+      putOnBoard(board, makeCard({ name: 'Host' }));
+      putOnBoard(board, makeCard({ name: 'Aura' }));
       const host = board.stacks[0]!;
       const aura = board.stacks[1]!.primary;
 
@@ -276,8 +264,8 @@ describe('battlefield store', () => {
 
     it('accepts only other stacks’ primary cards as targets', () => {
       const board = boardWithAttachments(1); // Host with Aura 0.
-      board.addStackByCard(makeCard({ name: 'Other' }));
-      board.addStackByCard(makeCard({ name: 'Equipment' }));
+      putOnBoard(board, makeCard({ name: 'Other' }));
+      putOnBoard(board, makeCard({ name: 'Equipment' }));
       const [host, other, equipment] = board.stacks as BoardCardStack[];
       const aura = [...host!.attachments][0]!;
 
@@ -302,7 +290,7 @@ describe('battlefield store', () => {
 
     it('does not detach a primary card', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard());
+      putOnBoard(board, makeCard());
 
       board.detach(board.stacks[0]!.primary);
 
@@ -315,7 +303,7 @@ describe('battlefield store', () => {
       const board = boardWithAttachments(1);
       const aura = [...board.stacks[0]!.attachments][0]!;
 
-      expect(board.removeCardFromStack(aura)).toBe(true);
+      expect(board.removeCard(aura)).toBe(true);
 
       expect(board.stacks[0]!.attachments.size).toBe(0);
       expect(names(board.stacks)).toEqual(['Host']);
@@ -325,7 +313,7 @@ describe('battlefield store', () => {
       const board = boardWithUnders(1);
       const under = [...board.stacks[0]!.unders][0]!;
 
-      expect(board.removeCardFromStack(under)).toBe(true);
+      expect(board.removeCard(under)).toBe(true);
 
       expect(board.stacks[0]!.unders.size).toBe(0);
     });
@@ -333,7 +321,7 @@ describe('battlefield store', () => {
     it('splits attachments into new stacks when the primary card is removed', () => {
       const board = boardWithAttachments(2);
 
-      const result = board.removeCardFromStack(board.stacks[0]!.primary);
+      const result = board.removeCard(board.stacks[0]!.primary);
 
       expect(names(board.stacks)).toEqual(['Aura 0', 'Aura 1']);
       expect(result).toEqual(board.stacks);
@@ -342,7 +330,7 @@ describe('battlefield store', () => {
     it('returns false for a card that is on no stack', () => {
       const board = useBattlefieldStore();
 
-      expect(board.removeCardFromStack(makeCard())).toBe(false);
+      expect(board.removeCard(makeCard())).toBe(false);
     });
   });
 
@@ -384,7 +372,7 @@ describe('battlefield store', () => {
   describe('card state', () => {
     it('untaps every primary and attachment', () => {
       const board = boardWithAttachments(1);
-      board.addStackByCard(makeCard({ name: 'Other' }));
+      putOnBoard(board, makeCard({ name: 'Other' }));
       const cards = board.stacks.flatMap((s) => [s.primary, ...s.attachments]);
       for (const card of cards) card.tapped = true;
 
@@ -395,7 +383,7 @@ describe('battlefield store', () => {
 
     it('toggles tapped', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard());
+      putOnBoard(board, makeCard());
       const card = board.stacks[0]!.primary;
 
       board.toggleTapped(card);
@@ -406,7 +394,7 @@ describe('battlefield store', () => {
 
     it('pins a card to the opposite of what it shows', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard());
+      putOnBoard(board, makeCard());
       const card = board.stacks[0]!.primary;
 
       board.toggleShownAs(card, true);
@@ -420,7 +408,7 @@ describe('battlefield store', () => {
 
     it('flips a card over and back', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard());
+      putOnBoard(board, makeCard());
       const card = board.stacks[0]!.primary;
 
       board.toggleFlipped(card);
@@ -431,7 +419,7 @@ describe('battlefield store', () => {
 
     it('turns a card 180° and back', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard());
+      putOnBoard(board, makeCard());
       const card = board.stacks[0]!.primary;
 
       board.toggleTurned(card);
@@ -442,7 +430,7 @@ describe('battlefield store', () => {
 
     it('sets the face number', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard());
+      putOnBoard(board, makeCard());
       const card = board.stacks[0]!.primary;
 
       board.setFaceNumber(card, 3);
@@ -453,7 +441,7 @@ describe('battlefield store', () => {
     it('swaps a card to another printing, keeping its state (#114)', async () => {
       const board = useBattlefieldStore();
       const log = useEventLogStore();
-      board.addStackByCard(makeCard({ name: 'Bolt', tapped: true }));
+      putOnBoard(board, makeCard({ name: 'Bolt', tapped: true }));
       const card = board.stacks[0]!.primary;
       const id = card.id;
       card.faceNumber = 2;
@@ -484,7 +472,7 @@ describe('battlefield store', () => {
         modifier: { name: 'Flying', symbol: 'ms ms-ability-flying' },
         count: 1,
       };
-      board.addStackByCard(makeCard({ modifiers: new Set([flying]) }));
+      putOnBoard(board, makeCard({ modifiers: new Set([flying]) }));
       const card = board.stacks[0]!.primary;
 
       board.clearModifiers(card);
@@ -494,7 +482,7 @@ describe('battlefield store', () => {
 
     it('moves a stack', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard());
+      putOnBoard(board, makeCard());
 
       board.setStackPosition(board.stacks[0]!, { x: 12, y: 34 });
 
@@ -505,9 +493,9 @@ describe('battlefield store', () => {
   describe('reset', () => {
     it('restores the default board', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard());
+      putOnBoard(board, makeCard());
       board.setCenter({ x: 5, y: 5 });
-      board.setSnapScale(25);
+      board.snapScale = 25;
       board.startAttaching(makeCard());
 
       board.reset();
@@ -527,7 +515,7 @@ describe('battlefield store', () => {
       await nextTick();
       vi.runAllTimers();
 
-      board.clearStacks();
+      board.reset();
       board.setCenter({ x: 0, y: 0 });
       expect(board.load()).toBe(true);
 
@@ -545,7 +533,7 @@ describe('battlefield store', () => {
       await nextTick();
       vi.runAllTimers();
 
-      board.clearStacks();
+      board.reset();
       board.load();
 
       const host = board.stacks[0]!;
@@ -719,9 +707,9 @@ describe('copying cards', () => {
 describe('unders', () => {
   it('puts a board card under another stack', () => {
     const board = useBattlefieldStore();
-    const host = board.addStackByCard(makeCard({ name: 'Host' }));
+    const host = putOnBoard(board, makeCard({ name: 'Host' }));
     const exiled = makeCard({ name: 'Exiled' });
-    board.addStackByCard(exiled);
+    putOnBoard(board, exiled);
 
     board.startAttaching(exiled, 'under');
     expect(board.attachMode).toBe('under');
@@ -780,7 +768,7 @@ describe('unders', () => {
     const board = boardWithUnders(1);
     const under = [...board.stacks[0]!.unders][0]!;
 
-    board.removeCardFromStack(under);
+    board.removeCard(under);
 
     expect(board.stacks[0]!.unders.size).toBe(0);
     expect(board.stacks).toHaveLength(1);
@@ -819,9 +807,9 @@ describe('event log', () => {
 
   it('logs attaching and putting under, with the target', () => {
     const board = useBattlefieldStore();
-    const host = board.addStackByCard(makeCard({ name: 'Host' }));
-    board.addStackByCard(makeCard({ name: 'Aura' }));
-    board.addStackByCard(makeCard({ name: 'Exiled' }));
+    const host = putOnBoard(board, makeCard({ name: 'Host' }));
+    putOnBoard(board, makeCard({ name: 'Aura' }));
+    putOnBoard(board, makeCard({ name: 'Exiled' }));
 
     board.startAttaching(board.stacks[1]!.primary);
     board.finishAttaching(host);
@@ -833,7 +821,7 @@ describe('event log', () => {
 
   it('logs a copy with its source and mode', () => {
     const board = useBattlefieldStore();
-    const host = board.addStackByCard(makeCard({ name: 'Host' }));
+    const host = putOnBoard(board, makeCard({ name: 'Host' }));
 
     const copy = board.copyCard(host.primary, 'counters');
 
