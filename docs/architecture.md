@@ -326,8 +326,10 @@ All calls go straight from the browser to `api.scryfall.com`. There is no proxy 
 | Add Card search  | `GET /cards/search?q=…` (debounced 500 ms, cancelled) | `AddCardWindow.vue`                      |
 | Swap art         | `GET /cards/search?q=!"name" [e:set]&unique=prints`   | `usePrintings` → `SwapArtModal.vue`      |
 
-- **Rate limiting** (`useScryfall`): requests are spaced at least 600 ms apart, shared across all callers.
-  Scryfall allows about 2 per second. A 429 waits out Scryfall's 30-second cooldown once; a second 429 stops the
+- **Rate limiting** (`composables/scryfallFetch.ts`): every API request goes through `scryfallFetch`, which
+  queues them in one line spaced at least 600 ms apart, across On-deck, Add Card and Swap art (#158). A request
+  aborted while queued gives up its slot. Scryfall allows about 2 per second. Card images come from
+  `*.scryfall.io`, which has no rate limit, so they don't queue. A 429 waits out Scryfall's 30-second cooldown once; a second 429 stops the
   batch.
 - **Images**: a fetched card without a usable image is retried once, then skipped. `pickImageUri()` prefers
   `border_crop`, then `normal`, then `small`.
