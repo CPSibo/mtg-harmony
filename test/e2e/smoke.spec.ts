@@ -189,7 +189,32 @@ test.describe('dragging the On-deck card', () => {
       }),
     ).toBeVisible();
     await expect(page.locator('.board-card-stack')).toHaveCount(0);
+    // #176: a tap enlarges the card; a drag doesn't count as one.
+    await expect(page.getByRole('dialog', { name: card.name })).toBeHidden();
   });
+});
+
+// #176: players pinch-zoomed the panel to read the On-deck card.
+test('a tap on the On-deck card enlarges it, and another tap closes it', async ({
+  page,
+}) => {
+  await page.getByRole('button', { name: 'On-deck' }).click();
+  await page.getByRole('button', { name: 'Next card' }).click();
+  const small = page
+    .getByRole('dialog', { name: 'On-deck' })
+    .getByRole('img', { name: card.name });
+  const smallBox = (await small.boundingBox())!;
+  await small.click();
+
+  // The panel behind is hidden from the accessibility tree meanwhile.
+  const lightbox = page.getByRole('dialog', { name: card.name });
+  const big = lightbox.getByRole('img', { name: card.name });
+  await expect(big).toBeVisible();
+  const bigBox = (await big.boundingBox())!;
+  expect(bigBox.height).toBeGreaterThan(smallBox.height * 1.3);
+
+  await big.click();
+  await expect(lightbox).toBeHidden();
 });
 
 // #42
