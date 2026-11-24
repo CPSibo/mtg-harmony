@@ -1,4 +1,5 @@
 import { useToast } from '@nuxt/ui/composables';
+import { useInputModeStore } from '~/stores/inputMode';
 import { useSettingsStore } from '~/stores/settings';
 import { useBattlefieldStore } from '~/features/battlefield';
 import { useDiscordFetcherStore } from '~/features/discordFetcher';
@@ -15,6 +16,7 @@ export function useReset() {
 
   const battlefield = useBattlefieldStore();
   const settingsStore = useSettingsStore();
+  const inputMode = useInputModeStore();
   const discordFetchStore = useDiscordFetcherStore();
   const log = useEventLogStore();
 
@@ -35,6 +37,7 @@ export function useReset() {
     battlefield.clearBoard();
     discordFetchStore.reset();
     settingsStore.reset();
+    inputMode.reset();
     log.reset();
     toast.add({ title: 'App reset', color: 'info' });
   }

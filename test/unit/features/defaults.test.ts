@@ -3,13 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { useBattlefieldStore } from '~/features/battlefield';
 import { useDiscordFetcherStore } from '~/features/discordFetcher';
 import { makeCard } from '../fixtures/cards';
+import { putOnBoard } from '../fixtures/board';
 
 // #27: stores used to wrap their module-level defaults in refs, so changes
 // leaked into every later store instance.
 describe('store defaults are not shared between instances', () => {
   it('battlefield', () => {
     const first = useBattlefieldStore();
-    first.addStackByCard(makeCard());
+    putOnBoard(first, makeCard());
     first.bringToFront(first.stacks[0]!);
     first.center.x = 500;
 

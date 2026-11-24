@@ -3,6 +3,12 @@ import { nextTick, ref } from 'vue';
 import { PRINTINGS_PAGE_SIZE, usePrintings } from '~/features/swapArt';
 import { makeScryfallCard } from '../../fixtures/cards';
 
+// No spacing between requests here; scryfallFetch has its own tests.
+vi.mock('~/composables/scryfallFetch', () => ({
+  scryfallFetch: (input: string | URL, init?: RequestInit) =>
+    fetch(input, init),
+}));
+
 function jsonResponse(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
     status,
@@ -127,6 +133,20 @@ describe('usePrintings (#114)', () => {
     await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
     await vi.waitFor(() => expect(p.visible.value).toHaveLength(3));
     expect(p.visible.value.at(-1)!.collectorNumber).toBe('999');
+  });
+
+  // #163: paging past what's loaded while a request was pending never
+  // requested the next page, so the pager waits for each request.
+  it("doesn't let the grid page while a request is pending", async () => {
+    let resolve!: (r: Response) => void;
+    stubFetch(() => new Promise((r) => (resolve = r)));
+
+    const p = usePrintings({ name: 'Bolt' }, ref(''));
+    expect(p.canPage.value).toBe(false);
+
+    resolve(jsonResponse(200, { data: [printing(1)], total_cards: 1 }));
+    await vi.waitFor(() => expect(p.status.value).toBe('success'));
+    expect(p.canPage.value).toBe(true);
   });
 
   it('goes back to the first page when the filter changes', async () => {

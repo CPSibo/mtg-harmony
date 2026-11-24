@@ -4,10 +4,17 @@
     v-model:open="open"
     :ui="{
       content: [
-        'flex flex-row gap-3 p-6',
-        // Wider for a sideways card, which the image then fills, and for
-        // text-only cards, which otherwise get squeezed by the buttons.
-        (landscape || !showImage) && 'sm:max-w-2xl',
+        // Below sm the image sits above the buttons, full width, and the
+        // whole window scrolls (#176).
+        'flex flex-col gap-3 p-6 max-sm:max-h-[calc(100svh-2rem)] max-sm:overflow-y-auto sm:flex-row',
+        // Wide enough for the image to be bigger than on the board (#176).
+        // A sideways card fills what the buttons leave; a portrait one sets
+        // its own width, and the window fits it.
+        showImage && landscape && 'sm:max-w-4xl',
+        // w-max, not w-auto: centred with left: 50%, auto would cap it at 50vw.
+        showImage && !landscape && 'sm:w-max sm:max-w-[calc(100vw-2rem)]',
+        // Text-only cards otherwise get squeezed by the buttons.
+        !showImage && 'sm:max-w-2xl',
       ],
     }"
     title="Card details"
@@ -18,7 +25,7 @@
            always fit. -->
       <div
         :class="[
-          'flex max-h-[90svh] flex-col gap-3 overflow-y-auto',
+          'flex flex-col gap-3 sm:max-h-[90svh] sm:overflow-y-auto',
           { 'min-w-0 flex-1': landscape || !showImage },
         ]"
       >
@@ -28,7 +35,8 @@
           frame-class="w-full"
           :src="shownImageUri(card)"
           :alt="card.name"
-          class="max-h-[80svh] mtg-card-display"
+          class="mtg-card-display"
+          :class="landscape ? 'max-h-[80svh]' : 'details-portrait'"
         />
         <!-- As wide as the image, never wider. -->
         <SharedOracleText
@@ -222,11 +230,12 @@
         <USeparator />
 
         <UButton
+          v-if="scryfallUrl"
           icon="i-lucide-external-link"
           color="info"
           variant="ghost"
           size="xl"
-          :to="card.scryfall_uri"
+          :to="scryfallUrl"
           target="_blank"
         >
           Scryfall
@@ -271,6 +280,7 @@ import {
 } from '~/features/battlefield/cardFaces';
 import { useCopyAnimation, useMoveAnimation } from '~/features/castAnimation';
 import type { BoardCard } from '~/types/PlayArea';
+import { scryfallLink } from '~/utils/scryfallLink';
 
 const open = defineModel<boolean>('open', { default: false });
 
@@ -335,6 +345,9 @@ const showImage = computed(
 
 const landscape = computed(() => !!props.card && isLandscape(props.card));
 
+/** Only a scryfall.com page becomes a link (#157). */
+const scryfallUrl = computed(() => scryfallLink(props.card?.scryfall_uri));
+
 const hasAttachments = computed(() => {
   if (!props.card || !props.card.stack?.primary) return false;
 
@@ -391,3 +404,18 @@ const confirmRemoval = () => {
   open.value = false;
 };
 </script>
+
+<style scoped>
+/* As tall as fits, leaving room beside it for the buttons. Full width below sm,
+   where the buttons go underneath. */
+.details-portrait {
+  width: 100%;
+  height: auto;
+  aspect-ratio: var(--card-ratio-vertical);
+}
+@media (width >= 40rem) {
+  .details-portrait {
+    width: min(30rem, 80svh * 12 / 17, 100vw - 17rem);
+  }
+}
+</style>

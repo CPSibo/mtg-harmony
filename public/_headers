@@ -3,6 +3,18 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
+# Security headers for every response (#157).
+# - CSP: only this site's own scripts, styles and fonts; card images from
+#   Scryfall's image hosts; API calls to Scryfall only. Inline styles stay
+#   allowed for Vue's and Nuxt UI's style bindings. Report-only until it has
+#   run clean on dev.mtg-harmony.com; then rename it Content-Security-Policy.
+# - Permissions-Policy: the app only uses the screen wake lock.
+/*
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.scryfall.io; font-src 'self'; connect-src 'self' https://api.scryfall.com; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: screen-wake-lock=(self), camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()
+
 # The service worker (#169). Browsers check it for updates on each visit; never
 # let a cache hold an old one.
 /sw.js

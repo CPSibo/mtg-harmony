@@ -1,5 +1,6 @@
+import { execSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readdirSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { sep } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
 import vue from '@vitejs/plugin-vue';
@@ -42,6 +43,32 @@ function preloadFont(): Plugin {
 }
 
 /**
+ * The version and short commit shown in Settings (#168). Cloudflare Pages
+ * and GitHub Actions name the commit in an environment variable; elsewhere
+ * git is asked, and a build without git shows the version alone.
+ */
+function buildInfo() {
+  const { version } = JSON.parse(
+    readFileSync(new URL('./package.json', import.meta.url), 'utf8'),
+  ) as { version: string };
+  let commit = process.env.CF_PAGES_COMMIT_SHA ?? process.env.GITHUB_SHA ?? '';
+  if (!commit) {
+    try {
+      commit = execSync('git rev-parse HEAD', {
+        stdio: ['ignore', 'pipe', 'ignore'],
+      })
+        .toString()
+        .trim();
+    } catch {
+      // Not a git checkout.
+    }
+  }
+  return { version, commit: commit.slice(0, 7) };
+}
+
+const { version, commit } = buildInfo();
+
+/**
  * Emits `/sw.js`, which precaches this build's app shell (#169). Its version
  * is a hash of the shell's files, so any change gives a new worker.
  */
@@ -71,6 +98,10 @@ function serviceWorker(): Plugin {
 }
 
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(version),
+    __APP_COMMIT__: JSON.stringify(commit),
+  },
   plugins: [
     vue(),
     preloadFont(),

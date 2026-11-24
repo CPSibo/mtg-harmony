@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CAST_FLIGHTS,
   flightKeyframes,
+  graveyardKeyframes,
   isCastDuration,
   isCastFlight,
   isCastLanding,
@@ -30,6 +31,23 @@ describe('flightKeyframes', () => {
     const left = flightKeyframes('tilt', to, from);
     expect(String(right[2]!.transform)).toContain('rotate(16deg)');
     expect(String(left[2]!.transform)).toContain('rotate(-16deg)');
+  });
+});
+
+// #175
+describe('graveyardKeyframes', () => {
+  it('starts in place and ends shrunk, faded and centred on the target', () => {
+    const corner = { x: 980, y: 740, width: 20, height: 28 };
+    const frames = graveyardKeyframes(from, corner);
+    const first = frames[0]!;
+    const last = frames.at(-1)!;
+
+    expect(String(first.transform)).toContain('translate(0px, 0px)');
+    expect(first.opacity).toBe(1);
+    // The flyer's centre (50, 70) ends on the corner's centre (990, 754).
+    expect(String(last.transform)).toContain('translate(940px, 684px)');
+    expect(String(last.transform)).toContain('scale(0.2)');
+    expect(last.opacity).toBe(0);
   });
 });
 

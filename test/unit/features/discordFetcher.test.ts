@@ -1,4 +1,3 @@
-import { stringify } from 'devalue';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick, isReactive } from 'vue';
@@ -8,11 +7,10 @@ import {
   OFFLINE_MESSAGE,
   useDiscordFetcherStore,
 } from '~/features/discordFetcher';
+import { useBattlefieldStore } from '~/features/battlefield';
 import { useEventLogStore } from '~/features/eventLog';
 import { useSettingsStore } from '~/stores/settings';
 import { makeScryfallCard } from '../fixtures/cards';
-
-const STORAGE_KEY = 'mtg-harmony_discordFetcher';
 
 type FetchManyResult = ScryfallCardResponse | string;
 
@@ -193,6 +191,24 @@ describe('discord fetcher store', () => {
 
       expect(fetchMany).toHaveBeenCalledExactlyOnceWith(10);
     });
+
+    // #159: On-deck's settings live in the settings store.
+    it("uses the settings store's batch size and minimum queue", async () => {
+      const settings = useSettingsStore();
+      settings.fetchCardCount = 4;
+      settings.minQueuedCardCount = 2;
+      const store = useDiscordFetcherStore();
+
+      await store.next(); // 3 queued.
+      await settle(store);
+      expect(fetchMany).toHaveBeenLastCalledWith(4);
+      await store.next(); // 2 queued.
+      expect(fetchMany).toHaveBeenCalledOnce();
+      await store.next(); // 1 queued: top up.
+      await settle(store);
+
+      expect(fetchMany).toHaveBeenCalledTimes(2);
+    });
   });
 
   // #36, #38: what was shown lives in the event log.
@@ -219,6 +235,34 @@ describe('discord fetcher store', () => {
       await store.next();
 
       expect(shownNames()).toEqual(['Card 1', 'Card 2']);
+    });
+  });
+
+  // #175: for instants, sorceries and anything else that doesn't stay.
+  describe('castToGraveyard', () => {
+    it('logs the card as cast to the graveyard and clears it, with no stack', async () => {
+      const store = useDiscordFetcherStore();
+      await store.next();
+      await settle(store);
+
+      store.castToGraveyard();
+
+      const last = useEventLogStore().entries.at(-1)!;
+      expect(last).toMatchObject({
+        type: 'cast',
+        toGraveyard: true,
+        card: { name: 'Card 1' },
+      });
+      expect(store.card).toBeNull();
+      expect(useBattlefieldStore().stacks).toHaveLength(0);
+    });
+
+    it('does nothing without a card', () => {
+      const store = useDiscordFetcherStore();
+
+      store.castToGraveyard();
+
+      expect(useEventLogStore().entries).toHaveLength(0);
     });
   });
 
@@ -374,6 +418,86 @@ describe('discord fetcher store', () => {
     expect(store.canGoPrevious).toBe(false);
   });
 
+  // #162: a background top-up kept filling the queue after New game.
+  describe('reset during a fetch', () => {
+    /** The next fetch yields one card, then waits for `release` for the rest. */
+    function pauseAfterFirstCard() {
+      let release!: () => void;
+      const gate = new Promise<void>((r) => (release = r));
+      fetchMany.mockImplementationOnce(async function* (n: number) {
+        const [first, ...rest] = namedCards(n);
+        yield first!;
+        await gate;
+        yield* rest;
+      });
+      return () => release();
+    }
+
+    it("doesn't put the old fetch's cards in the new game's queue", async () => {
+      const store = useDiscordFetcherStore();
+      const release = pauseAfterFirstCard();
+      const fetching = store.fetchCards(5);
+      await vi.waitFor(() => expect(store.queue).toHaveLength(1));
+
+      store.reset();
+      release();
+      await fetching;
+
+      expect(store.queue).toEqual([]);
+      expect(store.fetchingCards).toBe(false);
+    });
+
+    it('starts a fresh request for the new game', async () => {
+      const store = useDiscordFetcherStore();
+      const release = pauseAfterFirstCard();
+      const old = store.fetchCards(5);
+      await vi.waitFor(() => expect(store.queue).toHaveLength(1));
+
+      store.reset();
+      const fresh = store.fetchCards(2);
+      await fresh;
+      expect(store.fetchingCards).toBe(false);
+      release();
+      await old;
+
+      expect(fetchMany).toHaveBeenCalledTimes(2);
+      expect(store.queue).toHaveLength(2);
+      expect(store.fetchingCards).toBe(false);
+    });
+
+    it('shows nothing from a next() that was waiting at the reset', async () => {
+      const store = useDiscordFetcherStore();
+      let release!: () => void;
+      const gate = new Promise<void>((r) => (release = r));
+      fetchMany.mockImplementationOnce(async function* () {
+        await gate;
+        yield { data: makeScryfallCard({ name: 'Old' }), date: new Date() };
+      });
+
+      const shown = store.next();
+      store.reset();
+      release();
+
+      expect(await shown).toEqual({ success: true });
+      expect(store.card).toBeNull();
+      expect(shownNames()).toEqual([]);
+    });
+  });
+
+  // #162: the previous card was rebuilt, with a new ID, on every log event.
+  it('keeps a previous card the same object as the log grows', async () => {
+    const store = useDiscordFetcherStore();
+    await store.next();
+    await store.next();
+    await settle(store);
+    store.prev();
+    const before = store.card;
+
+    useEventLogStore().record('boardCleared', {});
+
+    expect(store.card).toBe(before);
+  });
+
   describe('offline (#169)', () => {
     /** Sets what navigator.onLine says and tells the page, as browsers do. */
     function setOnline(online: boolean) {
@@ -394,7 +518,7 @@ describe('discord fetcher store', () => {
 
     it('still shows queued cards, without topping up', async () => {
       const store = useDiscordFetcherStore();
-      store.fetchCardCount = 2;
+      useSettingsStore().fetchCardCount = 2;
       await store.next();
       await settle(store);
       const fetches = fetchMany.mock.calls.length;
@@ -422,24 +546,6 @@ describe('discord fetcher store', () => {
   });
 
   describe('persistence', () => {
-    // #24: settings changes on their own must be saved.
-    it.each([
-      ['fetchCardCount', 4],
-      ['minQueuedCardCount', 1],
-      ['preloadImagesEnabled', false],
-    ] as const)('saves a change to %s on its own', async (name, value) => {
-      vi.useFakeTimers();
-      const store = useDiscordFetcherStore();
-      expect(store[name]).not.toBe(value);
-
-      (store[name] as typeof value) = value;
-      await nextTick();
-      vi.runAllTimers();
-      setActivePinia(createPinia());
-
-      expect(useDiscordFetcherStore()[name]).toBe(value);
-    });
-
     it('keeps the shown card, the queue and the place in history over a reload', async () => {
       const store = useDiscordFetcherStore();
       await store.next();
@@ -490,23 +596,6 @@ describe('discord fetcher store', () => {
 
       setActivePinia(createPinia());
       expect(useDiscordFetcherStore().queue).toHaveLength(9);
-    });
-
-    it('loads saved settings', () => {
-      localStorage.setItem(
-        STORAGE_KEY,
-        stringify({
-          fetchCardCount: 5,
-          minQueuedCardCount: 2,
-          preloadImagesEnabled: false,
-        }),
-      );
-
-      const store = useDiscordFetcherStore();
-
-      expect(store.fetchCardCount).toBe(5);
-      expect(store.minQueuedCardCount).toBe(2);
-      expect(store.preloadImagesEnabled).toBe(false);
     });
   });
 });

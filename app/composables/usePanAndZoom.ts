@@ -164,6 +164,16 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     );
   }
 
+  /** Pans by an offset in screen pixels, as one finished move. */
+  function panBy(dx: number, dy: number) {
+    panFollower.finish();
+    position.value = clampPosition(
+      position.value.x + dx,
+      position.value.y + dy,
+    );
+    if (settings.onEnd) settings.onEnd(position.value);
+  }
+
   function endPan() {
     panFollower.finish();
     isDragging.value = false;
@@ -307,6 +317,7 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     scale,
     style,
     isDragging,
+    panBy,
     onWheel,
     onMouseDown,
     onMouseMove,

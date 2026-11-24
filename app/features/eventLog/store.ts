@@ -100,12 +100,16 @@ export const useEventLogStore = defineStore('eventLog', () => {
     return enqueue(async () => {
       const batch = pending.value;
       if (!batch.length) return;
-      const ok = await (await archive()).archiveEntries(batch);
-      archiveAvailable.value = ok;
+      const result = await (await archive()).archiveEntries(batch);
+      // A failed write keeps the batch in `pending`, saved with the current
+      // game, for the next start or New game to retry (#156).
+      if (result === 'failed') return;
+      archiveAvailable.value = result === 'archived';
       // Archived, or nowhere to put it: either way it leaves localStorage.
       const done = new Set(batch);
       pending.value = pending.value.filter((e) => !done.has(e));
-      if (ok && archived.value) archived.value = [...archived.value, ...batch];
+      if (result === 'archived' && archived.value)
+        archived.value = [...archived.value, ...batch];
     });
   }
 
@@ -130,12 +134,33 @@ export const useEventLogStore = defineStore('eventLog', () => {
     });
   }
 
-  /** Every entry the log has, oldest first: after `loadHistory()`, past games too. */
-  const history = computed(() => [
+  /**
+   * Lets go of the archive (#173): the log window loads it on open and
+   * drops it on close, so up to a year of past games isn't held for good.
+   * Queued, so it also undoes a load still under way.
+   */
+  function unloadHistory() {
+    void enqueue(async () => {
+      archived.value = null;
+    });
+  }
+
+  /**
+   * Past games, oldest first: the archive once loaded, and finished games
+   * not yet archived. Kept apart from the current game, so a new event
+   * doesn't copy them all again (#173).
+   */
+  const pastEntries = computed(() => [
     ...(archived.value ?? []),
     ...pending.value,
-    ...entries.value,
   ]);
+
+  /**
+   * Every entry the log has, oldest first: after `loadHistory()`, past games
+   * too. Copies them all whenever anything changes; for export, which reads
+   * it once. The log window reads `pastEntries` and `entries` apart.
+   */
+  const history = computed(() => [...pastEntries.value, ...entries.value]);
 
   /** Empties the archive. The current game stays. */
   function clearHistory() {
@@ -292,8 +317,10 @@ export const useEventLogStore = defineStore('eventLog', () => {
     reset,
     nearlyFull,
     history,
+    pastEntries,
     historyLoading,
     loadHistory,
+    unloadHistory,
     clearHistory,
     archiveAvailable,
     settled,
