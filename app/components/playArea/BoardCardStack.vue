@@ -30,11 +30,8 @@
       class="primary-card-wrapper flex flex-row"
       :class="{ 'primary-sideways': primarySideways }"
     >
-      <PlayAreaBoardCardStackActions
-        :stack="stack"
-        @show-card-details="emits('showCardDetails', $event)"
-      />
-
+      <!-- The card comes first so Tab reaches it, then its actions; the
+           actions still sit to its left (order: -1). #170 -->
       <PlayAreaBoardCard
         class="primary-card"
         :card="stack.primary"
@@ -42,6 +39,11 @@
         :stack="stack"
         @show-card-details="emits('showCardDetails', stack.primary)"
         @show-card-modifiers="emits('showCardModifiers', stack.primary)"
+      />
+
+      <PlayAreaBoardCardStackActions
+        :stack="stack"
+        @show-card-details="emits('showCardDetails', $event)"
       />
     </div>
 
@@ -198,6 +200,18 @@ const {
       selection.endGroupDrag();
     } else onSingleDrop(position, e);
     if (!movedTooFar && !longPressed && e.type === 'pointerup') onTap(e);
+  },
+  // This stack left the board mid-drag (#160). The watch on `myIsDragging`
+  // is already stopped, so tell the board directly, and let the group and
+  // the radial menu go.
+  onCancel: () => {
+    cancelLongPress();
+    dragMenu.end();
+    if (groupDrag) {
+      groupDrag = false;
+      selection.endGroupDrag();
+    }
+    isDragging.value = false;
   },
 });
 
@@ -377,6 +391,7 @@ watch(myIsDragging, (value) => {
 
 /* The actions step left by the overhang so the tapped card doesn't cover them. */
 .primary-card-wrapper :deep(.stack-actions) {
+  order: -1;
   transition: translate 180ms ease-out;
 
   @media (prefers-reduced-motion: reduce) {

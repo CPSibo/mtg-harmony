@@ -16,6 +16,8 @@ export const EVENT_LABELS: Record<EventType, { label: string; icon: string }> =
     putUnder: { label: 'Put under', icon: 'i-lucide-layers' },
     copied: { label: 'Copied', icon: 'i-lucide-copy' },
     removed: { label: 'Removed', icon: 'i-lucide-trash' },
+    melded: { label: 'Melded', icon: 'i-lucide-merge' },
+    unmelded: { label: 'Unmelded', icon: 'i-lucide-split' },
     boardCleared: { label: 'Board cleared', icon: 'i-lucide-brush-cleaning' },
     gameMarker: { label: 'New game', icon: 'i-lucide-flag' },
   };
@@ -46,6 +48,21 @@ function cardNames(entry: EventEntry): string[] {
   return names;
 }
 
+/**
+ * The first `max` of `newer` followed by `older`, both already newest first,
+ * without copying the rest (#173): the log window shows the newest 200 of
+ * the current game and past games.
+ */
+export function takeNewest<T>(
+  newer: readonly T[],
+  older: readonly T[],
+  max: number,
+): T[] {
+  return newer.length >= max
+    ? newer.slice(0, max)
+    : [...newer, ...older.slice(0, max - newer.length)];
+}
+
 /** The entries that match `filter`, newest first. */
 export function filterEntries(
   entries: readonly EventEntry[],
@@ -66,8 +83,11 @@ export function filterEntries(
 /** One line saying what happened. */
 export function describeEntry(entry: EventEntry): string {
   switch (entry.type) {
-    case 'fetched':
     case 'cast':
+      return entry.toGraveyard
+        ? `Cast ${entry.card.name} to the graveyard`
+        : `Cast ${entry.card.name}`;
+    case 'fetched':
     case 'added':
     case 'removed':
       return `${EVENT_LABELS[entry.type].label} ${entry.card.name}`;
@@ -77,6 +97,9 @@ export function describeEntry(entry: EventEntry): string {
       return `Put ${entry.card.name} under ${entry.target.name}`;
     case 'copied':
       return `Copied ${entry.source.name} (${COPY_MODE_LABELS[entry.mode]})`;
+    case 'melded':
+    case 'unmelded':
+      return `${EVENT_LABELS[entry.type].label} ${entryDetails(entry)}`;
     case 'boardCleared':
       return 'Cleared the board';
     case 'gameMarker':
@@ -96,8 +119,14 @@ export function entryDetails(entry: EventEntry): string {
       return `${entry.card.name} under ${entry.target.name}`;
     case 'copied':
       return `${entry.source.name} (${COPY_MODE_LABELS[entry.mode]})`;
+    case 'melded':
+      return `${entry.source.name} and ${entry.target.name} into ${entry.card.name}`;
+    case 'unmelded':
+      return `${entry.card.name} into ${entry.source.name} and ${entry.target.name}`;
     case 'gameMarker':
       return REASON_LABELS[entry.reason];
+    case 'cast':
+      return entry.toGraveyard ? `${entry.card.name} to the graveyard` : '';
     default:
       return '';
   }

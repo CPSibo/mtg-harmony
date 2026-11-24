@@ -4,7 +4,9 @@ export * from './types';
 export {
   EVENT_LABELS,
   describeEntry,
+  entryDetails,
   filterEntries,
+  takeNewest,
   scryfallCardFromSnapshot,
   type EntryFilter,
 } from './view';

@@ -53,12 +53,13 @@ import { defineShortcuts } from '@nuxt/ui/composables';
 import { computed, defineAsyncComponent, ref, useTemplateRef } from 'vue';
 import { useCloseOnTouchOutside } from '~/composables/useCloseOnTouchOutside';
 import { useWidgetRegistry } from '~/features/widgets';
+import { whenIdle } from '~/utils/whenIdle';
 
 // The palette (with fuse.js and a virtualizer) loads when the browser is
 // idle or on first open, so it stays out of the startup bundle.
 const loadPalette = () => import('@nuxt/ui/components/CommandPalette.vue');
 const UCommandPalette = defineAsyncComponent(loadPalette);
-window.requestIdleCallback?.(() => void loadPalette());
+whenIdle(() => void loadPalette());
 
 const open = defineModel<boolean>('open');
 

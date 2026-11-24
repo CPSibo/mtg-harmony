@@ -101,11 +101,11 @@
       </ul>
 
       <p
-        v-if="matching.length > shown.length"
+        v-if="matchingCount > shown.length"
         class="text-xs text-muted text-center"
       >
-        Showing the newest {{ shown.length }} of {{ matching.length }}. Filter
-        to find older events.
+        Showing the newest {{ shown.length }} of {{ matchingCount }}. Filter to
+        find older events.
       </p>
     </template>
 
@@ -150,6 +150,7 @@ import {
   EVENT_TYPES,
   describeEntry,
   filterEntries,
+  takeNewest,
   scryfallCardFromSnapshot,
   useEventLogStore,
   type EventType,
@@ -181,14 +182,20 @@ watch(
   () => log.windowIsOpen,
   (open) => {
     if (open) void log.loadHistory();
-    else confirmingClear.value = false;
+    else {
+      confirmingClear.value = false;
+      // Past games can be large; read them again next time (#173).
+      log.unloadHistory();
+    }
   },
   { immediate: true },
 );
 
 const emptyMessage = computed(() => {
   if (log.historyLoading) return 'Loading past games…';
-  return log.history.length ? 'No events match.' : 'Nothing logged yet.';
+  return log.pastEntries.length || log.entries.length
+    ? 'No events match.'
+    : 'Nothing logged yet.';
 });
 
 /** Clear past games asks for a second click, within a few seconds. */
@@ -206,13 +213,23 @@ function clearHistory() {
   toast.add({ title: 'Past games cleared', color: 'info' });
 }
 
-const matching = computed(() =>
-  filterEntries(log.history, {
-    types: types.value,
-    name: nameDebounced.value,
-  }),
+// The current game and past games are filtered apart, so a new event only
+// refilters the current game; past games refilter when the filter changes
+// (#173).
+const filter = computed(() => ({
+  types: types.value,
+  name: nameDebounced.value,
+}));
+const matchingNow = computed(() => filterEntries(log.entries, filter.value));
+const matchingPast = computed(() =>
+  filterEntries(log.pastEntries, filter.value),
 );
-const shown = computed(() => matching.value.slice(0, MAX_SHOWN));
+const matchingCount = computed(
+  () => matchingNow.value.length + matchingPast.value.length,
+);
+const shown = computed(() =>
+  takeNewest(matchingNow.value, matchingPast.value, MAX_SHOWN),
+);
 
 const today = new Date().toDateString();
 function formatTime(at: number) {

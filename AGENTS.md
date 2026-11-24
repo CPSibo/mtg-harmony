@@ -52,8 +52,13 @@ npm run build         # production build into dist/
   (`fake-indexeddb`; happy-dom has none), real timers and a fresh Pinia, so a store created in a test starts from
   its defaults. Await the event log's `settled()` before checking its archive.
 - Mock Scryfall at the module boundary (`vi.mock('~/composables/useScryfall', …)`). Tests never hit the network.
-- Build cards with `test/unit/fixtures/cards.ts`. To watch or break storage writes, use `stubStorage()` from
+- Build cards with `test/unit/fixtures/cards.ts` and put them on the board with `putOnBoard` from
+  `test/unit/fixtures/board.ts`. To watch or break storage writes, use `stubStorage()` from
   `test/unit/fixtures/storage.ts`; spying on `Storage.prototype` leaks between tests under happy-dom.
+- Component tests mount with `mountInApp` from `test/unit/fixtures/mount.ts` (`@vue/test-utils`, the test's
+  Pinia, Nuxt UI and the bundled icons, attached to the document). Modals and slideovers teleport to
+  `document.body`, so query the document (`buttonNamed`), not the wrapper, and call `unmountAll` in `afterEach`.
+  Test a component where its logic lives in it; gestures and layout stay with the end-to-end tests.
 - A test for a known, unfixed bug asserts the correct behaviour and is marked `it.fails`, with the issue number
   in its name. When the fix lands it fails loudly; change it to `it`.
 
@@ -65,6 +70,8 @@ npm run build         # production build into dist/
   servers before running it.
 - Mock Scryfall with `page.route` (see `mockScryfall` in `test/e2e/smoke.spec.ts`): API calls and card images.
   Tests never hit the network.
+- Service workers are blocked (`serviceWorkers: 'block'`), since requests they make skip `page.route`. A test of
+  offline behaviour allows them with `test.use({ serviceWorkers: 'allow' })`.
 - Prefer role-based locators (`getByRole`). Board cards expose `role="img"` named after the card.
 - A test blocked by a known bug uses `test.fixme(true, '…: #N')`.
 
@@ -79,6 +86,17 @@ npm run build         # production build into dist/
 - npm 12 (bundled with Node 26) refuses to re-resolve one optional Tailwind package (`EALLOWREMOTE` on
   `@tailwindcss/oxide-wasm32-wasi`). `npm ci` is unaffected. When changing dependencies, run
   `npm install --allow-remote=all`.
+
+## Dependencies
+
+Renovate (`renovate.json`) opens dependency PRs against `dev` on Monday mornings (UTC), at most five at a time, for
+releases at least 3 days old. Dev tooling minors, GitHub Actions, Vue, and Vite with Vitest are grouped; a Node
+major moves `.node-version`, `engines` and `@types/node` together. Lockfile maintenance runs monthly. It updates the
+lockfile with npm 10, as Cloudflare does, which avoids npm 12's `EALLOWREMOTE`.
+
+Treat a Renovate PR like any other: run the [Definition of Done](#definition-of-done) on its branch. Some updates
+need a generated file refreshed, and their PR says which: `npm run icons:lucide` for Nuxt UI or Lucide,
+`npm run fonts:mana` for mana-font.
 
 ## Reactivity
 
@@ -120,7 +138,6 @@ There are no auto-imports. Import every component, composable and Vue API explic
 - Every card on the board is a token. There is no library, hand, graveyard or exile, so don't add zones.
 - The app is plain Vite + Vue 3, not Nuxt. Don't bring back Nuxt-only features (Nuxt modules, auto-imports,
   `#app`/`#imports` APIs, file-based routing).
-- Renovate stays off until the project is stable.
 
 ## Generated assets
 

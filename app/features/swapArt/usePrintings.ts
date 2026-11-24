@@ -6,6 +6,7 @@ import {
   watch,
   type MaybeRefOrGetter,
 } from 'vue';
+import { scryfallFetch } from '~/composables/scryfallFetch';
 import { cardData } from '~/features/battlefield';
 import type { ScryfallCard } from '~/types/Scryfall';
 
@@ -84,7 +85,7 @@ export function usePrintings(
   async function request(url: URL | string, abort: AbortController) {
     status.value = 'pending';
     try {
-      const response = await fetch(url, { signal: abort.signal });
+      const response = await scryfallFetch(url, { signal: abort.signal });
       if (response.status === 404 || response.status === 400) {
         if (abort.signal.aborted) return;
         nextPage = undefined;
@@ -152,5 +153,12 @@ export function usePrintings(
     }
   });
 
-  return { visible, page, pageCount, status, total };
+  /**
+   * Whether the grid may change page. Not while a request is pending: the
+   * page watcher skips then, so paging past what's loaded would never fetch
+   * the next page (#163).
+   */
+  const canPage = computed(() => status.value !== 'pending');
+
+  return { visible, page, pageCount, status, total, canPage };
 }

@@ -1,2 +1,2 @@
 export { default as SidePanel } from './components/SidePanel.vue';
-export { useDiscordFetcherStore } from './store';
+export { OFFLINE_MESSAGE, useDiscordFetcherStore } from './store';

@@ -1,6 +1,12 @@
 import { pickImageUri } from '~/composables/useScryfall';
+import { isRoom } from '~/features/battlefield/cardFaces';
 import type { BoardCard, BoardCardModifier } from '~/types/PlayArea';
-import type { ScryfallCard, ScryfallImageUris } from '~/types/Scryfall';
+import type {
+  ScryfallCard,
+  ScryfallImageUris,
+  ScryfallRelatedCard,
+} from '~/types/Scryfall';
+import { MODIFIERS } from '~/types/MtgConcepts';
 import { randomUUID } from '~/utils/randomUUID';
 import { markRaw } from 'vue';
 
@@ -41,8 +47,22 @@ export function cardData(card: ScryfallCard): ScryfallCard {
     image_status: card.image_status,
     image_uris: images(card.image_uris),
     scryfall_uri: card.scryfall_uri,
+    all_parts: meldParts(card.all_parts),
   }) as ScryfallCard;
   return Object.freeze(markRaw(data));
+}
+
+const MELD_COMPONENTS: readonly string[] = ['meld_part', 'meld_result'];
+
+/** The meld parts of `all_parts`, frozen, or nothing on other cards. */
+function meldParts(parts: readonly ScryfallRelatedCard[] | undefined) {
+  const meld = parts?.filter((p) => MELD_COMPONENTS.includes(p.component));
+  if (!meld?.length) return undefined;
+  return Object.freeze(
+    meld.map(({ id, component, name }) =>
+      Object.freeze({ id, component, name }),
+    ),
+  );
 }
 
 /** The image sizes the app uses, frozen. */
@@ -66,21 +86,55 @@ function pick<T extends object>(value: T): T {
   ) as T;
 }
 
+/** Escapes `text` for use inside a regular expression. */
+const escapeRegExp = (text: string) =>
+  text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 /**
- * A new card instance for a Scryfall card: untapped, no modifiers, in no
- * stack. Every call gets its own ID, so copies of the same token stay apart.
- * The Scryfall ID stays on `scryfallInfo.id`.
+ * Whether the card says it enters prepared (#146), as preparation cards can:
+ * "This creature enters prepared." Read from the card's text and its first
+ * face's, with the card's own name standing for "this": "this" or the name,
+ * then "enters prepared" later in the same sentence. So "if this creature
+ * was kicked, it enters prepared" counts, but "another creature enters
+ * prepared" and a later sentence's "becomes prepared" don't.
+ */
+export function entersPrepared(card: ScryfallCard): boolean {
+  // Legends go by the part before the comma: "Jadzi enters prepared".
+  const names = [card.name, card.card_faces?.[0]?.name]
+    .filter((n): n is string => !!n)
+    .flatMap((n) => [n, n.split(',')[0]!.trim()])
+    .map(escapeRegExp);
+  const subject = ['this', ...names].join('|');
+  const pattern = new RegExp(
+    `\\b(?:${subject})\\b[^.\\n]*\\benters prepared\\b`,
+    'i',
+  );
+  return [card.oracle_text, card.card_faces?.[0]?.oracle_text].some(
+    (text) => !!text && pattern.test(text),
+  );
+}
+
+const PREPARED = MODIFIERS.find((m) => m.name === 'Prepared')!;
+
+/**
+ * A new card instance for a Scryfall card: untapped, no modifiers (but
+ * Prepared, for a card that enters prepared), in no stack. Every call gets its own ID, so copies of the same token stay apart.
+ * The Scryfall ID stays on `scryfallInfo.id`. A Room starts with both doors
+ * locked, as one that enters without being cast does (#145).
  */
 export function createBoardCard(card: ScryfallCard): BoardCard {
   const scryfallCard = cardData(card);
   return {
+    ...(isRoom(scryfallCard) && { lockedDoors: [0, 1] }),
     id: randomUUID(),
     scryfallInfo: scryfallCard,
     name: scryfallCard.name,
     mana_cost: scryfallCard.mana_cost,
     image_uri: pickImageUri(scryfallCard) ?? '',
     scryfall_uri: scryfallCard.scryfall_uri,
-    modifiers: new Set<BoardCardModifier>(),
+    modifiers: new Set<BoardCardModifier>(
+      entersPrepared(scryfallCard) ? [{ modifier: PREPARED, count: 1 }] : [],
+    ),
     tapped: false,
     faceNumber: 0,
   };
@@ -101,6 +155,7 @@ export function copyBoardCard(card: BoardCard, keepState: boolean): BoardCard {
     flipped: card.flipped,
     turned: card.turned,
     shownAs: card.shownAs,
+    ...(card.lockedDoors && { lockedDoors: [...card.lockedDoors] }),
     modifiers: new Set([...card.modifiers].map((m) => ({ ...m }))),
   };
 }

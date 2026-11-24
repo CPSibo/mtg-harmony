@@ -83,7 +83,7 @@ import SharedCardImage from '~/components/shared/CardImage.vue';
 import { isLandscapeFace } from '~/features/battlefield/cardFaces';
 import UCommandPalette from '@nuxt/ui/components/CommandPalette.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
-import { refDebounced } from '@vueuse/core';
+import { refDebounced, useOnline } from '@vueuse/core';
 import type { Position } from '@vueuse/core';
 import { computed, ref, shallowRef, toRef, useTemplateRef } from 'vue';
 import { useCloseOnTouchOutside } from '~/composables/useCloseOnTouchOutside';
@@ -113,10 +113,15 @@ useCloseOnTouchOutside(
 
 const searchTerm = ref('');
 const searchTermDebounced = refDebounced(searchTerm, 500);
+// Offline, it doesn't search at all rather than failing each time (#169).
+const online = useOnline();
+const query = computed(() => (online.value ? searchTermDebounced.value : ''));
 
-const { cards, status } = useCardSearch(searchTermDebounced);
+const { cards, status } = useCardSearch(query);
 
 const emptyMessage = computed(() => {
+  if (!online.value)
+    return "You're offline. Add Card searches Scryfall, so it works again once you're back online.";
   if (status.value === 'error') return 'Search failed. Try again.';
   if (status.value === 'success') return 'No cards found.';
   return 'Type a card name to search Scryfall.';

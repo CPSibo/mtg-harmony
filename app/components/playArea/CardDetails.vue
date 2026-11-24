@@ -4,10 +4,17 @@
     v-model:open="open"
     :ui="{
       content: [
-        'flex flex-row gap-3 p-6',
-        // Wider for a sideways card, which the image then fills, and for
-        // text-only cards, which otherwise get squeezed by the buttons.
-        (landscape || !showImage) && 'sm:max-w-2xl',
+        // Below sm the image sits above the buttons, full width, and the
+        // whole window scrolls (#176).
+        'flex flex-col gap-3 p-6 max-sm:max-h-[calc(100svh-2rem)] max-sm:overflow-y-auto sm:flex-row',
+        // Wide enough for the image to be bigger than on the board (#176).
+        // A sideways card fills what the buttons leave; a portrait one sets
+        // its own width, and the window fits it.
+        showImage && landscape && 'sm:max-w-4xl',
+        // w-max, not w-auto: centred with left: 50%, auto would cap it at 50vw.
+        showImage && !landscape && 'sm:w-max sm:max-w-[calc(100vw-2rem)]',
+        // Text-only cards otherwise get squeezed by the buttons.
+        !showImage && 'sm:max-w-2xl',
       ],
     }"
     title="Card details"
@@ -18,7 +25,7 @@
            always fit. -->
       <div
         :class="[
-          'flex max-h-[90svh] flex-col gap-3 overflow-y-auto',
+          'flex flex-col gap-3 sm:max-h-[90svh] sm:overflow-y-auto',
           { 'min-w-0 flex-1': landscape || !showImage },
         ]"
       >
@@ -28,7 +35,8 @@
           frame-class="w-full"
           :src="shownImageUri(card)"
           :alt="card.name"
-          class="max-h-[80svh] mtg-card-display"
+          class="mtg-card-display"
+          :class="landscape ? 'max-h-[80svh]' : 'details-portrait'"
         />
         <!-- As wide as the image, never wider. -->
         <SharedOracleText
@@ -68,6 +76,19 @@
           Flip over
         </UButton>
 
+        <!-- A Room's doors lock and unlock one at a time (#145). -->
+        <UButton
+          v-for="(door, i) in doorNames(card)"
+          :key="door"
+          :icon="isLocked(i) ? 'i-lucide-lock-open' : 'i-lucide-lock'"
+          color="neutral"
+          variant="soft"
+          size="xl"
+          @click="battlefield.setDoorLocked(card!, i, !isLocked(i))"
+        >
+          {{ isLocked(i) ? 'Unlock' : 'Lock' }} {{ door }}
+        </UButton>
+
         <UButton
           :icon="showImage ? 'i-lucide-text' : 'i-lucide-image'"
           color="neutral"
@@ -87,6 +108,33 @@
           @click="turn"
         >
           Flip 180°
+        </UButton>
+
+        <!-- Only with both halves on the board (#143). The melded card comes
+             from Scryfall, so it needs a connection. -->
+        <UButton
+          v-if="canMeld"
+          icon="i-lucide-merge"
+          color="neutral"
+          variant="soft"
+          size="xl"
+          :loading="melding"
+          :disabled="!online"
+          :title="online ? undefined : 'Melding needs a connection'"
+          @click="meld"
+        >
+          Meld
+        </UButton>
+
+        <UButton
+          v-if="card.meldedFrom"
+          icon="i-lucide-split"
+          color="neutral"
+          variant="soft"
+          size="xl"
+          @click="unmeld"
+        >
+          Unmeld
         </UButton>
 
         <UButton
@@ -202,6 +250,8 @@
           color="neutral"
           variant="ghost"
           size="xl"
+          :disabled="!online"
+          :title="online ? undefined : 'Swap art needs a connection'"
           @click="openSwapArt"
         >
           Swap art
@@ -220,11 +270,12 @@
         <USeparator />
 
         <UButton
+          v-if="scryfallUrl"
           icon="i-lucide-external-link"
           color="info"
           variant="ghost"
           size="xl"
-          :to="card.scryfall_uri"
+          :to="scryfallUrl"
           target="_blank"
         >
           Scryfall
@@ -252,15 +303,20 @@ import UDropdownMenu from '@nuxt/ui/components/DropdownMenu.vue';
 import UInputNumber from '@nuxt/ui/components/InputNumber.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
 import USeparator from '@nuxt/ui/components/Separator.vue';
+import { useToast } from '@nuxt/ui/composables';
+import { fetchCardById } from '~/composables/useScryfall';
+import { meldResult } from '~/features/battlefield/meld';
 import PlayAreaRemoveCardModal from '~/components/playArea/RemoveCardModal.vue';
 import SharedCardText from '~/components/shared/CardText.vue';
 import SharedOracleText from '~/components/shared/OracleText.vue';
 import { useSettingsStore } from '~/stores/settings';
+import { useOnline } from '@vueuse/core';
 import { computed, defineAsyncComponent, ref } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import SharedCardImage from '~/components/shared/CardImage.vue';
 import {
   canTurn,
+  doorNames,
   isLandscape,
   shownFaces,
   shownImageUri,
@@ -268,8 +324,16 @@ import {
 } from '~/features/battlefield/cardFaces';
 import { useCopyAnimation, useMoveAnimation } from '~/features/castAnimation';
 import type { BoardCard } from '~/types/PlayArea';
+import { scryfallLink } from '~/utils/scryfallLink';
 
 const open = defineModel<boolean>('open', { default: false });
+
+// Swap art lists printings and Meld fetches the melded card from Scryfall
+// (#169, #143).
+const online = useOnline();
+
+/** Whether door `i` of the Room shown is locked (#145). */
+const isLocked = (i: number) => !!props.card?.lockedDoors?.includes(i);
 
 const props = defineProps<{
   card: BoardCard | undefined;
@@ -321,6 +385,44 @@ const turn = () => {
   open.value = false;
 };
 
+const toast = useToast();
+
+// What the card melds into comes first, so cards that don't meld never walk
+// the board for a partner.
+const canMeld = computed(
+  () =>
+    !!props.card &&
+    !!meldResult(props.card.scryfallInfo) &&
+    !!battlefield.meldPartner(props.card),
+);
+const melding = ref(false);
+
+const meld = async () => {
+  const card = props.card;
+  const result = card && meldResult(card.scryfallInfo);
+  if (!result || melding.value) return;
+  melding.value = true;
+  try {
+    const data = await fetchCardById(result.id);
+    if (battlefield.meld(card, data)) open.value = false;
+  } catch {
+    toast.add({
+      title: `Could not fetch ${result.name}`,
+      description: 'Check your connection and try again.',
+      color: 'error',
+      icon: 'i-lucide-triangle-alert',
+    });
+  } finally {
+    melding.value = false;
+  }
+};
+
+const unmeld = () => {
+  if (!props.card) return;
+  battlefield.unmeld(props.card);
+  open.value = false;
+};
+
 const faces = computed(() => (props.card ? shownFaces(props.card) : []));
 
 const showImage = computed(
@@ -328,6 +430,9 @@ const showImage = computed(
 );
 
 const landscape = computed(() => !!props.card && isLandscape(props.card));
+
+/** Only a scryfall.com page becomes a link (#157). */
+const scryfallUrl = computed(() => scryfallLink(props.card?.scryfall_uri));
 
 const hasAttachments = computed(() => {
   if (!props.card || !props.card.stack?.primary) return false;
@@ -385,3 +490,18 @@ const confirmRemoval = () => {
   open.value = false;
 };
 </script>
+
+<style scoped>
+/* As tall as fits, leaving room beside it for the buttons. Full width below sm,
+   where the buttons go underneath. */
+.details-portrait {
+  width: 100%;
+  height: auto;
+  aspect-ratio: var(--card-ratio-vertical);
+}
+@media (width >= 40rem) {
+  .details-portrait {
+    width: min(30rem, 80svh * 12 / 17, 100vw - 17rem);
+  }
+}
+</style>

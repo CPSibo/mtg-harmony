@@ -19,6 +19,18 @@ export interface ScryfallCardFace {
   image_uris?: ScryfallImageUris;
 }
 
+/**
+ * A card related to another, from Scryfall's `all_parts`. The app keeps only
+ * meld parts: the two halves (`meld_part`) and what they meld into
+ * (`meld_result`).
+ */
+export interface ScryfallRelatedCard {
+  id: string;
+  /** `meld_part` or `meld_result` once trimmed; Scryfall also sends `token` and `combo_piece`. */
+  component: string;
+  name: string;
+}
+
 export interface ScryfallCard {
   id: string;
   /** Shared by every printing of the card; Swap art lists printings by it. */
@@ -30,7 +42,7 @@ export interface ScryfallCard {
   oracle_text?: string;
   power?: string;
   toughness?: string;
-  /** How the card is printed: normal, split, flip, transform, modal_dfc, planar� */
+  /** How the card is printed: normal, split, flip, transform, modal_dfc, planar… */
   layout?: string;
   keywords?: string[];
   /** Each face of a double-faced, split or adventure card. */
@@ -42,4 +54,6 @@ export interface ScryfallCard {
    */
   image_uris?: ScryfallImageUris;
   scryfall_uri: string;
+  /** On meld cards: both halves and the melded card (#143). */
+  all_parts?: ScryfallRelatedCard[];
 }
