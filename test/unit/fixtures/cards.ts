@@ -66,3 +66,20 @@ export function makeMeldCards() {
     brisela: card('brisela-id', 'Brisela, Voice of Nightmares'),
   };
 }
+
+/**
+ * A card that makes tokens, with its tokens linked through `all_parts` as
+ * Scryfall links them (#203): each `token` part, and the card itself as a
+ * `combo_piece`.
+ */
+export function makeTokenMaker(
+  tokens: { id: string; name: string; type_line?: string }[],
+  overrides: Partial<ScryfallCard> = {},
+) {
+  const card = makeScryfallCard(overrides);
+  card.all_parts = [
+    { id: card.id, component: 'combo_piece', name: card.name },
+    ...tokens.map((t) => ({ ...t, component: 'token' })),
+  ];
+  return card;
+}

@@ -251,6 +251,16 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     return stack;
   }
 
+  /**
+   * Puts a token `source` makes on the board, in its own stack in a free spot
+   * in view, and logs which card made it (#203).
+   */
+  function createToken(source: BoardCard, token: ScryfallCard) {
+    const stack = addStackByCard(createBoardCard(token), newStackPosition());
+    log.record('tokenCreated', { card: stack.primary, source });
+    return stack;
+  }
+
   /** Takes a card off the board and logs it. Its stack-mates stay. */
   function removeCard(card: BoardCard) {
     log.record('removed', { card });
@@ -781,6 +791,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     orderedStacks,
     stackZIndex,
     castCard,
+    createToken,
     setView,
     setTransform,
     boardPointFromScreen,

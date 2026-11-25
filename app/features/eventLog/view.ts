@@ -18,6 +18,7 @@ export const EVENT_LABELS: Record<EventType, { label: string; icon: string }> =
     removed: { label: 'Removed', icon: 'i-lucide-trash' },
     melded: { label: 'Melded', icon: 'i-lucide-merge' },
     unmelded: { label: 'Unmelded', icon: 'i-lucide-split' },
+    tokenCreated: { label: 'Created token', icon: 'i-lucide-circle-plus' },
     boardCleared: { label: 'Board cleared', icon: 'i-lucide-brush-cleaning' },
     gameMarker: { label: 'New game', icon: 'i-lucide-flag' },
   };
@@ -100,6 +101,8 @@ export function describeEntry(entry: EventEntry): string {
     case 'melded':
     case 'unmelded':
       return `${EVENT_LABELS[entry.type].label} ${entryDetails(entry)}`;
+    case 'tokenCreated':
+      return `Created ${entryDetails(entry)}`;
     case 'boardCleared':
       return 'Cleared the board';
     case 'gameMarker':
@@ -123,6 +126,8 @@ export function entryDetails(entry: EventEntry): string {
       return `${entry.source.name} and ${entry.target.name} into ${entry.card.name}`;
     case 'unmelded':
       return `${entry.card.name} into ${entry.source.name} and ${entry.target.name}`;
+    case 'tokenCreated':
+      return `${entry.card.name} from ${entry.source.name}`;
     case 'gameMarker':
       return REASON_LABELS[entry.reason];
     case 'cast':

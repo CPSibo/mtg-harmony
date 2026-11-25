@@ -286,19 +286,27 @@ Rules the battlefield store enforces:
   snapshots keep the art each event saw.
 - **Meld** in card details (#143, `meld.ts`) shows on a meld half while its other half is on the board,
   attached, under or on its own (`meldPartner`, matched by name, so any printing counts). `cardData()` keeps only
-  the meld parts of Scryfall's `all_parts`. It fetches the melded card by ID (`fetchCardById`, through the shared
+  the meld parts and tokens of Scryfall's `all_parts`. It fetches the melded card by ID (`fetchCardById`, through the shared
   rate limit; disabled offline), then `meld` puts it in the first half's place in its stack and takes the other
   half off the board as if removed (its stack-mates explode out as usual). The melded card keeps both halves, in
   no stack and as they were, on `meldedFrom`, saved with it. **Unmeld** (`unmeld`) puts the first half back in
   its place and the second in a stack of its own beside it. A melded card cast or added directly, or a copy of
   one, has no halves and can't unmeld.
+- **Create token** in card details (#203, `tokens.ts`) shows on a card whose `all_parts` lists tokens it makes
+  (`tokenParts`: once each by ID, so Wurmcoil Engine's two Wurms both show, leaving out a token's own entry). With one token the button names it and
+  creates it at once; with several, **Create token…** closes the details and opens `TokenPickerModal.vue`
+  (loaded on first use). The picker lists each token's name and type line from `all_parts` straight away, then
+  fetches each token in turn (`fetchCardById`, the shared rate limit) to fill in its power, toughness and rules text, and
+  stops when it closes. Picking a token uses the fetched card, or fetches it then. `createToken` puts it in its
+  own stack in a free spot in view and logs `tokenCreated`. Both need a connection for a token not yet fetched.
+  Cards saved before #203 kept no tokens, so they show no button until cast again.
 - Card and stack IDs come from `randomUUID` (`utils/randomUUID.ts`). It falls back to `crypto.getRandomValues`
   where `crypto.randomUUID` is missing, as on a plain-HTTP dev server opened from a phone.
 
 ## Event log
 
 `features/eventLog` keeps one list of meaningful changes, newest last: fetched, cast, added, attached, put under,
-copied, removed, melded, unmelded, board cleared and game markers. Moving, tapping and counters aren't logged.
+copied, removed, melded, unmelded, tokens created, board cleared and game markers. Moving, tapping and counters aren't logged.
 
 The log is split in two (#81):
 
@@ -338,6 +346,7 @@ The log is split in two (#81):
   | `removed`      | `battlefield.removeCard`, not the moves it causes                  |
   | `melded`       | `battlefield.meld`: the melded card and both halves                |
   | `unmelded`     | `battlefield.unmeld`: the melded card and both halves              |
+  | `tokenCreated` | `battlefield.createToken`: the token and the card that made it     |
   | `boardCleared` | `battlefield.clearBoard`, which the menu's clear actions call      |
 
   Moves within the board (`explodeStack`, `detach`) aren't logged. The store keeps its low-level helpers that
@@ -379,12 +388,13 @@ allowed for style bindings), plus `nosniff`, a referrer policy and a Permissions
 wake lock. A new host the app talks to has to be added there. Links to Scryfall go through `scryfallLink()`, which
 drops anything that isn't a `https://scryfall.com/` page.
 
-| Use              | Endpoint                                              | Where                                    |
-| ---------------- | ----------------------------------------------------- | ---------------------------------------- |
-| On-deck fetching | `GET /cards/random?q=-t:land+game:paper`              | `useScryfall` → `useDiscordFetcherStore` |
-| Add Card search  | `GET /cards/search?q=…` (debounced 500 ms, cancelled) | `AddCardWindow.vue`                      |
-| Swap art         | `GET /cards/search?q=!"name" [e:set]&unique=prints`   | `usePrintings` → `SwapArtModal.vue`      |
-| Meld             | `GET /cards/:id` (the meld result from `all_parts`)   | `fetchCardById` → `CardDetails.vue`      |
+| Use              | Endpoint                                              | Where                                                      |
+| ---------------- | ----------------------------------------------------- | ---------------------------------------------------------- |
+| On-deck fetching | `GET /cards/random?q=-t:land+game:paper`              | `useScryfall` → `useDiscordFetcherStore`                   |
+| Add Card search  | `GET /cards/search?q=…` (debounced 500 ms, cancelled) | `AddCardWindow.vue`                                        |
+| Swap art         | `GET /cards/search?q=!"name" [e:set]&unique=prints`   | `usePrintings` → `SwapArtModal.vue`                        |
+| Meld             | `GET /cards/:id` (the meld result from `all_parts`)   | `fetchCardById` → `CardDetails.vue`                        |
+| Create token     | `GET /cards/:id` (each token from `all_parts`)        | `fetchCardById` → `useCreateToken`, `TokenPickerModal.vue` |
 
 - **Rate limiting** (`composables/scryfallFetch.ts`): every API request goes through `scryfallFetch`, which
   queues them in one line spaced at least 600 ms apart, across On-deck, Add Card and Swap art (#158). A request

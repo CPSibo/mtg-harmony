@@ -20,15 +20,17 @@ export interface ScryfallCardFace {
 }
 
 /**
- * A card related to another, from Scryfall's `all_parts`. The app keeps only
- * meld parts: the two halves (`meld_part`) and what they meld into
- * (`meld_result`).
+ * A card related to another, from Scryfall's `all_parts`. The app keeps meld
+ * parts, the two halves (`meld_part`) and what they meld into (`meld_result`),
+ * and the tokens a card makes (`token`, #203).
  */
 export interface ScryfallRelatedCard {
   id: string;
-  /** `meld_part` or `meld_result` once trimmed; Scryfall also sends `token` and `combo_piece`. */
+  /** `meld_part`, `meld_result` or `token` once trimmed; Scryfall also sends `combo_piece`. */
   component: string;
   name: string;
+  /** Kept on tokens, for the token picker. */
+  type_line?: string;
 }
 
 export interface ScryfallCard {
@@ -54,6 +56,6 @@ export interface ScryfallCard {
    */
   image_uris?: ScryfallImageUris;
   scryfall_uri: string;
-  /** On meld cards: both halves and the melded card (#143). */
+  /** On meld cards: both halves and the melded card (#143). On cards that make tokens: the tokens (#203). */
   all_parts?: ScryfallRelatedCard[];
 }

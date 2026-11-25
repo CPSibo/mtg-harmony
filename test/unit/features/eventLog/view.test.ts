@@ -155,3 +155,20 @@ describe('meld entries', () => {
     ]);
   });
 });
+
+// #203
+describe('token entries', () => {
+  it('say which card created the token', () => {
+    const log = useEventLogStore();
+    log.record('tokenCreated', {
+      card: makeCard({ name: 'Ooze' }),
+      source: makeCard({ name: 'Mitotic Slime' }),
+    });
+
+    expect(describeEntry(log.entries[0]!)).toBe(
+      'Created Ooze from Mitotic Slime',
+    );
+    expect(entryDetails(log.entries[0]!)).toBe('Ooze from Mitotic Slime');
+    expect(filterEntries(log.entries, { name: 'slime' })).toHaveLength(1);
+  });
+});

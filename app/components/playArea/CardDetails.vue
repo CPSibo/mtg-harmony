@@ -137,6 +137,24 @@
           Unmeld
         </UButton>
 
+        <!-- Tokens the card makes, from Scryfall (#203): one is created at
+             once, several open a picker. -->
+        <UButton
+          v-if="tokens.length"
+          icon="i-lucide-circle-plus"
+          color="neutral"
+          variant="soft"
+          size="xl"
+          :loading="!!creatingToken"
+          :disabled="!online"
+          :title="online ? undefined : 'Creating tokens needs a connection'"
+          @click="createToken"
+        >
+          {{
+            tokens.length === 1 ? `Create ${tokens[0]!.name}` : 'Create token…'
+          }}
+        </UButton>
+
         <UButton
           color="primary"
           variant="soft"
@@ -295,6 +313,12 @@
     v-model:open="showSwapArt"
     :card="props.card"
   />
+
+  <TokenPickerModal
+    v-if="tokenSource"
+    v-model:open="showTokenPicker"
+    :source="tokenSource"
+  />
 </template>
 
 <script setup lang="ts">
@@ -306,6 +330,8 @@ import USeparator from '@nuxt/ui/components/Separator.vue';
 import { useToast } from '@nuxt/ui/composables';
 import { fetchCardById } from '~/composables/useScryfall';
 import { meldResult } from '~/features/battlefield/meld';
+import { tokenParts } from '~/features/battlefield/tokens';
+import { useCreateToken } from '~/composables/useCreateToken';
 import PlayAreaRemoveCardModal from '~/components/playArea/RemoveCardModal.vue';
 import SharedCardText from '~/components/shared/CardText.vue';
 import SharedOracleText from '~/components/shared/OracleText.vue';
@@ -359,6 +385,32 @@ const openSwapArt = () => {
   swapArtLoaded.value = true;
   showSwapArt.value = true;
   open.value = false;
+};
+
+// Loads on first use, like Swap art (#203).
+const TokenPickerModal = defineAsyncComponent(
+  () => import('~/components/playArea/TokenPickerModal.vue'),
+);
+// Kept apart from `card`, so the picker stays on the card it opened for.
+const tokenSource = ref<BoardCard>();
+const showTokenPicker = ref(false);
+
+const tokens = computed(() =>
+  props.card ? tokenParts(props.card.scryfallInfo) : [],
+);
+const { create: createOneToken, creating: creatingToken } = useCreateToken();
+
+const createToken = async () => {
+  const card = props.card;
+  const [only, ...more] = tokens.value;
+  if (!card || !only) return;
+  if (more.length) {
+    tokenSource.value = card;
+    showTokenPicker.value = true;
+    open.value = false;
+    return;
+  }
+  if (await createOneToken(card, only)) open.value = false;
 };
 
 // Cancelling the removal goes back to the details.
