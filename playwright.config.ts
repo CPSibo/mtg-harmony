@@ -17,6 +17,12 @@ export default defineConfig({
     // The production build registers a service worker (#169). Requests it
     // makes skip page.route, so tests block it unless they test it.
     serviceWorkers: 'block',
+    // Tests check where things end up, not how they get there. Cast flights,
+    // move animations and tap easing are decoration the app skips under
+    // reduced motion; left on, tests that measure or focus a card race them
+    // and flake under load (#212). A test of an animation itself opts back in
+    // with test.use({ reducedMotion: 'no-preference' }).
+    reducedMotion: 'reduce',
   },
   projects: [
     {

@@ -384,7 +384,10 @@ const showCardModifiers = (card: BoardCard) => {
   width: 100svw;
   height: 100svh;
   position: relative;
-  overflow: hidden;
+  /* clip, not hidden: a hidden box can still be scrolled, and focusing a card
+     partly off-screen did, shifting the board behind the pan's back (#212).
+     Panning moves the board with a transform; nothing here should scroll. */
+  overflow: clip;
   contain: strict; /* Disable CLS hints for children. */
 }
 

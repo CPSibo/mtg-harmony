@@ -154,7 +154,9 @@ a session shows a toast.
 moved and scaled with a single CSS `transform`. The grid and vignette behind it are a viewport-sized CSS background
 (`.board-backdrop`) that follows the pan and zoom through CSS variables, so a pan or zoom never repaints a
 5000 px layer. While panning, the board is its own GPU layer (`will-change: transform`); not otherwise, because a
-layer kept through a zoom stays rastered at the old scale and blurs.
+layer kept through a zoom stays rastered at the old scale and blurs. The wrapper is `overflow: clip`, not `hidden`: a hidden box can
+still be scrolled, and focusing a card partly off-screen scrolled it, shifting every card behind the pan's back
+(#212).
 
 ### Pan and zoom (`usePanAndZoom`)
 
