@@ -166,7 +166,7 @@
 
         <UFormField
           label="Card action flourish"
-          description="A small effect when cards are attached, detached, copied or removed"
+          description="A small effect when you attach, copy, meld, remove or lock a card, add a counter or create a token"
         >
           <USwitch v-model="attachFlareEnabled" />
         </UFormField>

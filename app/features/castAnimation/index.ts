@@ -11,6 +11,7 @@ export {
   measureCards,
   playCastAnimation,
   playGraveyardAnimation,
+  playMeldAnimation,
   playMoveAnimation,
   playRemoveAnimation,
   type CastAnimationOptions,
@@ -20,6 +21,8 @@ export {
   useCastAnimation,
   useCopyAnimation,
   useGraveyardAnimation,
+  useMeldAnimation,
   useMoveAnimation,
   useRemoveAnimation,
+  useTokenAnimation,
 } from './useCastAnimation';

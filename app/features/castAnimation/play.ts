@@ -428,6 +428,68 @@ export async function playMoveAnimation(
   }
 }
 
+/** How long the other half takes to fly onto a melded card. */
+const MELD_FLIGHT_MS = 480;
+
+/**
+ * Melding (#204): a copy of the other half (`partner`, measured before the
+ * meld took it off the board) arcs onto the melded card and fades into it,
+ * then the melded card pops with rings and sparkles. Without a partner only
+ * the burst plays. Never throws: it's decoration.
+ */
+export async function playMeldAnimation(
+  partner: CastSource | null,
+  meldedId: string,
+) {
+  if (reducedMotion() || typeof Element.prototype.animate !== 'function')
+    return;
+  try {
+    await nextTick();
+    await frame();
+    const target = cardRoot(meldedId)?.querySelector<HTMLElement>(
+      '.card-image-wrapper',
+    );
+    const image = cardImage(meldedId);
+    if (!target || !image) return;
+
+    if (partner) {
+      const r = image.getBoundingClientRect();
+      const flyer = makeFlyer(partner.element, partner.rect);
+      try {
+        const options = {
+          duration: MELD_FLIGHT_MS,
+          easing: 'cubic-bezier(0.45, 0, 0.3, 1)',
+          fill: 'forwards' as const,
+        };
+        const flight = flyer.animate(
+          flightKeyframes('arc', partner.rect, {
+            x: r.x,
+            y: r.y,
+            width: r.width,
+            height: r.height,
+          }),
+          options,
+        );
+        // Fades into the melded card over the last stretch.
+        flyer.animate(
+          [{ opacity: 1 }, { opacity: 1, offset: 0.7 }, { opacity: 0 }],
+          options,
+        );
+        // Capped, in case animations pause in a hidden tab.
+        await Promise.race([
+          flight.finished,
+          new Promise((resolve) => setTimeout(resolve, MELD_FLIGHT_MS + 100)),
+        ]);
+      } finally {
+        flyer.remove();
+      }
+    }
+    await land(target, 'sparkleRing');
+  } catch {
+    // Decoration only.
+  }
+}
+
 /**
  * Plays a removed card out (#124): it shrinks, tips and fades, leaving a
  * puff of dust. A card that leads its stack takes the stack's buttons with
