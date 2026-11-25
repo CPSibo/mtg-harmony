@@ -141,7 +141,8 @@ import { useElementHover, useFocus } from '@vueuse/core';
 import { useDoubleTap } from '~/composables/useDoubleTap';
 import SharedCardText from '~/components/shared/CardText.vue';
 import { useSettingsStore } from '~/stores/settings';
-import { computed, useTemplateRef } from 'vue';
+import { computed, inject, toRaw, useTemplateRef } from 'vue';
+import { BADGES_HELD } from '~/components/playArea/badgesHeld';
 import { useBattlefieldStore } from '~/features/battlefield';
 import {
   doorNames,
@@ -156,12 +157,22 @@ const props = defineProps<{
   card: BoardCard;
 }>();
 
-/** The card's modifiers in the order they were added. */
-const modifiers = computed(() =>
-  [...props.card.modifiers].flatMap(([key, count]) => {
-    const modifier = modifierByKey(key);
-    return modifier ? [{ modifier, count }] : [];
-  }),
+const badgesHeld = inject(BADGES_HELD, null);
+
+/**
+ * The card's modifiers in the order they were added. While its Modifiers
+ * window is open they stay as they were, and catch up once it has closed,
+ * so the badges animate in view (#204).
+ */
+const modifiers = computed<{ modifier: Modifier; count: number }[]>(
+  (previous) => {
+    const held = badgesHeld?.value;
+    if (previous && held && toRaw(held) === toRaw(props.card)) return previous;
+    return [...props.card.modifiers].flatMap(([key, count]) => {
+      const modifier = modifierByKey(key);
+      return modifier ? [{ modifier, count }] : [];
+    });
+  },
 );
 
 const emits = defineEmits<{

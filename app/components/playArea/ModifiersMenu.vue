@@ -10,6 +10,7 @@
     }"
     class="min-w-[60svw]"
     scrollable
+    @after:leave="emit('after:leave')"
   >
     <template #title>
       <div
@@ -102,6 +103,9 @@ import { MODIFIERS, type ModifierKey } from '~/types/MtgConcepts';
 import type { BoardCard } from '~/types/PlayArea';
 
 const open = defineModel<boolean>('open', { default: false });
+
+/** Once the window has finished closing. */
+const emit = defineEmits<{ 'after:leave': [] }>();
 
 const props = defineProps<{
   card: BoardCard | undefined;

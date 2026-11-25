@@ -64,6 +64,7 @@
   <PlayAreaModifiersMenu
     v-model:open="cardModifiersIsOpen"
     :card="selectedCard"
+    @after:leave="badgesHeld = null"
   />
 
   <PlayAreaRoomDoorsModal v-if="battlefield.doorChoice" />
@@ -74,6 +75,7 @@ import PlayAreaBoardCardStack from '~/components/playArea/BoardCardStack.vue';
 import PlayAreaDragRadialMenu from '~/components/playArea/DragRadialMenu.vue';
 import PlayAreaSelectionBar from '~/components/playArea/SelectionBar.vue';
 import { useBlockBrowserZoom } from '~/composables/useBlockBrowserZoom';
+import { BADGES_HELD } from '~/components/playArea/badgesHeld';
 import { usePanAndZoom } from '~/composables/usePanAndZoom';
 import { storeToRefs } from 'pinia';
 import { useEventListener, useWindowSize } from '@vueuse/core';
@@ -82,6 +84,7 @@ import {
   defineAsyncComponent,
   onMounted,
   onUnmounted,
+  provide,
   ref,
   shallowRef,
   useTemplateRef,
@@ -372,8 +375,13 @@ const showCardDetails = (card: BoardCard) => {
 
 const cardModifiersIsOpen = ref(false);
 
+// Held from opening until the window has finished closing (#204).
+const badgesHeld = shallowRef<BoardCard | null>(null);
+provide(BADGES_HELD, badgesHeld);
+
 const showCardModifiers = (card: BoardCard) => {
   selectedCard.value = card;
+  badgesHeld.value = card;
   cardDetailsIsOpen.value = false;
   cardModifiersIsOpen.value = true;
 };

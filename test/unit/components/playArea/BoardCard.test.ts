@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { nextTick } from 'vue';
+import { nextTick, shallowRef } from 'vue';
 import BoardCard from '~/components/playArea/BoardCard.vue';
+import { BADGES_HELD } from '~/components/playArea/badgesHeld';
 import { createBoardCard, useBattlefieldStore } from '~/features/battlefield';
 import { useSettingsStore } from '~/stores/settings';
 import { putOnBoard } from '../../fixtures/board';
 import { makeScryfallCard } from '../../fixtures/cards';
 import { mountInApp, unmountAll } from '../../fixtures/mount';
+import type { BoardCard as Card } from '~/types/PlayArea';
 
 /** A Room with both doors unlocked, on the board. */
 function boardRoom() {
@@ -27,10 +29,13 @@ function boardRoom() {
 
 // Transitions run for real here (test-utils stubs them by default), so each
 // test can see whether one started.
-function mountCard(card = boardRoom()) {
+function mountCard(card = boardRoom(), held = shallowRef<Card | null>(null)) {
   mountInApp(BoardCard, {
     props: { card },
-    global: { stubs: { transition: false, 'transition-group': false } },
+    global: {
+      stubs: { transition: false, 'transition-group': false },
+      provide: { [BADGES_HELD]: held },
+    },
   });
   return card;
 }
@@ -67,6 +72,31 @@ describe('BoardCard: card change effects (#204)', () => {
     board.setModifierCount(card, 'plus-one', 3);
     await nextTick();
     expect(entering('.modifier-icon-count')).toBe(true);
+  });
+
+  // The Modifiers window covers the board, so its changes would play unseen.
+  it('holds badges while the Modifiers window is open, then plays them', async () => {
+    const held = shallowRef<Card | null>(null);
+    const card = mountCard(boardRoom(), held);
+    const board = useBattlefieldStore();
+    held.value = card;
+
+    board.setModifierCount(card, 'plus-one', 1);
+    await nextTick();
+    expect(document.querySelector('.modifier-icon')).toBeNull();
+
+    held.value = null;
+    await nextTick();
+    expect(entering('.modifier-icon')).toBe(true);
+  });
+
+  it('holds only the card whose Modifiers window is open', async () => {
+    const held = shallowRef<Card | null>(boardRoom());
+    const card = mountCard(boardRoom(), held);
+
+    useBattlefieldStore().setModifierCount(card, 'plus-one', 1);
+    await nextTick();
+    expect(document.querySelector('.modifier-icon')).not.toBeNull();
   });
 
   it('plays nothing with the card action flourish off', async () => {
