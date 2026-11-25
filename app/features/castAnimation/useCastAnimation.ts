@@ -1,8 +1,12 @@
 import { useSettingsStore } from '~/stores/settings';
 import { useBattlefieldStore, type CopyMode } from '~/features/battlefield';
 import type { BoardCard } from '~/types/PlayArea';
+import type { ScryfallCard } from '~/types/Scryfall';
 import {
+  cardImage,
+  castSource,
   playCastAnimation,
+  playMeldAnimation,
   playGraveyardAnimation,
   measureCards,
   playMoveAnimation,
@@ -89,5 +93,61 @@ export function useRemoveAnimation() {
     await playRemoveAnimation(card.id);
     battlefield.removeCard(card);
     if (from.size) void playMoveAnimation(from, null, false);
+  };
+}
+
+/**
+ * Melds and unmelds cards with a flourish (#204), unless turned off. On a
+ * meld the other half flies onto the melded card, which bursts; on an unmeld
+ * the second half slides out of it. Each returns what the store returns.
+ */
+export function useMeldAnimation() {
+  const settings = useSettingsStore();
+  const battlefield = useBattlefieldStore();
+
+  function meld(card: BoardCard, result: ScryfallCard) {
+    if (!settings.attachFlareEnabled) return battlefield.meld(card, result);
+    // Measured now: the meld takes the other half off the board.
+    const partner = battlefield.meldPartner(card);
+    const source = partner ? castSource(cardImage(partner.id)) : null;
+    const melded = battlefield.meld(card, result);
+    if (melded) void playMeldAnimation(source, melded.id);
+    return melded;
+  }
+
+  function unmeld(card: BoardCard) {
+    const from = settings.attachFlareEnabled
+      ? measureCards([card.id]).get(card.id)
+      : undefined;
+    const halves = battlefield.unmeld(card);
+    if (halves && from) {
+      const [first, second] = halves;
+      void playMoveAnimation(new Map([[second.id, from]]), first.id, false);
+    }
+    return halves;
+  }
+
+  return { meld, unmeld };
+}
+
+/**
+ * Creates a token, sliding it out from the card that made it (#204), unless
+ * turned off. A source that's left the board just has the token appear.
+ */
+export function useTokenAnimation() {
+  const settings = useSettingsStore();
+  const battlefield = useBattlefieldStore();
+  return (source: BoardCard, token: ScryfallCard) => {
+    const from = settings.attachFlareEnabled
+      ? measureCards([source.id]).get(source.id)
+      : undefined;
+    const stack = battlefield.createToken(source, token);
+    if (from)
+      void playMoveAnimation(
+        new Map([[stack.primary.id, from]]),
+        source.id,
+        false,
+      );
+    return stack;
   };
 }

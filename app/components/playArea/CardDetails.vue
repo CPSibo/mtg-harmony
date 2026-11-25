@@ -348,7 +348,11 @@ import {
   shownImageUri,
   showsImage,
 } from '~/features/battlefield/cardFaces';
-import { useCopyAnimation, useMoveAnimation } from '~/features/castAnimation';
+import {
+  useCopyAnimation,
+  useMeldAnimation,
+  useMoveAnimation,
+} from '~/features/castAnimation';
 import type { BoardCard } from '~/types/PlayArea';
 import { scryfallLink } from '~/utils/scryfallLink';
 
@@ -456,6 +460,7 @@ const canMeld = computed(
     !!battlefield.meldPartner(props.card),
 );
 const melding = ref(false);
+const melder = useMeldAnimation();
 
 const meld = async () => {
   const card = props.card;
@@ -464,7 +469,7 @@ const meld = async () => {
   melding.value = true;
   try {
     const data = await fetchCardById(result.id);
-    if (battlefield.meld(card, data)) open.value = false;
+    if (melder.meld(card, data)) open.value = false;
   } catch {
     toast.add({
       title: `Could not fetch ${result.name}`,
@@ -479,7 +484,7 @@ const meld = async () => {
 
 const unmeld = () => {
   if (!props.card) return;
-  battlefield.unmeld(props.card);
+  melder.unmeld(props.card);
   open.value = false;
 };
 
