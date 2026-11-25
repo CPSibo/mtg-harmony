@@ -54,6 +54,8 @@ export interface EventPayloads<C = AnyCard> {
   melded: { card: C; source: C; target: C };
   /** `card` split back into the halves it was melded from. */
   unmelded: { card: C; source: C; target: C };
+  /** A token `card` that `source` made, put on the board (#203). */
+  tokenCreated: { card: C; source: C };
   boardCleared: Record<string, never>;
   gameMarker: { reason: GameMarkerReason };
 }
@@ -84,6 +86,7 @@ export const EVENT_TYPES: readonly EventType[] = [
   'removed',
   'melded',
   'unmelded',
+  'tokenCreated',
   'boardCleared',
   'gameMarker',
 ];

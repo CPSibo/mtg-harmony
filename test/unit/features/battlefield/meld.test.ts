@@ -15,7 +15,7 @@ function boardCard(info: ScryfallCard) {
 }
 
 describe('meld (#143)', () => {
-  it('keeps only the meld parts of all_parts', () => {
+  it('keeps the meld parts of all_parts, and the token', () => {
     const { bruna } = makeMeldCards();
 
     expect(cardData(bruna).all_parts).toEqual([
@@ -34,12 +34,13 @@ describe('meld (#143)', () => {
         component: 'meld_part',
         name: 'Gisela, the Broken Blade',
       },
+      { id: 'angel-id', component: 'token', name: 'Angel' },
     ]);
   });
 
-  it('drops all_parts from cards that do not meld', () => {
+  it('drops all_parts from cards with no meld parts or tokens', () => {
     const card = makeScryfallCard({
-      all_parts: [{ id: 't', component: 'token', name: 'Angel' }],
+      all_parts: [{ id: 'c', component: 'combo_piece', name: 'Card' }],
     });
 
     expect(cardData(card).all_parts).toBeUndefined();

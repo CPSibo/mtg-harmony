@@ -47,20 +47,27 @@ export function cardData(card: ScryfallCard): ScryfallCard {
     image_status: card.image_status,
     image_uris: images(card.image_uris),
     scryfall_uri: card.scryfall_uri,
-    all_parts: meldParts(card.all_parts),
+    all_parts: relatedParts(card.all_parts),
   }) as ScryfallCard;
   return Object.freeze(markRaw(data));
 }
 
-const MELD_COMPONENTS: readonly string[] = ['meld_part', 'meld_result'];
+const KEPT_COMPONENTS: readonly string[] = [
+  'meld_part',
+  'meld_result',
+  'token',
+];
 
-/** The meld parts of `all_parts`, frozen, or nothing on other cards. */
-function meldParts(parts: readonly ScryfallRelatedCard[] | undefined) {
-  const meld = parts?.filter((p) => MELD_COMPONENTS.includes(p.component));
-  if (!meld?.length) return undefined;
+/**
+ * The meld parts and tokens of `all_parts` (#143, #203), frozen, or nothing on
+ * cards with neither.
+ */
+function relatedParts(parts: readonly ScryfallRelatedCard[] | undefined) {
+  const kept = parts?.filter((p) => KEPT_COMPONENTS.includes(p.component));
+  if (!kept?.length) return undefined;
   return Object.freeze(
-    meld.map(({ id, component, name }) =>
-      Object.freeze({ id, component, name }),
+    kept.map(({ id, component, name, type_line }) =>
+      Object.freeze(pick({ id, component, name, type_line })),
     ),
   );
 }
