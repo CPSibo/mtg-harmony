@@ -46,6 +46,18 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/');
 });
 
+/**
+ * Opens a board card's details from the keyboard (#170). Unlike a double
+ * click, it doesn't depend on what covers the card or where it is on screen.
+ */
+async function openDetails(card: Locator) {
+  await card.focus();
+  await card.press('Enter');
+  await expect(
+    card.page().getByRole('dialog', { name: 'Card details' }),
+  ).toBeVisible();
+}
+
 test('the app loads', async ({ page }) => {
   await expect(page).toHaveTitle('MTG Harmony');
   await expect(page.getByRole('button', { name: 'On-deck' })).toBeVisible();
@@ -551,11 +563,9 @@ test('tapped cards stay centred on the stack', async ({ page }) => {
       })
       .toBe(true);
 
-  // The primary covers the attachment's top; open it from its bottom edge.
-  const attached = (await attachment.getByRole('img').boundingBox())!;
-  await attachment.getByRole('img').dblclick({
-    position: { x: attached.width / 2, y: attached.height - 5 },
-  });
+  // The primary covers the attachment's top, and its bottom may hang below
+  // the window: open it from the keyboard (#212).
+  await openDetails(attachment.getByRole('img'));
   await details.getByRole('button', { name: 'Tap' }).click();
   await expect(attachment).toHaveClass(/tapped/);
   await sideways(attachment);
@@ -570,7 +580,7 @@ test('tapped cards stay centred on the stack', async ({ page }) => {
   // The primary turns in place, and the attachment stays centred on it.
   const primaryImage = primary.getByRole('img');
   const before = await centre(primaryImage);
-  await primaryImage.dblclick({ position: { x: 10, y: 5 } });
+  await openDetails(primaryImage);
   await details.getByRole('button', { name: 'Tap' }).click();
   await expect(primary).toHaveClass(/tapped/);
   await sideways(primaryImage);
@@ -863,6 +873,67 @@ test('a board card and its actions can be used from the keyboard', async ({
   await expect(boardCard).toBeFocused();
 });
 
+// #212: focusing a card partly off-screen, or Playwright reaching its edge,
+// scrolled the board's wrapper. The pan state didn't know, so every card
+// shifted and stayed shifted.
+test('focusing a card partly off-screen leaves the board where it is', async ({
+  page,
+}) => {
+  await page.getByRole('button', { name: 'On-deck' }).click();
+  await page.getByRole('button', { name: 'Next card' }).click();
+  await page.getByRole('button', { name: 'Cast to board' }).click();
+  await page.keyboard.press('Escape');
+  const boardCard = page.locator('.board-card').getByRole('img', {
+    name: card.name,
+  });
+  await expect(boardCard).toBeVisible();
+
+  // Drag the card so its lower half hangs below the window.
+  const box = (await boardCard.boundingBox())!;
+  const viewport = page.viewportSize()!;
+  await page.mouse.move(box.x + box.width / 2, box.y + 10);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, viewport.height - 20, {
+    steps: 5,
+  });
+  await page.mouse.up();
+  const dragged = (await boardCard.boundingBox())!;
+  expect(dragged.y + dragged.height).toBeGreaterThan(viewport.height);
+
+  await boardCard.focus();
+
+  const wrapper = page.locator('.board-wrapper');
+  expect(
+    await wrapper.evaluate((el) => ({
+      top: el.scrollTop,
+      left: el.scrollLeft,
+    })),
+  ).toEqual({ top: 0, left: 0 });
+  expect((await boardCard.boundingBox())!.y).toBeCloseTo(dragged.y, 0);
+});
+
+// Tests run with reduced motion (#212); this one keeps the animations, so a
+// cast still ends with a card that can be seen and focused. The card hides
+// while its copy flies in, so focusing it is retried until the flight lands.
+test.describe('with motion', () => {
+  test.use({ reducedMotion: 'no-preference' });
+
+  test('a cast card lands visible and focusable', async ({ page }) => {
+    await page.getByRole('button', { name: 'On-deck' }).click();
+    await page.getByRole('button', { name: 'Next card' }).click();
+    await page.getByRole('button', { name: 'Cast to board' }).click();
+    const boardCard = page.locator('.board-card').getByRole('img', {
+      name: card.name,
+    });
+
+    await expect(async () => {
+      await boardCard.focus();
+      await expect(boardCard).toBeFocused({ timeout: 100 });
+    }).toPass();
+    await expect(boardCard).toBeVisible();
+  });
+});
+
 // #169: the installed app opens without a network.
 test.describe('offline', () => {
   test.use({ serviceWorkers: 'allow' });
@@ -921,12 +992,13 @@ test.describe('a stack with attachments', () => {
     return stacks.first();
   }
 
-  /** Taps an attachment from its bottom edge, which nothing covers. */
+  /**
+   * Taps an attachment through its details, opened from the keyboard: cards
+   * cover its top, and its bottom may hang below the window (#212).
+   */
   async function tapAttachment(page: Page, index: number) {
     const attachment = page.locator('.attachment').nth(index);
-    const image = attachment.getByRole('img');
-    const box = (await image.boundingBox())!;
-    await image.dblclick({ position: { x: box.width / 2, y: box.height - 5 } });
+    await openDetails(attachment.getByRole('img'));
     await page
       .getByRole('dialog', { name: 'Card details' })
       .getByRole('button', { name: 'Tap' })

@@ -91,6 +91,9 @@ a PR's branch from `dev` before merging it if another bump has landed since.
 - Service workers are blocked (`serviceWorkers: 'block'`), since requests they make skip `page.route`. A test of
   offline behaviour allows them with `test.use({ serviceWorkers: 'allow' })`.
 - Prefer role-based locators (`getByRole`). Board cards expose `role="img"` named after the card.
+- Tests run with `prefers-reduced-motion: reduce`, so the app skips its animations (#212). Measuring or focusing a
+  card mid-animation flakes: a cast card is hidden while its copy flies in, and boxes move while attaching or
+  tapping. A test of an animation itself opts back in with `test.use({ reducedMotion: 'no-preference' })`.
 - A test blocked by a known bug uses `test.fixme(true, '…: #N')`.
 
 ## Node version
