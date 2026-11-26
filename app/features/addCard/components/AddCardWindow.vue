@@ -60,6 +60,29 @@
           </span>
         </template>
 
+        <!-- In the footer so taps on it count as inside the window. -->
+        <template #footer>
+          <UFieldGroup
+            aria-label="Kinds of card to search"
+            size="sm"
+          >
+            <UButton
+              v-for="category in SEARCH_CATEGORIES"
+              :key="category.value"
+              :label="category.label"
+              :icon="
+                isPicked(category.value)
+                  ? 'i-lucide-square-check'
+                  : 'i-lucide-square'
+              "
+              :aria-pressed="isPicked(category.value)"
+              color="neutral"
+              :variant="isPicked(category.value) ? 'solid' : 'outline'"
+              @click="addCardStore.toggleCategory(category.value)"
+            />
+          </UFieldGroup>
+        </template>
+
         <template #empty>
           <p class="py-6 text-center text-sm text-muted">
             {{ emptyMessage }}
@@ -82,6 +105,8 @@
 import SharedCardImage from '~/components/shared/CardImage.vue';
 import { isLandscapeFace } from '~/features/battlefield/cardFaces';
 import UCommandPalette from '@nuxt/ui/components/CommandPalette.vue';
+import UButton from '@nuxt/ui/components/Button.vue';
+import UFieldGroup from '@nuxt/ui/components/FieldGroup.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
 import { refDebounced, useOnline } from '@vueuse/core';
 import type { Position } from '@vueuse/core';
@@ -96,6 +121,11 @@ import { useBattlefieldStore } from '~/features/battlefield';
 import type { ScryfallCard } from '~/types/Scryfall';
 import { useSettingsStore } from '~/stores/settings';
 import { useCardSearch } from '../useCardSearch';
+import {
+  buildSearchQuery,
+  SEARCH_CATEGORIES,
+  type SearchCategory,
+} from '../searchQuery';
 import {
   castSource,
   useCastAnimation,
@@ -115,13 +145,22 @@ const searchTerm = ref('');
 const searchTermDebounced = refDebounced(searchTerm, 500);
 // Offline, it doesn't search at all rather than failing each time (#169).
 const online = useOnline();
-const query = computed(() => (online.value ? searchTermDebounced.value : ''));
+const query = computed(() =>
+  online.value
+    ? buildSearchQuery(searchTermDebounced.value, addCardStore.categories)
+    : '',
+);
+
+const isPicked = (category: SearchCategory) =>
+  addCardStore.categories.includes(category);
 
 const { cards, status } = useCardSearch(query);
 
 const emptyMessage = computed(() => {
   if (!online.value)
     return "You're offline. Add Card searches Scryfall, so it works again once you're back online.";
+  if (!addCardStore.categories.length)
+    return 'Pick at least one kind of card to search.';
   if (status.value === 'error') return 'Search failed. Try again.';
   if (status.value === 'success') return 'No cards found.';
   return 'Type a card name to search Scryfall.';

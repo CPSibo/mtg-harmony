@@ -58,13 +58,13 @@
 
   <PlayAreaCardDetails
     v-model:open="cardDetailsIsOpen"
-    :card="selectedCard"
+    :card="windowCard"
     @show-card-modifiers="showCardModifiers"
   />
 
   <PlayAreaModifiersMenu
     v-model:open="cardModifiersIsOpen"
-    :card="selectedCard"
+    :card="windowCard"
     @after:leave="badgesHeld = null"
   />
 
@@ -95,6 +95,7 @@ import {
 } from 'vue';
 import {
   BOARD_SIZE,
+  boundingRect,
   dragMenu,
   useBattlefieldStore,
   useBoardFind,
@@ -138,6 +139,8 @@ const {
   isDragging,
   panBy,
   centreOn,
+  fitRect,
+  resetView,
   onWheel,
   onMouseDown,
   onMouseMove,
@@ -185,6 +188,77 @@ useWidget({
       icon: 'i-lucide-search',
       kbds: 'f-b',
       execute: () => find.open(),
+    },
+  ],
+});
+
+// ─── Board commands in the palette (#218) ─────────────────────────────────────
+
+/** Shows every stack in `ids`, or the middle of the board if there's none. */
+function zoomToStacks(ids?: readonly string[]) {
+  const stacks = ids
+    ? battlefield.stacks.filter((s) => ids.includes(s.id))
+    : battlefield.stacks;
+  const rect = boundingRect(
+    stacks.map((s) => ({ ...s.position, ...battlefield.stackSize(s) })),
+  );
+  if (rect) fitRect(rect);
+  else resetView();
+}
+
+useWidget({
+  id: 'board',
+  label: 'Board',
+  icon: 'i-lucide-layout-dashboard',
+  commands: [
+    {
+      id: 'board.untapAll',
+      label: 'Untap all',
+      icon: 'i-lucide-rotate-ccw',
+      kbds: 'u-u',
+      execute: () => battlefield.untapAll(),
+    },
+    {
+      id: 'board.zoomToFit',
+      label: 'Zoom to fit all cards',
+      icon: 'i-lucide-scan',
+      kbds: 'z-f',
+      execute: () => zoomToStacks(),
+    },
+    {
+      id: 'board.zoomToSelection',
+      label: 'Zoom to selection',
+      description: 'All cards when nothing is selected',
+      icon: 'i-lucide-zoom-in',
+      kbds: 'z-s',
+      execute: () => zoomToStacks(selection.size ? selection.ids() : undefined),
+    },
+    {
+      id: 'board.resetView',
+      label: 'Reset view',
+      icon: 'i-lucide-locate-fixed',
+      kbds: 'z-r',
+      execute: resetView,
+    },
+    {
+      id: 'board.selectionMode',
+      label: 'Turn selection mode on or off',
+      icon: 'i-lucide-square-dashed-mouse-pointer',
+      kbds: 's-m',
+      execute: () => selection.setMode(!selection.mode),
+    },
+    {
+      id: 'board.gridSnapping',
+      label: 'Turn grid snapping on or off',
+      icon: 'i-lucide-grid-3x3',
+      execute: () => battlefield.toggleSnapping(),
+    },
+    {
+      id: 'board.artOrText',
+      label: 'Show all cards as art or text',
+      description: 'Changes the setting; cards set on their own keep it',
+      icon: 'i-lucide-image',
+      execute: () => settings.setImagesEnabled(!settings.imagesEnabled),
     },
   ],
 });
@@ -399,12 +473,25 @@ useBlockBrowserZoom(wrapperEl);
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-const selectedCard = ref<BoardCard | undefined>();
+// The card the details and modifiers windows show. Kept after they close, so
+// they can animate out; it isn't the target of anything (the selection is).
+const windowCard = ref<BoardCard | undefined>();
 
 const cardDetailsIsOpen = ref(false);
 
 const showCardDetails = (card: BoardCard) => {
-  selectedCard.value = card;
+  // A double tap selects the stack on its first tap. Opening the card is an
+  // action of its own, so it leaves nothing selected (#216).
+  const [only] = selection.stacks();
+  if (
+    selection.size === 1 &&
+    only &&
+    (only.primary === card ||
+      only.attachments.has(card) ||
+      only.unders.has(card))
+  )
+    selection.clear();
+  windowCard.value = card;
   cardModifiersIsOpen.value = false;
   cardDetailsIsOpen.value = true;
 };
@@ -415,8 +502,37 @@ const cardModifiersIsOpen = ref(false);
 const badgesHeld = shallowRef<BoardCard | null>(null);
 provide(BADGES_HELD, badgesHeld);
 
+// Selection commands of the board's own (#216). Others come from the features
+// that own them.
+useWidget({
+  id: 'boardSelection',
+  label: 'Selection',
+  icon: 'i-lucide-square-dashed-mouse-pointer',
+  commands: [
+    {
+      id: 'selection.details',
+      label: 'Show card details',
+      icon: 'i-lucide-ellipsis',
+      scope: 'selection',
+      enabled: () => selection.size === 1,
+      execute: () => {
+        const stack = selection.stacks()[0];
+        if (stack) showCardDetails(stack.primary);
+      },
+    },
+    {
+      id: 'selection.clear',
+      label: 'Clear selection',
+      icon: 'i-lucide-x',
+      scope: 'selection',
+      enabled: () => selection.size > 0,
+      execute: () => selection.clear(),
+    },
+  ],
+});
+
 const showCardModifiers = (card: BoardCard) => {
-  selectedCard.value = card;
+  windowCard.value = card;
   badgesHeld.value = card;
   cardDetailsIsOpen.value = false;
   cardModifiersIsOpen.value = true;

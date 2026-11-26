@@ -12,6 +12,7 @@
       dragging: myIsDragging || following,
       selected: selection.has(stack.id),
     }"
+    @focusin="onFocusIn"
   >
     <!-- Cards under the primary peek out above it, newest on top. -->
     <div class="unders">
@@ -219,13 +220,30 @@ function offsetFromStart(p: Position): Position {
   return { x: p.x - positionAtStart.x, y: p.y - positionAtStart.y };
 }
 
-/** Ctrl/Cmd/Shift-click, or a tap in selection mode, toggles the stack. */
+/**
+ * Ctrl/Cmd/Shift-click, or a tap in selection mode, toggles the stack. A
+ * plain tap selects just this stack (#216): it's the target for selection
+ * commands in the palette.
+ */
 function onTap(e: PointerEvent) {
   const modified = e.ctrlKey || e.metaKey || e.shiftKey;
-  if (!modified && !selection.mode) return;
-  // The stack's own buttons keep working in selection mode.
+  // The stack's own buttons keep working, and don't select it.
   if (!modified && (e.target as Element | null)?.closest('button')) return;
-  selection.toggle(props.stack.id);
+  if (modified || selection.mode) selection.toggle(props.stack.id);
+  else selection.selectOnly(props.stack.id);
+}
+
+/**
+ * Tab onto one of the stack's cards selects the stack, as a tap does. Mouse
+ * focus left by a click or a drag doesn't (`:focus-visible` is keyboard
+ * focus), and neither does Tab while several stacks are selected or in
+ * selection mode, so a selection being built isn't lost.
+ */
+function onFocusIn(e: FocusEvent) {
+  const target = e.target as Element | null;
+  if (!target?.matches('.card-image:focus-visible')) return;
+  if (selection.mode || selection.size > 1) return;
+  selection.selectOnly(props.stack.id);
 }
 
 // The leader's eased position drives the group, so the followers keep pace.

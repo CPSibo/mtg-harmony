@@ -128,3 +128,52 @@ describe('usePanAndZoom centreOn (#219)', () => {
     expect(pz.scale.value).toBe(1.5);
   });
 });
+
+describe('usePanAndZoom views (#218)', () => {
+  const screenCentre = () => ({
+    x: window.innerWidth / 2,
+    y: window.innerHeight / 2,
+  });
+
+  it('fits a rect: centred on screen, as big as fits', () => {
+    const pz = setup();
+    const rect = { x: 1000, y: 2000, width: 800, height: 400 };
+    pz.fitRect(rect);
+
+    const centre = boardPoint(pz, screenCentre().x, screenCentre().y);
+    expect(centre.x).toBeCloseTo(1400);
+    expect(centre.y).toBeCloseTo(2200);
+    // The rect fits inside the window with room to spare.
+    expect(rect.width * pz.scale.value).toBeLessThan(window.innerWidth);
+    expect(rect.height * pz.scale.value).toBeLessThan(window.innerHeight);
+  });
+
+  it("doesn't zoom in past the default scale on a small rect", () => {
+    const pz = setup();
+    pz.fitRect({ x: 2500, y: 2500, width: 10, height: 10 });
+    expect(pz.scale.value).toBe(1.5);
+  });
+
+  it('reports the new view when done', () => {
+    const ends: unknown[] = [];
+    const pz = effectScope().run(() =>
+      usePanAndZoom({
+        size: { width: 5000, height: 5000 },
+        onEnd: (p) => ends.push(p),
+      }),
+    )!;
+    pz.fitRect({ x: 1000, y: 1000, width: 500, height: 500 });
+    expect(ends).toHaveLength(1);
+  });
+
+  it('resets to the middle of the board at the default scale', () => {
+    const pz = setup();
+    pz.fitRect({ x: 0, y: 0, width: 4000, height: 4000 });
+    pz.resetView();
+
+    expect(pz.scale.value).toBe(1.5);
+    const centre = boardPoint(pz, screenCentre().x, screenCentre().y);
+    expect(centre.x).toBeCloseTo(2500);
+    expect(centre.y).toBeCloseTo(2500);
+  });
+});
