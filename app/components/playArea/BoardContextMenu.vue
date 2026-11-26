@@ -40,7 +40,21 @@ const smallScreen = useSmallScreen();
 // Big enough for a finger, as the selection bar's menus (#237).
 const bigMenus = computed(() => inputMode.isTouch || smallScreen.value);
 const menuSize = computed(() => (bigMenus.value ? 'xl' : 'md'));
-const menuUi = computed(() => (bigMenus.value ? { item: 'py-3' } : {}));
+/**
+ * The panel stands out from the board in both themes: Nuxt UI's default is
+ * the board's own `bg-default` with a faint ring. In light, a stronger ring
+ * and shadow set the white panel off; in dark, it's raised a step. Either
+ * way the hover highlight is `bg-accented`, as Nuxt UI's `bg-elevated/50`
+ * barely shows on the raised panel.
+ */
+const PANEL = {
+  content:
+    'dark:bg-elevated ring-accented shadow-xl shadow-black/25 dark:shadow-black/50',
+  item: 'data-highlighted:before:bg-accented data-[state=open]:before:bg-accented',
+};
+const menuUi = computed(() =>
+  bigMenus.value ? { ...PANEL, item: `${PANEL.item} py-3` } : PANEL,
+);
 
 const anchor = useTemplateRef('anchor');
 
