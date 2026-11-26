@@ -228,8 +228,7 @@ const tryAttach = (ev: Event) => {
   ev.stopPropagation();
   ev.preventDefault();
 
-  const moving = battlefield.cardToAttachId;
-  const play = animateMove(moving ? [moving] : []);
+  const play = animateMove(battlefield.cardsToAttachIds);
   battlefield.finishAttaching(stack.value);
   play(stack.value.primary.id, true);
 };

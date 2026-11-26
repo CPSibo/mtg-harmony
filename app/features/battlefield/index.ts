@@ -25,6 +25,7 @@ export { cardMatches, typeLineMatches, useBoardFind } from './find';
 export { useSelectByType } from './selectByType';
 export {
   ARRANGE_ROWS,
+  arrangeInGrid,
   arrangeInRows,
   arrangeRow,
   rowBand,

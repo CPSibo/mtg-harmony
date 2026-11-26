@@ -426,6 +426,53 @@ test('the selection bar acts on every selected card', async ({ page }) => {
   await expect(events.getByText('Copied 2 cards (card only)')).toBeVisible();
 });
 
+// #222: the selection bar's "More…" menu arranges and attaches several cards.
+test('the selection bar arranges and attaches several cards', async ({
+  page,
+}) => {
+  for (let i = 0; i < 3; i++) {
+    await page.getByRole('button', { name: 'On-deck' }).click();
+    await page.getByRole('button', { name: 'Next card' }).click();
+    await page.getByRole('button', { name: 'Cast to board' }).click();
+  }
+  const stacks = page.locator('.board-card-stack');
+  await expect(stacks).toHaveCount(3);
+  await expect(page.getByRole('button', { name: 'On-deck' })).toBeFocused();
+  const cards = stacks.locator('.primary-card').getByRole('img');
+  await cards.nth(0).click();
+  await cards.nth(1).click({ modifiers: ['Control'] });
+  const bar = page.locator('.selection-bar');
+  await expect(bar).toContainText('2 selected');
+  const more = async (name: string) => {
+    await bar.getByRole('button', { name: 'More' }).click();
+    await page.getByRole('menuitem', { name }).click();
+  };
+
+  await more('Arrange in a row');
+  await expect(async () => {
+    const [a, b] = await Promise.all([
+      cards.nth(0).boundingBox(),
+      cards.nth(1).boundingBox(),
+    ]);
+    expect(Math.round(a!.y)).toBe(Math.round(b!.y));
+    expect(Math.abs(a!.x - b!.x)).toBeGreaterThan(a!.width);
+  }).toPass();
+
+  await more('Attach all to…');
+  await cards.nth(2).click();
+  await expect(stacks).toHaveCount(1);
+  await expect(stacks.locator('.board-card')).toHaveCount(3);
+
+  await page.getByRole('button', { name: 'Open menu' }).click();
+  await page.getByRole('menuitem', { name: 'Event log' }).click();
+  await expect(
+    page
+      .getByRole('dialog', { name: 'Event log' })
+      .getByRole('list', { name: 'Events' })
+      .getByText('Attached 2 cards'),
+  ).toBeVisible();
+});
+
 // #78: every cast card used to land on the same spot.
 test('cards cast in a row sit side by side in view', async ({ page }) => {
   for (let i = 0; i < 3; i++) {

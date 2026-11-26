@@ -86,3 +86,30 @@ export function rowBand(row: ArrangeRow, view: Rect, cardHeight: number): Rect {
   }[row];
   return { x: view.x, y, width: view.width, height };
 }
+
+/**
+ * Top-left corners that lay `items` out in a grid of `columns` from
+ * `origin` (#222), in reading order (top to bottom, then left to right).
+ * Every cell is as big as the biggest item.
+ */
+export function arrangeInGrid(
+  items: readonly Omit<ArrangeItem, 'row'>[],
+  origin: Position,
+  columns: number,
+  gap: number,
+): Map<string, Position> {
+  const cellWidth = Math.max(0, ...items.map((i) => i.size.width)) + gap;
+  const cellHeight = Math.max(0, ...items.map((i) => i.size.height)) + gap;
+  const ordered = [...items].sort(
+    (a, b) => a.position.y - b.position.y || a.position.x - b.position.x,
+  );
+  return new Map(
+    ordered.map((item, i) => [
+      item.id,
+      {
+        x: origin.x + (i % columns) * cellWidth,
+        y: origin.y + Math.floor(i / columns) * cellHeight,
+      },
+    ]),
+  );
+}

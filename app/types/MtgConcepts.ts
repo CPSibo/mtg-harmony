@@ -57,6 +57,14 @@ export function modifierByKey(key: string): Modifier | undefined {
   return byKey.get(key);
 }
 
+/**
+ * Whether a modifier is a counter, which proliferate adds to (#222).
+ * Keywords aren't, and nor is Prepared, a state rather than a counter.
+ */
+export function isCounter(key: ModifierKey): boolean {
+  return byKey.get(key)!.symbol.includes('ms-counter-');
+}
+
 export function isModifierKey(value: unknown): value is ModifierKey {
   return typeof value === 'string' && byKey.has(value);
 }

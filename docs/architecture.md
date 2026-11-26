@@ -113,6 +113,7 @@ settings dialog binds to the stores directly.
 | `t-t`                 | Tap or untap the selection                                |
 | `c-c`                 | Counters and keywords on the selection                    |
 | `r-r`                 | Remove the selection (asks first)                         |
+| `p-p`                 | Proliferate the selection                                 |
 
 ### Commands that depend on the selection
 
