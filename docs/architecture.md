@@ -258,7 +258,9 @@ The themed background (#246, on by default) replaces the grid lines in the same 
   (`geometry.ts`, `motifs.ts`) and kept per motif. With 3 or more colours, `shuffleLayout` lays them over an
   8 × 8-cell block so no neighbours match, from a fixed seed; 2 make a checkerboard. The SVG is rendered into a
   PNG (`rasterUrl`) and that's what's set: panning moves the background every frame, and a browser may draw a large
-  SVG with clips and masks from scratch each time, where a bitmap is only a texture. It's rendered for the zoom
+  SVG with clips and masks from scratch each time, where a bitmap is only a texture. It's rasterised through
+  `createImageBitmap`, which Chrome does off the main thread (drawn onto a canvas, a 3200 px tile held it for
+  about 50 ms), and encoded from there. It's rendered for the zoom
   times the pixel ratio, rounded up to a power of √2 and capped at 4096 px, and rendered again once the zoom
   rests (300 ms) at a value that needs another step. The new level crossfades in over 300 ms: the old and new
   tiles sit in an isolated group, the old one blended with `plus-lighter`, so the semi-transparent lines neither
@@ -268,12 +270,14 @@ The themed background (#246, on by default) replaces the grid lines in the same 
   into a small PNG (one pixel per 16 board px) that the browser scales up, not drawn as SVG or canvas gradients:
   the browser dithers those, and once the image is scaled the noise smears into faint stripes.
   The **Colour wash** setting (`boardSpotlightsEnabled`, off by default) leaves them out.
-- **Themes**: each tile is built in a light and a dark version (`colors.ts`, `spotlights.ts`) and CSS picks one
-  under `.dark`.
+- **Themes**: the palettes come in a light and a dark version (`colors.ts`, `spotlights.ts`). Only the theme that
+  shows is built, which halves the work and the memory; Board watches `<html>` for Nuxt UI's `dark` class, and a
+  switch rebuilds the background like a settings change.
 
 `useBoardBackground` sets the tiles as CSS variables on a wrapper around the backdrop, not through `:style`: Vue
 re-sets every property of a bound style each render, and the board renders on every frame of a pan. Pan and zoom
-only change `--x`, `--y` and `--s`; the tiles are rebuilt only when the selection changes.
+only change `--x`, `--y` and `--s`, set once on a wrapper the layers inherit them from; the tiles are rebuilt only
+when the selection or theme changes.
 
 The backdrop fades out while a new background is built and its images decoded, then fades back in once they're
 set (`shown`), so a build never shows half-done; that covers the first load too. Spotlight images are blob URLs,

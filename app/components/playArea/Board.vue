@@ -15,46 +15,49 @@
          viewport-sized backgrounds that follow the pan and zoom, so they
          never repaint a 5000 px layer. The themed background's images are
          large, so `useBoardBackground` sets them on a wrapper these inherit
-         them from, outside the render a pan triggers. From the bottom: the
-         grid lines or spotlights, the lattice tiles, then the vignette. -->
+         them from, outside the render a pan triggers. The pan and zoom are
+         set once, on the wrapper inside it. From the bottom: the grid lines
+         or spotlights, the lattice tiles, then the vignette. -->
     <div
       ref="backgroundVars"
       class="contents"
     >
       <div
-        class="board-layer board-backdrop"
-        :class="{
-          'board-backdrop--themed': background.themed.value,
-          'board-layer--hidden': !background.shown.value,
-        }"
-        aria-hidden="true"
-        :style="backdropStyle"
-      />
-      <!-- While one level of detail replaces another, the new tile fades in
-           over the old as it fades out, in a group of their own. -->
-      <div
-        v-if="background.themed.value"
-        class="board-layer board-tiles"
-        :class="{ 'board-layer--hidden': !background.shown.value }"
-        aria-hidden="true"
+        class="contents"
         :style="backdropStyle"
       >
         <div
-          :key="background.fades.value"
-          class="board-tile"
-          :class="{ 'board-tile--in': background.fading.value }"
+          class="board-layer board-backdrop"
+          :class="{
+            'board-backdrop--themed': background.themed.value,
+            'board-layer--hidden': !background.shown.value,
+          }"
+          aria-hidden="true"
         />
+        <!-- While one level of detail replaces another, the new tile fades in
+           over the old as it fades out, in a group of their own. -->
         <div
-          v-if="background.fading.value"
-          :key="`old-${background.fades.value}`"
-          class="board-tile board-tile--old"
+          v-if="background.themed.value"
+          class="board-layer board-tiles"
+          :class="{ 'board-layer--hidden': !background.shown.value }"
+          aria-hidden="true"
+        >
+          <div
+            :key="background.fades.value"
+            class="board-tile"
+            :class="{ 'board-tile--in': background.fading.value }"
+          />
+          <div
+            v-if="background.fading.value"
+            :key="`old-${background.fades.value}`"
+            class="board-tile board-tile--old"
+          />
+        </div>
+        <div
+          class="board-layer board-vignette"
+          aria-hidden="true"
         />
       </div>
-      <div
-        class="board-layer board-vignette"
-        aria-hidden="true"
-        :style="backdropStyle"
-      />
     </div>
     <div
       ref="board"
@@ -136,6 +139,7 @@ import { storeToRefs } from 'pinia';
 import {
   useDevicePixelRatio,
   useEventListener,
+  useMutationObserver,
   useWindowSize,
 } from '@vueuse/core';
 import {
@@ -705,28 +709,38 @@ useEventListener(window, 'keydown', (e: KeyboardEvent) => {
 
 // CSS variables only: the backdrop's gradients scale and move in CSS. The
 // grid's finest level is the snap grid; coarser levels take over as you zoom
-// out (see `gridLevels`).
+// out (see `gridLevels`). The themed background has no grid lines.
 const backdropStyle = computed(() => {
   const s = scale.value;
+  const pan = `--x: ${position.value.x}px; --y: ${position.value.y}px; --s: ${s}`;
+  if (background.themed.value) return pan;
   const { minor, major, minorAlpha } = gridLevels(battlefield.snapScale, s);
-  return (
-    `--x: ${position.value.x}px; --y: ${position.value.y}px; --s: ${s}; ` +
-    `--minor: ${minor * s}px; --major: ${major * s}px; --minor-a: ${minorAlpha}`
-  );
+  return `${pan}; --minor: ${minor * s}px; --major: ${major * s}px; --minor-a: ${minorAlpha}`;
 });
 
 // The themed background's tiles and spotlights (#246), rebuilt only when its
 // settings change; it reads the pan and zoom from the variables above. The
 // backdrop fades out while they're built and back in once they're set. The
-// lattice is rendered for the zoom and pixel ratio once the zoom rests.
+// lattice is rendered for the zoom and pixel ratio once the zoom rests, in
+// the colours of the theme that shows: Nuxt UI puts `dark` on <html>.
 const backgroundVarsEl = useTemplateRef('backgroundVars');
 const { pixelRatio } = useDevicePixelRatio();
+const root = document.documentElement;
+const dark = ref(root.classList.contains('dark'));
+useMutationObserver(
+  root,
+  () => (dark.value = root.classList.contains('dark')),
+  { attributeFilter: ['class'] },
+);
 const background = useBoardBackground(
   () => backgroundVarsEl.value,
   () => settings.boardBackgroundEnabled,
   () => settings.boardColors,
   () => settings.boardSpotlightsEnabled,
-  { resolution: () => scale.value * pixelRatio.value },
+  {
+    resolution: () => scale.value * pixelRatio.value,
+    dark: () => dark.value,
+  },
 );
 
 // Screen pixels at the view's edges that don't count as in view when placing
@@ -1155,10 +1169,8 @@ const showCardModifiers = (card: BoardCard) => {
 }
 
 /* The themed background (#246) replaces the grid lines with spotlights under
-   the lattice tiles. Each image comes in a light and a dark version. */
+   the lattice tiles, built in the colours of the theme that shows. */
 .board-backdrop--themed {
-  --spots: var(--spots-light);
-
   background-image: var(--spots);
   background-size: calc(var(--spots-width) * var(--s))
     calc(var(--spots-height) * var(--s));
@@ -1166,9 +1178,6 @@ const showCardModifiers = (card: BoardCard) => {
 
 /* Isolated so the old tile adds onto the new one only, not what's beneath. */
 .board-tiles {
-  --tile: var(--tile-light);
-  --tile-old: var(--tile-old-light);
-
   isolation: isolate;
 }
 
@@ -1227,16 +1236,6 @@ const showCardModifiers = (card: BoardCard) => {
   .board-tile--old {
     animation: none;
   }
-}
-
-/* Scoped CSS only scopes the last part, so `.dark` matches <html>. */
-.dark .board-backdrop--themed {
-  --spots: var(--spots-dark);
-}
-
-.dark .board-tiles {
-  --tile: var(--tile-dark);
-  --tile-old: var(--tile-old-dark);
 }
 
 .board {

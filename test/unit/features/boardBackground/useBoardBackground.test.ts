@@ -9,7 +9,7 @@ import {
 } from 'vitest';
 import { effectScope, nextTick, ref } from 'vue';
 import type { BoardColor } from '~/features/boardBackground/colors';
-import { rasterUrl } from '~/features/boardBackground/images';
+import { bitmapUrl, rasterUrl } from '~/features/boardBackground/images';
 import { useBoardBackground } from '~/features/boardBackground/useBoardBackground';
 
 // happy-dom has no canvas or image decoding: stand in for both. Tiles are
@@ -35,6 +35,7 @@ beforeEach(() => {
 afterEach(() => {
   revoke.mockRestore();
   vi.mocked(rasterUrl).mockClear();
+  vi.mocked(bitmapUrl).mockClear();
 });
 
 /** Blob URLs made but neither shown on `el` nor revoked. */
@@ -52,12 +53,14 @@ function setup({
   lodFadeMs = 0,
   settleMs = 0,
   detail = 1,
+  night = false,
 } = {}) {
   const el = document.createElement('div');
   const enabled = ref(on);
   const colors = ref<BoardColor[]>(picked);
   const spotlights = ref(wash);
   const resolution = ref(detail);
+  const dark = ref(night);
   const scope = effectScope();
   const bg = scope.run(() =>
     useBoardBackground(
@@ -70,25 +73,47 @@ function setup({
         resolution: () => resolution.value,
         settleMs,
         lodFadeMs: () => lodFadeMs,
+        dark: () => dark.value,
       },
     ),
   )!;
-  return { el, enabled, colors, spotlights, resolution, scope, bg };
+  return { el, enabled, colors, spotlights, resolution, dark, scope, bg };
 }
 
-const spots = (el: HTMLElement) => el.style.getPropertyValue('--spots-dark');
-const tile = (el: HTMLElement) => el.style.getPropertyValue('--tile-dark');
+const spots = (el: HTMLElement) => el.style.getPropertyValue('--spots');
+const tile = (el: HTMLElement) => el.style.getPropertyValue('--tile');
 
 describe('useBoardBackground', () => {
   it('sets the tiles on the element, with no spotlights for a neutral board', async () => {
     const { el, bg, scope } = setup();
     await vi.waitFor(() => expect(bg.shown.value).toBe(true));
     expect(tile(el)).toMatch(/^url\("blob:tile-200-\d+"\)$/);
-    expect(el.style.getPropertyValue('--tile-light')).toMatch(/blob:tile-200-/);
     expect(el.style.getPropertyValue('--tile-size')).toBe('200px');
     expect(spots(el)).toBe('none');
     expect(bg.themed.value).toBe(true);
     scope.stop();
+  });
+
+  it('builds only the theme that shows', async () => {
+    const { bg, scope } = setup({ picked: ['W', 'U'] });
+    await vi.waitFor(() => expect(bg.shown.value).toBe(true));
+    expect(vi.mocked(rasterUrl)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(bitmapUrl)).toHaveBeenCalledTimes(1);
+    scope.stop();
+  });
+
+  it('rebuilds in the other theme’s colours when the theme changes', async () => {
+    const { el, dark, bg, scope } = setup({ picked: ['W', 'U'] });
+    await vi.waitFor(() => expect(bg.shown.value).toBe(true));
+    const light = tile(el);
+    const lightSvg = vi.mocked(rasterUrl).mock.calls[0]![0];
+    dark.value = true;
+    await vi.waitFor(() => expect(tile(el)).not.toBe(light));
+    expect(vi.mocked(rasterUrl).mock.calls.at(-1)![0]).not.toBe(lightSvg);
+    expect(revoke).toHaveBeenCalledWith(light.slice(5, -2));
+    scope.stop();
+    el.removeAttribute('style');
+    expect(leaked(el)).toEqual([]);
   });
 
   it('stays hidden until its images are ready', async () => {
@@ -169,8 +194,8 @@ describe('useBoardBackground', () => {
     const kept = created.filter(
       (url) => url.includes('tile') && !revoked.has(url),
     );
-    // Six levels, a tile for each theme.
-    expect(kept.length).toBeLessThanOrEqual(12);
+    // Six levels, a tile each.
+    expect(kept.length).toBeLessThanOrEqual(6);
     scope.stop();
   });
 
@@ -182,11 +207,10 @@ describe('useBoardBackground', () => {
     resolution.value = 1.2;
     await vi.waitFor(() => expect(bg.fading.value).toBe(true));
     // The old tile stays set for the overlay that fades it out.
-    expect(el.style.getPropertyValue('--tile-old-dark')).toBe(first);
-    expect(el.style.getPropertyValue('--tile-old-light')).not.toBe('');
+    expect(el.style.getPropertyValue('--tile-old')).toBe(first);
     await vi.waitFor(() => expect(tile(el)).toMatch(/blob:tile-283-/));
     await vi.waitFor(() => expect(bg.fading.value).toBe(false));
-    expect(el.style.getPropertyValue('--tile-old-dark')).toBe('');
+    expect(el.style.getPropertyValue('--tile-old')).toBe('');
     expect(bg.shown.value).toBe(true);
     scope.stop();
   });
@@ -205,7 +229,7 @@ describe('useBoardBackground', () => {
     await new Promise((done) => setTimeout(done, 30));
     expect(tile(el)).toBe(first);
     expect(bg.fading.value).toBe(false);
-    expect(el.style.getPropertyValue('--tile-old-dark')).toBe('');
+    expect(el.style.getPropertyValue('--tile-old')).toBe('');
     scope.stop();
   });
 
@@ -215,7 +239,7 @@ describe('useBoardBackground', () => {
     resolution.value = 1.2;
     await vi.waitFor(() => expect(tile(el)).toMatch(/blob:tile-283-/));
     expect(bg.fading.value).toBe(false);
-    expect(el.style.getPropertyValue('--tile-old-dark')).toBe('');
+    expect(el.style.getPropertyValue('--tile-old')).toBe('');
     scope.stop();
   });
 
@@ -253,7 +277,7 @@ describe('useBoardBackground', () => {
     expect(el.style.getPropertyValue('--tile-size')).toBe('200px');
     await vi.waitFor(() => expect(bg.shown.value).toBe(true));
     expect(el.style.getPropertyValue('--tile-size')).toBe('800px');
-    expect(el.style.getPropertyValue('--spots-light')).toMatch(/^url\(/);
+    expect(el.style.getPropertyValue('--spots')).toMatch(/^url\(/);
     scope.stop();
   });
 

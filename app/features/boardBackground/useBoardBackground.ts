@@ -2,12 +2,7 @@ import { refDebounced } from '@vueuse/core';
 import { computed, onScopeDispose, readonly, ref, watch, type Ref } from 'vue';
 import { DARK_PALETTE, LIGHT_PALETTE, type BoardColor } from './colors';
 import { bitmapUrl, preloadImages, rasterUrl } from './images';
-import {
-  DARK_SPOTLIGHTS,
-  LIGHT_SPOTLIGHTS,
-  spotlightTile,
-  type SpotlightPalette,
-} from './spotlights';
+import { DARK_SPOTLIGHTS, LIGHT_SPOTLIGHTS, spotlightTile } from './spotlights';
 import { buildTile, svgUrl } from './tile';
 
 /** How long the backdrop takes to fade out; `.board-layer--hidden` matches it. */
@@ -30,6 +25,8 @@ export interface BoardBackgroundOptions {
   settleMs?: number;
   /** How long to keep the old level of detail set while the new one fades in. */
   lodFadeMs?: () => number;
+  /** Whether the dark theme shows: only its images are built. */
+  dark?: () => boolean;
 }
 
 export interface BoardBackground {
@@ -38,8 +35,8 @@ export interface BoardBackground {
   /** False while the backdrop should be faded out: while loading or swapping. */
   shown: Readonly<Ref<boolean>>;
   /**
-   * True while one level of detail crossfades into the next: the old tiles are
-   * set as `--tile-old-dark` and `--tile-old-light` meanwhile.
+   * True while one level of detail crossfades into the next: the old tile is
+   * set as `--tile-old` meanwhile.
    */
   fading: Readonly<Ref<boolean>>;
   /** How many crossfades have started, to restart the fade's animation by. */
@@ -57,12 +54,14 @@ export function detailStep(resolution: number): number {
 
 /**
  * Sets the board background's CSS variables on `target` (#246): a lattice
- * tile and, unless `spotlights` is off, a spotlight bitmap for each theme.
- * Sizes are in board px: the CSS scales them by `--s` and moves them by `--x`
- * and `--y`, which the backdrop sets, so make `target` an element around it
- * (these don't resolve `--s` themselves). None while off.
+ * tile and, unless `spotlights` is off, a spotlight bitmap, in the colours of
+ * the theme that shows (`dark`). Sizes are in board px: the CSS scales them by
+ * `--s` and moves them by `--x` and `--y`, which the backdrop sets, so make
+ * `target` an element around it (these don't resolve `--s` themselves). None
+ * while off.
  *
- * Rebuilt only when the settings change, and never shown half-built: `shown`
+ * Rebuilt only when the settings or the theme change, and never shown
+ * half-built: `shown`
  * goes false, the backdrop fades out while the new images are built and
  * decoded, then they're swapped in and it fades back in. That covers the
  * build's time, and the first load too. The grid needs nothing built, so it
@@ -92,6 +91,7 @@ export function useBoardBackground(
     resolution = () => 1,
     settleMs = SETTLE_MS,
     lodFadeMs = defaultLodFade,
+    dark = () => false,
   }: BoardBackgroundOptions = {},
 ): BoardBackground {
   const themed = ref(false);
@@ -110,9 +110,12 @@ export function useBoardBackground(
   let tileRun = 0;
   let fadeRun = 0;
 
-  // The selection as a string, so an equal one doesn't rebuild; null while off.
+  // The selection as a string, so an equal one doesn't rebuild; null while
+  // off. See `build` for its parts.
   const key = computed(() =>
-    enabled() ? `${colors().join('')}${spotlights() ? '+' : ''}` : null,
+    enabled()
+      ? `${dark() ? 'D' : 'L'}${colors().join('')}${spotlights() ? '+' : ''}`
+      : null,
   );
   const step = computed(() => detailStep(resolution()));
   const detail = settleMs > 0 ? refDebounced(step, settleMs) : step;
@@ -159,7 +162,7 @@ export function useBoardBackground(
     let level = levels.get(at);
     const fresh = !level;
     if (!level) {
-      const rendered = await renderTiles(from, at);
+      const rendered = await renderTile(from, at);
       // Kept even if the zoom moved on, as long as it's for this lattice.
       if (from !== lattice) return revoke(rendered.blobs);
       level = rendered;
@@ -193,12 +196,7 @@ export function useBoardBackground(
       fading.value = false;
       return setVars({ ...withoutOld(vars), ...tiles });
     }
-    setVars({
-      ...vars,
-      '--tile-old-dark': vars['--tile-dark']!,
-      '--tile-old-light': vars['--tile-light']!,
-      ...tiles,
-    });
+    setVars({ ...vars, '--tile-old': vars['--tile']!, ...tiles });
     fades.value++;
     fading.value = true;
     await sleep(ms);
@@ -233,7 +231,7 @@ export function useBoardBackground(
   };
 }
 
-/** One level of detail: both themes' tiles, and the blob URLs behind them. */
+/** One level of detail: its tile, and the blob URLs behind it. */
 interface Level {
   vars: Record<string, string>;
   blobs: string[];
@@ -242,18 +240,16 @@ interface Level {
 const levelBlobs = (levels: Map<number, Level>) =>
   [...levels.values()].flatMap((level) => level.blobs);
 
-/** The variables without the old tiles a crossfade keeps. */
+/** The variables without the old tile a crossfade keeps. */
 function withoutOld(vars: Record<string, string>): Record<string, string> {
   const rest = { ...vars };
-  delete rest['--tile-old-dark'];
-  delete rest['--tile-old-light'];
+  delete rest['--tile-old'];
   return rest;
 }
 
-/** A selection's lattice tiles as SVG `url()` values, and the detail last rendered at. */
+/** A selection's lattice tile as an SVG `url()` value, and the detail last rendered at. */
 interface Lattice {
-  dark: string;
-  light: string;
+  svg: string;
   size: number;
   detail: number;
 }
@@ -270,57 +266,42 @@ async function empty(): Promise<Built> {
 }
 
 /**
- * Builds `selection`'s colours, and their spotlights if it ends in `+`, with
- * the lattice rendered at `detail`.
+ * Builds a selection with the lattice rendered at `detail`. The selection is
+ * `D` or `L` for the theme, then its colours, then `+` if they're washed with
+ * spotlights.
  */
 async function build(selection: string, detail: number): Promise<Built> {
+  const dark = selection.startsWith('D');
   const washed = selection.endsWith('+');
-  const picked = [...selection.replace('+', '')] as BoardColor[];
-  const tile = buildTile(picked, DARK_PALETTE);
-  const lattice: Lattice = {
-    dark: svgUrl(tile.svg),
-    light: svgUrl(buildTile(picked, LIGHT_PALETTE).svg),
-    size: tile.size,
-    detail,
-  };
-  const spotBlobs: string[] = [];
-  const spots = async (palette: SpotlightPalette) => {
-    const s = washed ? spotlightTile(picked, palette) : null;
-    const url = s && (await bitmapUrl(s.pixels, s.pixelWidth, s.pixelHeight));
-    if (url) spotBlobs.push(url);
-    return { url: url ? `url("${url}")` : 'none', s };
-  };
-  const dark = await spots(DARK_SPOTLIGHTS);
-  const light = await spots(LIGHT_SPOTLIGHTS);
-  const tiles = await renderTiles(lattice, detail);
+  const picked = [...selection.slice(1).replace('+', '')] as BoardColor[];
+  const tile = buildTile(picked, dark ? DARK_PALETTE : LIGHT_PALETTE);
+  const lattice: Lattice = { svg: svgUrl(tile.svg), size: tile.size, detail };
+  const s = washed
+    ? spotlightTile(picked, dark ? DARK_SPOTLIGHTS : LIGHT_SPOTLIGHTS)
+    : null;
+  const spots = s && (await bitmapUrl(s.pixels, s.pixelWidth, s.pixelHeight));
+  const tiles = await renderTile(lattice, detail);
   return {
     vars: {
       ...tiles.vars,
       '--tile-size': `${tile.size}px`,
-      '--spots-dark': dark.url,
-      '--spots-light': light.url,
-      '--spots-width': `${dark.s?.width ?? 0}px`,
-      '--spots-height': `${dark.s?.height ?? 0}px`,
+      '--spots': spots ? `url("${spots}")` : 'none',
+      '--spots-width': `${s?.width ?? 0}px`,
+      '--spots-height': `${s?.height ?? 0}px`,
     },
-    spotBlobs,
+    spotBlobs: spots ? [spots] : [],
     lattice,
     levels: new Map([[detail, tiles]]),
   };
 }
 
-/** Renders a lattice's tiles at `detail`, falling back to the SVG for any that fail. */
-async function renderTiles(lattice: Lattice, detail: number): Promise<Level> {
+/** Renders a lattice's tile at `detail`, falling back to the SVG if that fails. */
+async function renderTile(lattice: Lattice, detail: number): Promise<Level> {
   const px = Math.min(MAX_TILE_PX, Math.round(lattice.size * detail));
-  const blobs: string[] = [];
-  const render = async (svg: string) => {
-    const url = await rasterUrl(svg, px);
-    if (!url) return svg;
-    blobs.push(url);
-    return `url("${url}")`;
-  };
-  const dark = await render(lattice.dark);
-  const light = await render(lattice.light);
-  return { vars: { '--tile-dark': dark, '--tile-light': light }, blobs };
+  const url = await rasterUrl(lattice.svg, px);
+  return url
+    ? { vars: { '--tile': `url("${url}")` }, blobs: [url] }
+    : { vars: { '--tile': lattice.svg }, blobs: [] };
 }
 
 function revoke(...lists: string[][]) {

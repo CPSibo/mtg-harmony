@@ -38,7 +38,24 @@ export async function rasterUrl(
     ]);
     clearTimeout(timer);
     if (!decoded) return null;
-    return await draw(px, px, (ctx) => ctx.drawImage(img, 0, 0, px, px));
+    // Drawn straight onto a canvas, the SVG rasterises on the main thread when
+    // the canvas is encoded: about 50 ms at 3200 px, a dropped frame or three
+    // mid-zoom. Chrome rasterises it for createImageBitmap off the main thread,
+    // at the size asked for, so it stays as sharp.
+    const bitmap =
+      typeof createImageBitmap === 'function'
+        ? await createImageBitmap(img, {
+            resizeWidth: px,
+            resizeHeight: px,
+          }).catch(() => null)
+        : null;
+    if (!bitmap)
+      return await draw(px, px, (ctx) => ctx.drawImage(img, 0, 0, px, px));
+    try {
+      return await draw(px, px, (ctx) => ctx.drawImage(bitmap, 0, 0));
+    } finally {
+      bitmap.close();
+    }
   } catch {
     return null;
   }
