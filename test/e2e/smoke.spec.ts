@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { searchText } from './scryfall';
 
 const IMAGE_URL = 'https://cards.scryfall.io/border_crop/front/test-card.jpg';
 
@@ -28,7 +29,7 @@ async function mockScryfall(page: Page) {
     if (url.pathname === '/cards/random') return route.fulfill({ json: card });
     if (url.pathname === '/cards/search') {
       // Like Scryfall: 400 for an empty query, 404 for no matches.
-      const q = url.searchParams.get('q')?.trim().toLowerCase() ?? '';
+      const q = searchText(url);
       if (!q) return route.fulfill({ status: 400, json: { object: 'error' } });
       if (!card.name.toLowerCase().includes(q))
         return route.fulfill({ status: 404, json: { object: 'error' } });
@@ -449,7 +450,44 @@ test('Add Card prompts before searching and says when nothing matches', async ({
 
   await addCard.getByRole('textbox').fill('nonexistent');
   await expect(addCard.getByText('No cards found.')).toBeVisible();
-  expect(searches).toEqual(['nonexistent']);
+  expect(searches).toEqual(['(nonexistent) not:extras']);
+});
+
+// #217: Regular is on by default; Tokens and Extras widen the search.
+test('Add Card filters by regular cards, tokens and extras', async ({
+  page,
+}) => {
+  const searches: string[] = [];
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (url.pathname === '/cards/search')
+      searches.push(url.searchParams.get('q') ?? '');
+  });
+
+  await page.keyboard.press('/');
+  await page.getByRole('option', { name: /Add card/i }).click();
+  const addCard = page.getByRole('dialog', { name: 'Add card' });
+  const regular = addCard.getByRole('button', { name: 'Regular' });
+  const tokens = addCard.getByRole('button', { name: 'Tokens' });
+
+  await expect(regular).toHaveAttribute('aria-pressed', 'true');
+  await expect(tokens).toHaveAttribute('aria-pressed', 'false');
+
+  await addCard.getByRole('textbox').fill('goblin');
+  await expect.poll(() => searches.at(-1)).toBe('(goblin) not:extras');
+
+  await tokens.click();
+  await expect
+    .poll(() => searches.at(-1))
+    .toBe('(goblin) include:extras (not:extras or t:token)');
+
+  await regular.click();
+  await expect
+    .poll(() => searches.at(-1))
+    .toBe('(goblin) include:extras t:token');
+
+  await tokens.click();
+  await expect(addCard.getByText('Pick at least one kind')).toBeVisible();
 });
 
 // #59: installable from the home screen, so iOS edge swipes can't navigate away.
