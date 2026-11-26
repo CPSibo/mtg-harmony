@@ -1,6 +1,7 @@
 export interface WidgetCommand {
   id: string;
-  label: string;
+  /** A function for a label that follows the state, like Tap or Untap (#235). */
+  label: string | (() => string);
   description?: string;
   icon: string;
   kbds?: string;
@@ -26,6 +27,16 @@ export interface WidgetCommand {
    * choices, `execute` isn't used.
    */
   choices?: WidgetCommandChoice[];
+  /**
+   * Running a command leaves selection mode unless it's about the selection
+   * (#235): a `selection` command, or one marked here, such as Select all.
+   */
+  keepsSelectionMode?: boolean;
+  /**
+   * Checked before the shortcut runs, but not for the palette: for keys
+   * that mean something else where focus is, like Space on a button.
+   */
+  shortcutGuard?: () => boolean;
   execute: () => void;
 }
 
@@ -39,5 +50,12 @@ export interface WidgetDefinition {
   id: string;
   label: string;
   icon: string;
+  /** Where its group goes in the palette, lowest first; missing goes last. */
+  order?: number;
+  /**
+   * Hidden from the palette while something is selected (#235), as it isn't
+   * about the selection. Its shortcuts still work.
+   */
+  hideWithSelection?: boolean;
   commands: WidgetCommand[];
 }

@@ -201,7 +201,11 @@ import {
   useGraveyardAnimation,
 } from '~/features/castAnimation';
 import { useDragToCast } from '~/composables/useDragToCast';
-import { cardImage, useBattlefieldStore } from '~/features/battlefield';
+import {
+  cardImage,
+  useBattlefieldStore,
+  useSelectionStore,
+} from '~/features/battlefield';
 import { OFFLINE_MESSAGE, useDiscordFetcherStore } from '..';
 import { useWidget } from '~/features/widgets';
 import { keepFocusElsewhere } from '~/utils/keepFocusElsewhere';
@@ -229,6 +233,12 @@ const landscape = computed(() => !!card.value && isLandscape(card.value));
 // The On-deck card blown up to fill the screen, for reading it (#176).
 const enlarged = ref(false);
 watch(card, () => (enlarged.value = false));
+
+// Opening On-deck is outside selection mode (#235).
+const selection = useSelectionStore();
+watch(drawerIsOpen, (open) => {
+  if (open) selection.setMode(false);
+});
 
 const display = useTemplateRef<HTMLDivElement>('display');
 const animateCast = useCastAnimation();
@@ -284,6 +294,8 @@ useWidget({
   id: 'onDeck',
   label: 'On-deck',
   icon: 'i-lucide-scan-search',
+  order: 20,
+  hideWithSelection: true,
   commands: [
     {
       id: 'onDeck.toggle',
@@ -297,6 +309,8 @@ useWidget({
       label: 'Next card',
       icon: 'i-lucide-arrow-right',
       kbds: 'o-n',
+      // Each shows only while its button in the panel works (#235).
+      enabled: () => !cantFetch.value && !loading.value,
       execute: () => {
         if (!cantFetch.value && !loading.value) void goNext();
       },
@@ -306,6 +320,7 @@ useWidget({
       label: 'Previous card',
       icon: 'i-lucide-arrow-left',
       kbds: 'o-p',
+      enabled: () => canGoPrevious.value,
       execute: () => {
         if (canGoPrevious.value) discordFetchStore.prev();
       },
@@ -315,6 +330,7 @@ useWidget({
       label: 'Cast On-deck card to board',
       icon: 'i-lucide-user-plus',
       kbds: 'o-c',
+      enabled: () => !!card.value?.id,
       execute: () => cast(),
     },
     {
@@ -322,12 +338,14 @@ useWidget({
       label: 'Cast On-deck card to graveyard',
       icon: 'i-lucide-skull',
       kbds: 'o-g',
+      enabled: () => !!card.value?.id,
       execute: castToGraveyard,
     },
     {
       id: 'onDeck.clear',
       label: 'Clear On-deck card',
       icon: 'i-lucide-x',
+      enabled: () => !!card.value?.id,
       execute: () => {
         if (card.value) discordFetchStore.clearCard();
       },

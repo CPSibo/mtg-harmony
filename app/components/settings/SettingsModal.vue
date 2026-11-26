@@ -87,6 +87,13 @@
         </UFormField>
 
         <UFormField
+          label="Space, Space to arrange"
+          description="Press Space twice to Smart arrange (the selection, or every card) and then zoom to fit"
+        >
+          <USwitch v-model="arrangeShortcutEnabled" />
+        </UFormField>
+
+        <UFormField
           label="Card outline"
           description="Show an outline around cards on the board, which lights up on hover"
         >
@@ -276,6 +283,7 @@ const {
   minQueuedCardCount,
   preloadImagesEnabled,
   arrangeNewCards,
+  arrangeShortcutEnabled,
 } = storeToRefs(settingsStore);
 
 const flightItems = [

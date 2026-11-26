@@ -1,14 +1,20 @@
 <template>
   <UButton
     :variant="selection.mode ? 'solid' : 'subtle'"
-    color="primary"
+    :color="selection.mode ? 'warning' : 'primary'"
     size="xl"
     icon="i-lucide-square-dashed-mouse-pointer"
+    :class="{
+      'ring-4 ring-warning/40 shadow-lg shadow-warning/30 px-5': selection.mode,
+    }"
     :title="title"
     :aria-label="title"
     :aria-pressed="selection.mode"
     @click="selection.setMode(!selection.mode)"
-  />
+  >
+    <!-- Hard to miss while on (#235): another colour, and a word. -->
+    <span v-if="selection.mode">Selecting</span>
+  </UButton>
 </template>
 
 <script setup lang="ts">

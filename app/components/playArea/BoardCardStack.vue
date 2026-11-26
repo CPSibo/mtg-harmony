@@ -199,7 +199,12 @@ const {
       battlefield.setStackPosition(props.stack, position);
       selection.moveGroup(offsetFromStart(position));
       selection.endGroupDrag();
-    } else onSingleDrop(position, e);
+    } else {
+      // Moving a stack that isn't selected is outside selection mode (#235).
+      if (movedTooFar && !selection.has(props.stack.id))
+        selection.setMode(false);
+      onSingleDrop(position, e);
+    }
     if (!movedTooFar && !longPressed && e.type === 'pointerup') onTap(e);
   },
   // This stack left the board mid-drag (#160). The watch on `myIsDragging`

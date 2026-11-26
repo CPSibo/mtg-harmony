@@ -185,11 +185,13 @@ const {
   smoothing: () => settings.pointerSmoothing,
 });
 
-// Smart arrange (#223): the selection, or every stack with none selected.
+const anyStacks = () => battlefield.stacks.length > 0;
+
 useWidget({
   id: 'arrange',
   label: 'Arrange',
   icon: 'i-lucide-layout-grid',
+  order: 60,
   commands: [
     {
       id: 'arrange.smart',
@@ -198,15 +200,39 @@ useWidget({
         'Creatures in front, lands at the back. The selection, or all cards',
       icon: 'i-lucide-layout-grid',
       kbds: 'a-a',
-      execute: () =>
-        battlefield.arrangeStacks(
-          selection.size
-            ? battlefield.stacks.filter((s) => selection.has(s.id))
-            : battlefield.stacks,
-        ),
+      enabled: anyStacks,
+      execute: smartArrange,
+    },
+    {
+      id: 'arrange.smartAndFit',
+      label: 'Smart arrange and zoom to fit',
+      description: 'Then shows every card',
+      icon: 'i-lucide-scan',
+      kbds: 'space-space',
+      enabled: () => anyStacks() && settings.arrangeShortcutEnabled,
+      // Space also works a focused button or card; leave it to them.
+      shortcutGuard: () => !takesSpace(document.activeElement),
+      execute: () => {
+        smartArrange();
+        zoomToStacks();
+      },
     },
   ],
 });
+
+/** Smart arrange (#223): the selection, or every stack with none selected. */
+function smartArrange() {
+  battlefield.arrangeStacks(
+    selection.size ? selection.stacks() : battlefield.stacks,
+  );
+}
+
+/** Whether Space does something of its own on `el`, like pressing a button. */
+function takesSpace(el: Element | null) {
+  return !!el?.closest(
+    'button, a[href], input, textarea, select, [contenteditable], [role="button"], [tabindex]:not([tabindex="-1"])',
+  );
+}
 
 // ─── Find on board (#219) ─────────────────────────────────────────────────────
 
@@ -226,6 +252,8 @@ useWidget({
   id: 'find',
   label: 'Find',
   icon: 'i-lucide-search',
+  order: 50,
+  hideWithSelection: true,
   commands: [
     {
       id: 'find.open',
@@ -233,6 +261,7 @@ useWidget({
       description: 'By name, type or text',
       icon: 'i-lucide-search',
       kbds: 'f-b',
+      enabled: anyStacks,
       execute: () => {
         selectByType.done();
         find.open();
@@ -244,19 +273,20 @@ useWidget({
 // ─── Building a selection (#220) ──────────────────────────────────────────────
 
 const selectByType = useSelectByType();
-const anyStacks = () => battlefield.stacks.length > 0;
 
 useWidget({
   id: 'select',
   label: 'Select',
   icon: 'i-lucide-square-dashed-mouse-pointer',
+  order: 40,
   commands: [
     {
       id: 'select.all',
       label: 'Select all',
       icon: 'i-lucide-square-check-big',
       kbds: 's-a',
-      enabled: anyStacks,
+      keepsSelectionMode: true,
+      enabled: () => battlefield.stacks.length > selection.size,
       execute: () => selection.selectAll(),
     },
     {
@@ -264,7 +294,8 @@ useWidget({
       label: 'Invert selection',
       icon: 'i-lucide-flip-horizontal-2',
       kbds: 's-i',
-      enabled: anyStacks,
+      keepsSelectionMode: true,
+      enabled: () => selection.size > 0,
       execute: () => selection.invert(),
     },
     {
@@ -272,6 +303,7 @@ useWidget({
       label: 'Select tapped',
       icon: 'i-lucide-rotate-cw-square',
       kbds: 's-t',
+      keepsSelectionMode: true,
       enabled: () => battlefield.stacks.some((s) => s.primary.tapped),
       execute: () => selection.selectTapped(true),
     },
@@ -280,6 +312,7 @@ useWidget({
       label: 'Select untapped',
       icon: 'i-lucide-square',
       kbds: 's-u',
+      keepsSelectionMode: true,
       enabled: () => battlefield.stacks.some((s) => !s.primary.tapped),
       execute: () => selection.selectTapped(false),
     },
@@ -289,6 +322,7 @@ useWidget({
       description: 'Goblin, creature, artifact…',
       icon: 'i-lucide-text-search',
       kbds: 's-y',
+      keepsSelectionMode: true,
       enabled: anyStacks,
       execute: () => {
         find.close();
@@ -316,12 +350,14 @@ useWidget({
   id: 'board',
   label: 'Board',
   icon: 'i-lucide-layout-dashboard',
+  order: 30,
   commands: [
     {
       id: 'board.untapAll',
       label: 'Untap all',
       icon: 'i-lucide-rotate-ccw',
       kbds: 'u-u',
+      enabled: () => battlefield.anyTapped,
       execute: () => battlefield.untapAll(),
     },
     {
@@ -329,15 +365,16 @@ useWidget({
       label: 'Zoom to fit all cards',
       icon: 'i-lucide-scan',
       kbds: 'z-f',
+      enabled: anyStacks,
       execute: () => zoomToStacks(),
     },
     {
       id: 'board.zoomToSelection',
       label: 'Zoom to selection',
-      description: 'All cards when nothing is selected',
       icon: 'i-lucide-zoom-in',
       kbds: 'z-s',
-      execute: () => zoomToStacks(selection.size ? selection.ids() : undefined),
+      enabled: () => selection.size > 0,
+      execute: () => zoomToStacks(selection.ids()),
     },
     {
       id: 'board.resetView',
@@ -405,6 +442,12 @@ const cursor = computed(() => {
 });
 
 function onPointerDown(e: PointerEvent) {
+  // The board cancels presses to pan, so focus would stay on whatever had it,
+  // say On-deck's button, and Space would press it instead of reaching the
+  // board's shortcuts (#235). A press on the board lets go of it.
+  const focused = document.activeElement;
+  if (focused instanceof HTMLElement && !wrapperEl.value?.contains(focused))
+    focused.blur();
   if (e.button !== 0 || battlefield.isAttaching || press || box.active) return;
   const target = e.target as Element | null;
   if (target?.closest('[data-stack-id], [data-drag-menu-option]')) return;
@@ -586,6 +629,8 @@ const windowCard = ref<BoardCard | undefined>();
 const cardDetailsIsOpen = ref(false);
 
 const showCardDetails = (card: BoardCard) => {
+  // Opening a card is outside selection mode (#235).
+  selection.setMode(false);
   // A double tap selects the stack on its first tap. Opening the card is an
   // action of its own, so it leaves nothing selected (#216).
   const [only] = selection.stacks();
@@ -651,8 +696,8 @@ useWidget({
     },
     {
       id: 'selection.tap',
-      label: 'Tap or untap',
-      description: 'Taps them all if any is untapped, else untaps them',
+      // Tap if any is untapped, else Untap (#235).
+      label: () => (selectedCards().some((c) => !c.tapped) ? 'Tap' : 'Untap'),
       icon: 'i-lucide-rotate-cw-square',
       kbds: 't-t',
       scope: 'selection',
@@ -819,6 +864,7 @@ useWidget({
 });
 
 const showCardModifiers = (card: BoardCard) => {
+  selection.setMode(false);
   windowCard.value = card;
   badgesHeld.value = card;
   cardDetailsIsOpen.value = false;

@@ -93,27 +93,28 @@ with `useWidget(definition)`, which does steps 2 and the unregister for it. The 
 Widgets with commands: Add Card, the event log, Board, Find, Select, Arrange, On-deck and App. Widgets have no settings of their own: the
 settings dialog binds to the stores directly.
 
-| Shortcut              | Command                                                   |
-| --------------------- | --------------------------------------------------------- |
-| `/`                   | Open the palette                                          |
-| `b-a`                 | Add card                                                  |
-| `e-l`                 | Event log                                                 |
-| `u-u`                 | Untap all                                                 |
-| `z-f` / `z-s` / `z-r` | Zoom to fit all cards / to the selection / reset the view |
-| `s-m`                 | Selection mode on or off                                  |
-| `o-o`                 | Show or hide On-deck                                      |
-| `o-n` / `o-p`         | Next / previous On-deck card                              |
-| `o-c` / `o-g`         | Cast the On-deck card to the board / to the graveyard     |
-| `f-b`                 | Find on board                                             |
-| `a-a`                 | Smart arrange the selection, or every card                |
-| `s-a` / `s-i`         | Select all / invert the selection                         |
-| `s-t` / `s-u`         | Select tapped / untapped                                  |
-| `s-n`                 | Select every card with the same name as the selection     |
-| `s-y`                 | Select by type                                            |
-| `t-t`                 | Tap or untap the selection                                |
-| `c-c`                 | Counters and keywords on the selection                    |
-| `r-r`                 | Remove the selection (asks first)                         |
-| `p-p`                 | Proliferate the selection                                 |
+| Shortcut              | Command                                                    |
+| --------------------- | ---------------------------------------------------------- |
+| `/`                   | Open the palette                                           |
+| `b-a`                 | Add card                                                   |
+| `e-l`                 | Event log                                                  |
+| `u-u`                 | Untap all                                                  |
+| `z-f` / `z-s` / `z-r` | Zoom to fit all cards / to the selection / reset the view  |
+| `s-m`                 | Selection mode on or off                                   |
+| `o-o`                 | Show or hide On-deck                                       |
+| `o-n` / `o-p`         | Next / previous On-deck card                               |
+| `o-c` / `o-g`         | Cast the On-deck card to the board / to the graveyard      |
+| `f-b`                 | Find on board                                              |
+| `a-a`                 | Smart arrange the selection, or every card                 |
+| `Space Space`         | Smart arrange, then zoom to fit (a setting, on by default) |
+| `s-a` / `s-i`         | Select all / invert the selection                          |
+| `s-t` / `s-u`         | Select tapped / untapped                                   |
+| `s-n`                 | Select every card with the same name as the selection      |
+| `s-y`                 | Select by type                                             |
+| `t-t`                 | Tap or untap the selection                                 |
+| `c-c`                 | Counters and keywords on the selection                     |
+| `r-r`                 | Remove the selection (asks first)                          |
+| `p-p`                 | Proliferate the selection                                  |
 
 ### Commands that depend on the selection
 
@@ -125,6 +126,24 @@ A command may have:
   one **Selection** group at the top, whichever widget they come from.
 - `bar: 'button' | 'menu'`: where the selection bar shows it, as a button or in its "More…" menu. Without it, a
   selection command is in the palette only.
+- `keepsSelectionMode`: running it leaves selection mode on. Any other command that isn't `scope: 'selection'`
+  turns selection mode off when it runs, from the palette or its shortcut (#235). The commands that build a
+  selection (Select all, tapped, by type…) keep it.
+- `shortcutGuard()`: a check made only for the shortcut. `Space Space` uses it to stay out of the way of a focused
+  button or field, which Space presses. The board blurs a focused element outside it on a press, so a click on the
+  board is enough to use it.
+- `label` may be a function, for a label that follows the state (Tap or Untap).
+
+A widget may have:
+
+- `order`: where its group sits in the palette, lowest first: Add card, On-deck, Board, Select, Find, Arrange,
+  Event log, App. Groups without one come last, in the order they registered.
+- `hideWithSelection`: its group leaves the palette while anything is selected (Add card, On-deck, Find, Event log
+  and App). Its shortcuts still work.
+
+Selection mode also turns off when On-deck opens, when a stack's own actions are used, and when a stack outside the
+selection is dragged. The top bar's tap button taps or untaps the selection while there is one, and untaps every
+card otherwise.
 
 There's no separate "active card": a plain tap or click on a stack, or Tab onto its card, selects just that stack,
 and selection commands act on it. A drag, a double tap (which opens the card), and mouse focus left over from a click

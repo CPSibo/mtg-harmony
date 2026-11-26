@@ -8,6 +8,8 @@ export function createAddCardWidget(
     id: 'addCard',
     label: 'Add Card',
     icon: 'i-lucide-plus',
+    order: 10,
+    hideWithSelection: true,
 
     commands: [
       {
