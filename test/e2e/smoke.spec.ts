@@ -196,6 +196,91 @@ test('the same card cast twice gives two separate cards', async ({ page }) => {
   await expect(boardCards).toHaveCount(2);
 });
 
+// #216: a plain tap selects one stack, the target of palette commands.
+test.describe('selecting by tap', () => {
+  test.beforeEach(async ({ page }) => {
+    for (let i = 0; i < 2; i++) {
+      await page.getByRole('button', { name: 'On-deck' }).click();
+      await page.getByRole('button', { name: 'Next card' }).click();
+      await page.getByRole('button', { name: 'Cast to board' }).click();
+    }
+    await expect(page.locator('.board-card-stack')).toHaveCount(2);
+    // On-deck hands focus back to its button once it has finished closing,
+    // which would close a palette opened before then.
+    await expect(page.getByRole('button', { name: 'On-deck' })).toBeFocused();
+  });
+
+  const stacks = (page: Page) => page.locator('.board-card-stack');
+  const selected = (page: Page) => page.locator('.board-card-stack.selected');
+  const cardIn = (stack: Locator) => stack.locator('.primary-card [role=img]');
+
+  test('a click selects one stack, without the selection bar', async ({
+    page,
+  }) => {
+    await cardIn(stacks(page).first()).click();
+    await expect(selected(page)).toHaveCount(1);
+    await expect(page.locator('.selection-bar')).toBeHidden();
+
+    // Another click moves the selection; a modified click adds to it.
+    await cardIn(stacks(page).nth(1)).click();
+    await expect(selected(page)).toHaveCount(1);
+    await cardIn(stacks(page).first()).click({ modifiers: ['Control'] });
+    await expect(selected(page)).toHaveCount(2);
+    await expect(page.locator('.selection-bar')).toContainText('2 selected');
+
+    // A click on the empty board clears it.
+    await page.mouse.click(40, 700);
+    await expect(selected(page)).toHaveCount(0);
+  });
+
+  test('dragging a stack does not select it', async ({ page }) => {
+    const box = (await cardIn(stacks(page).first()).boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 200, box.y + 100, { steps: 5 });
+    await page.mouse.up();
+    await expect(selected(page)).toHaveCount(0);
+  });
+
+  test('a double click opens the card and leaves nothing selected', async ({
+    page,
+  }) => {
+    await cardIn(stacks(page).first()).dblclick();
+    await expect(
+      page.getByRole('dialog', { name: 'Card details' }),
+    ).toBeVisible();
+    await expect(selected(page)).toHaveCount(0);
+  });
+
+  test('Tab onto a card selects its stack', async ({ page }) => {
+    await page.keyboard.press('Tab');
+    await expect(async () => {
+      await page.keyboard.press('Tab');
+      await expect(page.locator('.card-image:focus')).toHaveCount(1);
+    }).toPass();
+    await expect(selected(page)).toHaveCount(1);
+  });
+
+  test('the palette acts on the selected stack', async ({ page }) => {
+    // Nothing selected: no Selection group.
+    await page.keyboard.press('/');
+    const addCard = page.getByRole('option', { name: /Add card/i });
+    await expect(addCard).toBeVisible();
+    await expect(
+      page.getByRole('option', { name: 'Clear selection' }),
+    ).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(addCard).toBeHidden();
+
+    await cardIn(stacks(page).first()).click();
+    await page.keyboard.press('/');
+    await page.getByRole('option', { name: 'Show card details' }).click();
+    await expect(
+      page.getByRole('dialog', { name: 'Card details' }),
+    ).toBeVisible();
+  });
+});
+
 // #78: every cast card used to land on the same spot.
 test('cards cast in a row sit side by side in view', async ({ page }) => {
   for (let i = 0; i < 3; i++) {

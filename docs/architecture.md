@@ -105,6 +105,22 @@ settings dialog binds to the stores directly.
 | `o-n` / `o-p`         | Next / previous On-deck card                              |
 | `o-c` / `o-g`         | Cast the On-deck card to the board / to the graveyard     |
 
+### Commands that depend on the selection
+
+A command may have:
+
+- `enabled()`: whether it applies now. The palette hides it, and its shortcut does nothing, while this is false. It's
+  read reactively, so it should read reactive state (usually the selection store).
+- `scope: 'selection'`: it acts on the selected stacks (`useSelectionStore().stacks()`). The palette lists these in
+  one **Selection** group at the top, whichever widget they come from.
+- `bar: 'button' | 'menu'`: where the selection bar shows it, as a button or in its "More…" menu. Without it, a
+  selection command is in the palette only.
+
+There's no separate "active card": a plain tap or click on a stack, or Tab onto its card, selects just that stack,
+and selection commands act on it. A drag, a double tap (which opens the card), and mouse focus left over from a click
+don't select. The selection bar stays hidden for a single selected stack outside selection mode, so a tap doesn't
+bring it up. Board selection commands (Show card details, Clear selection) register from `Board.vue`.
+
 ## Stores and persistence
 
 Each persisted store follows the same pattern:

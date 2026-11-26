@@ -24,6 +24,11 @@ export const useSelectionStore = defineStore('selection', () => {
   const size = computed(() => idList.value.length);
 
   const ids = () => idList.value;
+  /** The selected stacks, in board order: what selection commands act on. */
+  const stacks = () => {
+    const chosen = new Set(idList.value);
+    return battlefield.stacks.filter((s) => chosen.has(s.id));
+  };
   const has = (id: string) => selected.value.has(id);
 
   function replace(next: Set<string>) {
@@ -39,6 +44,12 @@ export const useSelectionStore = defineStore('selection', () => {
     if (selected.value.has(id)) return;
     selected.value.add(id);
     triggerRef(selected);
+  }
+
+  /** Selects just this stack (a plain tap or Tab, #216). */
+  function selectOnly(id: string) {
+    if (selected.value.size === 1 && selected.value.has(id)) return;
+    replace(new Set([id]));
   }
 
   function clear() {
@@ -113,7 +124,9 @@ export const useSelectionStore = defineStore('selection', () => {
     mode,
     size,
     ids,
+    stacks,
     has,
+    selectOnly,
     toggle,
     add,
     clear,
