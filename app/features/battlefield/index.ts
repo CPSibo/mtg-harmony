@@ -15,5 +15,12 @@ export {
   type DragMenuHit,
 } from './dragMenu';
 export { BOARD_SIZE, findFreeSpot, overlaps, type Rect } from './placement';
+export {
+  ARRANGE_ROWS,
+  arrangeInRows,
+  arrangeRow,
+  rowBand,
+  type ArrangeRow,
+} from './arrange';
 export { useSelectionStore } from './selection';
 export { useBattlefieldStore, type AttachMode, type CopyMode } from './store';

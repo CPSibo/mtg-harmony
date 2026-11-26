@@ -80,6 +80,13 @@
         </UFormField>
 
         <UFormField
+          label="Arrange new cards"
+          description="Put cards cast or added in their row of the view: creatures at the top, lands at the bottom, everything else between"
+        >
+          <USwitch v-model="arrangeNewCards" />
+        </UFormField>
+
+        <UFormField
           label="Card outline"
           description="Show an outline around cards on the board, which lights up on hover"
         >
@@ -268,6 +275,7 @@ const {
   fetchCardCount,
   minQueuedCardCount,
   preloadImagesEnabled,
+  arrangeNewCards,
 } = storeToRefs(settingsStore);
 
 const flightItems = [

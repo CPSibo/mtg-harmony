@@ -15,7 +15,9 @@ import {
   readSavedCard,
 } from './boardCard';
 import { findMeldPartner } from './meld';
-import { findFreeSpot, type Rect } from './placement';
+import { arrangeInRows, arrangeRow, rowBand } from './arrange';
+import { BOARD_SIZE, findFreeSpot, type Rect } from './placement';
+import { useSettingsStore } from '~/stores/settings';
 
 /** How much of a card `copyCard` copies. */
 export type CopyMode = 'card' | 'counters' | 'stack';
@@ -72,6 +74,8 @@ function readSavedStack(value: unknown): BoardCardStack | null {
  * Used for a stack the board hasn't measured yet.
  */
 const NEW_STACK_SIZE: ElementSize = { width: 210, height: 250 };
+/** Space between arranged stacks, in board pixels (#223). */
+const ARRANGE_GAP = 16;
 
 /**
  * The action buttons' column left of a stack's card, in board pixels. Mirrors
@@ -192,7 +196,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
    * middle (`findFreeSpot`). Before the board reports a view, the saved
    * centre.
    */
-  function newStackPosition(): Position {
+  function newStackPosition(card?: BoardCard): Position {
     const shown = view;
     if (!shown) return { ...center.value };
 
@@ -200,7 +204,52 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
       ...s.position,
       ...stackSize(s),
     }));
-    return findFreeSpot(shown, occupied, NEW_STACK_SIZE, STACK_ACTIONS_WIDTH);
+    // With arranging on, only the card's row of the view (#223).
+    const area =
+      card && useSettingsStore().arrangeNewCards
+        ? rowBand(
+            arrangeRow(card),
+            shown,
+            NEW_STACK_SIZE.height + ARRANGE_GAP * 2,
+          )
+        : shown;
+    return findFreeSpot(area, occupied, NEW_STACK_SIZE, STACK_ACTIONS_WIDTH);
+  }
+
+  /**
+   * Lays `targets` out in rows inside the view (#223): creatures, then
+   * everything else, then lands. Each target's position changes once.
+   */
+  function arrangeStacks(targets: readonly BoardCardStack[]) {
+    const shown = view ?? {
+      x: center.value.x - 1000,
+      y: center.value.y - 600,
+      width: 2000,
+      height: 1200,
+    };
+    const at = arrangeInRows(
+      targets.map((s) => ({
+        id: s.id,
+        row: arrangeRow(s.primary),
+        size: stackSize(s),
+        position: s.position,
+      })),
+      {
+        x: shown.x + ARRANGE_GAP,
+        y: shown.y + ARRANGE_GAP,
+        width: shown.width - ARRANGE_GAP * 2,
+      },
+      ARRANGE_GAP,
+    );
+    for (const stack of stacks.value) {
+      const p = at.get(stack.id);
+      if (!p) continue;
+      const { width, height } = stackSize(stack);
+      stack.position = {
+        x: Math.min(Math.max(p.x, 0), BOARD_SIZE.width - width),
+        y: Math.min(Math.max(p.y, 0), BOARD_SIZE.height - height),
+      };
+    }
   }
 
   const snapScale = ref<number>(defaults.snapScale);
@@ -241,8 +290,9 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
             (NEW_STACK_SIZE.width - STACK_ACTIONS_WIDTH) / 2,
           y: at.y - NEW_STACK_SIZE.height / 2,
         }
-      : newStackPosition();
-    const stack = addStackByCard(createBoardCard(scryfallCard), position);
+      : undefined;
+    const card = createBoardCard(scryfallCard);
+    const stack = addStackByCard(card, position ?? newStackPosition(card));
     log.record(how, { card: stack.primary });
     // A Room cast to the board asks which door opens (#145). The store's
     // reactive copy, so the choice shows on the board.
@@ -256,7 +306,8 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
    * in view, and logs which card made it (#203).
    */
   function createToken(source: BoardCard, token: ScryfallCard) {
-    const stack = addStackByCard(createBoardCard(token), newStackPosition());
+    const card = createBoardCard(token);
+    const stack = addStackByCard(card, newStackPosition(card));
     log.record('tokenCreated', { card: stack.primary, source });
     return stack;
   }
@@ -775,6 +826,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     reset,
 
     snapScale,
+    arrangeStacks,
 
     untapAll,
     toggleTapped,

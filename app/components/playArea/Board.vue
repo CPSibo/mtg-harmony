@@ -96,6 +96,7 @@ import {
   useBattlefieldStore,
   useSelectionStore,
 } from '~/features/battlefield';
+import { useWidget } from '~/features/widgets';
 import { useSettingsStore } from '~/stores/settings';
 import { gridLevels } from '~/utils/gridLevels';
 import { whenIdle } from '~/utils/whenIdle';
@@ -151,6 +152,29 @@ const {
   },
   disabled: () => battlefield.isAttaching,
   smoothing: () => settings.pointerSmoothing,
+});
+
+// Smart arrange (#223): the selection, or every stack with none selected.
+useWidget({
+  id: 'arrange',
+  label: 'Arrange',
+  icon: 'i-lucide-layout-grid',
+  commands: [
+    {
+      id: 'arrange.smart',
+      label: 'Smart arrange',
+      description:
+        'Creatures in front, lands at the back. The selection, or all cards',
+      icon: 'i-lucide-layout-grid',
+      kbds: 'a-a',
+      execute: () =>
+        battlefield.arrangeStacks(
+          selection.size
+            ? battlefield.stacks.filter((s) => selection.has(s.id))
+            : battlefield.stacks,
+        ),
+    },
+  ],
 });
 
 const anyCardIsDragging = ref(false);
