@@ -11,21 +11,47 @@
     @mouseup="onMouseUp"
     @mouseleave="onMouseLeave"
   >
-    <!-- The grid or themed background, outside the board's transform: a
-         viewport-sized background that follows the pan and zoom, so they
+    <!-- The grid or themed background, outside the board's transform:
+         viewport-sized backgrounds that follow the pan and zoom, so they
          never repaint a 5000 px layer. The themed background's images are
-         large, so `useBoardBackground` sets them on a wrapper the backdrop
-         inherits them from, outside the render a pan triggers. -->
+         large, so `useBoardBackground` sets them on a wrapper these inherit
+         them from, outside the render a pan triggers. From the bottom: the
+         grid lines or spotlights, the lattice tiles, then the vignette. -->
     <div
       ref="backgroundVars"
       class="contents"
     >
       <div
-        class="board-backdrop"
+        class="board-layer board-backdrop"
         :class="{
           'board-backdrop--themed': background.themed.value,
-          'board-backdrop--hidden': !background.shown.value,
+          'board-layer--hidden': !background.shown.value,
         }"
+        aria-hidden="true"
+        :style="backdropStyle"
+      />
+      <!-- While one level of detail replaces another, the new tile fades in
+           over the old as it fades out, in a group of their own. -->
+      <div
+        v-if="background.themed.value"
+        class="board-layer board-tiles"
+        :class="{ 'board-layer--hidden': !background.shown.value }"
+        aria-hidden="true"
+        :style="backdropStyle"
+      >
+        <div
+          :key="background.fades.value"
+          class="board-tile"
+          :class="{ 'board-tile--in': background.fading.value }"
+        />
+        <div
+          v-if="background.fading.value"
+          :key="`old-${background.fades.value}`"
+          class="board-tile board-tile--old"
+        />
+      </div>
+      <div
+        class="board-layer board-vignette"
         aria-hidden="true"
         :style="backdropStyle"
       />
@@ -1085,6 +1111,23 @@ const showCardModifiers = (card: BoardCard) => {
   border-radius: 2px;
 }
 
+/* The backgrounds behind the board. */
+.board-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* Fading back in once the background is ready; see useBoardBackground. */
+  transition: opacity 0.4s ease-out;
+}
+
+/* Faded out while the background is built or swapped. The duration matches
+   FADE_OUT_MS. */
+.board-layer--hidden {
+  opacity: 0;
+  transition-duration: 0.15s;
+  transition-timing-function: ease-in;
+}
+
 .board-backdrop {
   --line: color-mix(in oklab, var(--ui-border-inverted) 8%, transparent);
   --minor-line: color-mix(
@@ -1096,18 +1139,7 @@ const showCardModifiers = (card: BoardCard) => {
   /* Lines stay hairlines at any zoom; the levels keep them apart. */
   --stroke: 1px;
 
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  /* Fading back in once the background is ready; see useBoardBackground. */
-  transition: opacity 0.4s ease-out;
   background-image:
-    /* Vignette over the whole board, darkest at its edges. */
-    radial-gradient(
-      circle calc(3500px * var(--s)) at center,
-      transparent,
-      rgb(0 0 0 / 0.65)
-    ),
     /* Major lines along the top and left of each major cell. */
     linear-gradient(to right, var(--major-line) var(--stroke), transparent 0),
     linear-gradient(to bottom, var(--major-line) var(--stroke), transparent 0),
@@ -1115,55 +1147,96 @@ const showCardModifiers = (card: BoardCard) => {
     linear-gradient(to right, var(--minor-line) var(--stroke), transparent 0),
     linear-gradient(to bottom, var(--minor-line) var(--stroke), transparent 0);
   background-size:
-    calc(5000px * var(--s)) calc(5000px * var(--s)),
     var(--major) var(--major),
     var(--major) var(--major),
     var(--minor) var(--minor),
     var(--minor) var(--minor);
-  background-repeat: no-repeat, repeat, repeat, repeat, repeat;
   background-position: var(--x) var(--y);
 }
 
-/* The themed background (#246) replaces the grid lines: the vignette, the
-   lattice tile, then the spotlights. Each image comes in a light and a dark
-   version. */
+/* The themed background (#246) replaces the grid lines with spotlights under
+   the lattice tiles. Each image comes in a light and a dark version. */
 .board-backdrop--themed {
-  --tile: var(--tile-light);
   --spots: var(--spots-light);
 
-  background-image:
-    radial-gradient(
-      circle calc(3500px * var(--s)) at center,
-      transparent,
-      rgb(0 0 0 / 0.65)
-    ),
-    var(--tile), var(--spots);
-  background-size:
-    calc(5000px * var(--s)) calc(5000px * var(--s)),
-    calc(var(--tile-size) * var(--s)) calc(var(--tile-size) * var(--s)),
-    calc(var(--spots-width) * var(--s)) calc(var(--spots-height) * var(--s));
-  background-repeat: no-repeat, repeat, repeat;
+  background-image: var(--spots);
+  background-size: calc(var(--spots-width) * var(--s))
+    calc(var(--spots-height) * var(--s));
+}
+
+/* Isolated so the old tile adds onto the new one only, not what's beneath. */
+.board-tiles {
+  --tile: var(--tile-light);
+  --tile-old: var(--tile-old-light);
+
+  isolation: isolate;
+}
+
+.board-tile {
+  position: absolute;
+  inset: 0;
+  background-image: var(--tile);
+  background-size: calc(var(--tile-size) * var(--s))
+    calc(var(--tile-size) * var(--s));
   background-position: var(--x) var(--y);
 }
 
-/* Faded out while the background is built or swapped. The duration matches
-   FADE_OUT_MS. */
-.board-backdrop--hidden {
-  opacity: 0;
-  transition-duration: 0.15s;
-  transition-timing-function: ease-in;
+/* A crossfade of semi-transparent lines: the new tile at t plus the old at
+   1 − t, added rather than layered, so the lines neither double nor dim
+   midway. The duration matches LOD_FADE_MS. */
+.board-tile--in {
+  animation: board-tile-in 0.3s linear both;
+}
+
+.board-tile--old {
+  background-image: var(--tile-old);
+  mix-blend-mode: plus-lighter;
+  animation: board-tile-out 0.3s linear both;
+}
+
+@keyframes board-tile-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes board-tile-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* Over the whole board, darkest at its edges. */
+.board-vignette {
+  background-image: radial-gradient(
+    circle calc(3500px * var(--s)) at center,
+    transparent,
+    rgb(0 0 0 / 0.65)
+  );
+  background-size: calc(5000px * var(--s)) calc(5000px * var(--s));
+  background-repeat: no-repeat;
+  background-position: var(--x) var(--y);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .board-backdrop {
+  .board-layer {
     transition: none;
+  }
+
+  .board-tile--in,
+  .board-tile--old {
+    animation: none;
   }
 }
 
 /* Scoped CSS only scopes the last part, so `.dark` matches <html>. */
 .dark .board-backdrop--themed {
-  --tile: var(--tile-dark);
   --spots: var(--spots-dark);
+}
+
+.dark .board-tiles {
+  --tile: var(--tile-dark);
+  --tile-old: var(--tile-old-dark);
 }
 
 .board {

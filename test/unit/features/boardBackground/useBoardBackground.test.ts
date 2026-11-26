@@ -49,6 +49,7 @@ function setup({
   picked = [] as BoardColor[],
   wash = true,
   fadeOutMs = 0,
+  lodFadeMs = 0,
   detail = 1,
 } = {}) {
   const el = document.createElement('div');
@@ -67,6 +68,7 @@ function setup({
         fadeOutMs: () => fadeOutMs,
         resolution: () => resolution.value,
         settleMs: 0,
+        lodFadeMs: () => lodFadeMs,
       },
     ),
   )!;
@@ -122,20 +124,79 @@ describe('useBoardBackground', () => {
   it('re-renders the tiles in steps as the zoom needs more detail, without fading', async () => {
     const { el, resolution, bg, scope } = setup();
     await vi.waitFor(() => expect(bg.shown.value).toBe(true));
-    const first = tile(el).slice(5, -2);
     resolution.value = 1.2;
     await nextTick();
     expect(bg.shown.value).toBe(true);
     // The next step up is √2 device px per board px.
     await vi.waitFor(() => expect(tile(el)).toMatch(/blob:tile-283-/));
     expect(bg.shown.value).toBe(true);
-    expect(revoke).toHaveBeenCalledWith(first);
     const calls = vi.mocked(rasterUrl).mock.calls.length;
     resolution.value = 1.3;
     await nextTick();
     await new Promise((done) => setTimeout(done, 20));
     expect(vi.mocked(rasterUrl).mock.calls.length).toBe(calls);
+    scope.stop();
+    el.removeAttribute('style');
     expect(leaked(el)).toEqual([]);
+  });
+
+  it('reuses a level it rendered before', async () => {
+    const { el, resolution, bg, scope } = setup();
+    await vi.waitFor(() => expect(bg.shown.value).toBe(true));
+    const first = tile(el);
+    resolution.value = 1.2;
+    await vi.waitFor(() => expect(tile(el)).toMatch(/blob:tile-283-/));
+    const calls = vi.mocked(rasterUrl).mock.calls.length;
+    resolution.value = 1;
+    await vi.waitFor(() => expect(tile(el)).toBe(first));
+    expect(vi.mocked(rasterUrl).mock.calls.length).toBe(calls);
+    expect(revoke).not.toHaveBeenCalledWith(first.slice(5, -2));
+    scope.stop();
+  });
+
+  it('keeps only a few levels, dropping the least recently shown', async () => {
+    const { el, resolution, bg, scope } = setup();
+    await vi.waitFor(() => expect(bg.shown.value).toBe(true));
+    const first = tile(el).slice(5, -2);
+    for (const r of [1.2, 1.5, 2.5, 3.5, 5, 7, 10]) {
+      const before = tile(el);
+      resolution.value = r;
+      await vi.waitFor(() => expect(tile(el)).not.toBe(before));
+    }
+    expect(revoke).toHaveBeenCalledWith(first);
+    const revoked = new Set(revoke.mock.calls.map(([url]) => url));
+    const kept = created.filter(
+      (url) => url.includes('tile') && !revoked.has(url),
+    );
+    // Six levels, a tile for each theme.
+    expect(kept.length).toBeLessThanOrEqual(12);
+    scope.stop();
+  });
+
+  it('crossfades from the old level to the new one', async () => {
+    const { el, resolution, bg, scope } = setup({ lodFadeMs: 250 });
+    await vi.waitFor(() => expect(bg.shown.value).toBe(true));
+    expect(bg.fading.value).toBe(false);
+    const first = tile(el);
+    resolution.value = 1.2;
+    await vi.waitFor(() => expect(bg.fading.value).toBe(true));
+    // The old tile stays set for the overlay that fades it out.
+    expect(el.style.getPropertyValue('--tile-old-dark')).toBe(first);
+    expect(el.style.getPropertyValue('--tile-old-light')).not.toBe('');
+    await vi.waitFor(() => expect(tile(el)).toMatch(/blob:tile-283-/));
+    await vi.waitFor(() => expect(bg.fading.value).toBe(false));
+    expect(el.style.getPropertyValue('--tile-old-dark')).toBe('');
+    expect(bg.shown.value).toBe(true);
+    scope.stop();
+  });
+
+  it('swaps levels without a crossfade when told not to fade', async () => {
+    const { el, resolution, bg, scope } = setup();
+    await vi.waitFor(() => expect(bg.shown.value).toBe(true));
+    resolution.value = 1.2;
+    await vi.waitFor(() => expect(tile(el)).toMatch(/blob:tile-283-/));
+    expect(bg.fading.value).toBe(false);
+    expect(el.style.getPropertyValue('--tile-old-dark')).toBe('');
     scope.stop();
   });
 

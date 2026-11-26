@@ -10,12 +10,16 @@ import {
 } from './spotlights';
 import { buildTile, svgUrl } from './tile';
 
-/** How long the backdrop takes to fade out; `.board-backdrop--hidden` matches it. */
+/** How long the backdrop takes to fade out; `.board-layer--hidden` matches it. */
 export const FADE_OUT_MS = 150;
 /** How long the zoom must rest before the tiles are rendered for it again. */
 export const SETTLE_MS = 300;
 /** The largest a rendered tile gets, in pixels a side. */
 export const MAX_TILE_PX = 4096;
+/** How long one level of detail crossfades into the next; `.board-tile--in` matches it. */
+export const LOD_FADE_MS = 300;
+/** How many levels of detail are kept for the selection, to zoom back to without rendering. */
+export const MAX_LEVELS = 6;
 
 export interface BoardBackgroundOptions {
   /** How long to wait for the fade out before swapping. */
@@ -24,6 +28,8 @@ export interface BoardBackgroundOptions {
   resolution?: () => number;
   /** How long `resolution` must rest before the tiles are rendered again. */
   settleMs?: number;
+  /** How long to keep the old level of detail set while the new one fades in. */
+  lodFadeMs?: () => number;
 }
 
 export interface BoardBackground {
@@ -31,6 +37,13 @@ export interface BoardBackground {
   themed: Readonly<Ref<boolean>>;
   /** False while the backdrop should be faded out: while loading or swapping. */
   shown: Readonly<Ref<boolean>>;
+  /**
+   * True while one level of detail crossfades into the next: the old tiles are
+   * set as `--tile-old-dark` and `--tile-old-light` meanwhile.
+   */
+  fading: Readonly<Ref<boolean>>;
+  /** How many crossfades have started, to restart the fade's animation by. */
+  fades: Readonly<Ref<number>>;
 }
 
 /**
@@ -60,8 +73,10 @@ export function detailStep(resolution: number): number {
  * every frame, and a browser may draw a large SVG with clips and masks from
  * scratch each time, where a bitmap is only a texture. Once the zoom rests at
  * a resolution that needs another step, the tiles are rendered again and
- * swapped in without a fade; until then the old ones scale. Where rendering
- * fails, the SVG is set instead.
+ * crossfade in (`fading`), without the backdrop fading out; until then the
+ * old ones scale. Up to MAX_LEVELS levels are kept for the selection, so
+ * zooming back to one swaps it straight in. Where rendering fails, the SVG is
+ * set instead.
  *
  * Set here, not through a `:style` binding: Vue re-sets every property of a
  * bound style each time the component renders, and the board renders on
@@ -76,19 +91,24 @@ export function useBoardBackground(
     fadeOutMs = defaultFadeOut,
     resolution = () => 1,
     settleMs = SETTLE_MS,
+    lodFadeMs = defaultLodFade,
   }: BoardBackgroundOptions = {},
 ): BoardBackground {
   const themed = ref(false);
   const shown = ref(!enabled());
+  const fading = ref(false);
+  const fades = ref(0);
   let vars: Record<string, string> = {};
   let spotBlobs: string[] = [];
-  let tileBlobs: string[] = [];
-  // The lattice the tiles set are rendered from, and at what detail.
+  // The lattice the tiles set are rendered from, at what detail, and the
+  // levels of detail rendered for it so far, least recently shown first.
   let lattice: Lattice | null = null;
-  // Each settings change bumps `run`, and each render `tileRun`; a build or
-  // render that finds its count moved on is stale.
+  let levels = new Map<number, Level>();
+  // Each settings change bumps `run`, each render `tileRun` and each
+  // crossfade `fadeRun`; work that finds its count moved on is stale.
   let run = 0;
   let tileRun = 0;
+  let fadeRun = 0;
 
   // The selection as a string, so an equal one doesn't rebuild; null while off.
   const key = computed(() =>
@@ -114,10 +134,12 @@ export function useBoardBackground(
       ]);
       if (id === run)
         await preloadImages(Object.values(built.vars).filter(isUrl));
-      if (id !== run) return revoke(built.spotBlobs, built.tileBlobs);
+      if (id !== run) return revoke(built.spotBlobs, levelBlobs(built.levels));
+      fadeRun++;
+      fading.value = false;
       write(target(), target(), vars, built.vars);
-      revoke(spotBlobs, tileBlobs);
-      ({ vars, spotBlobs, tileBlobs, lattice } = built);
+      revoke(spotBlobs, levelBlobs(levels));
+      ({ vars, spotBlobs, lattice, levels } = built);
       themed.value = selection !== null;
       shown.value = true;
       // The zoom may have moved on while it built.
@@ -131,16 +153,55 @@ export function useBoardBackground(
     const at = detail.value;
     if (!from || from.detail === at) return;
     const id = ++tileRun;
-    const tiles = await renderTiles(from, at);
-    const current = () => id === tileRun && from === lattice;
-    if (current()) await preloadImages(Object.values(tiles.vars));
-    if (!current()) return revoke(tiles.blobs);
-    const next = { ...vars, ...tiles.vars };
-    write(target(), target(), vars, next);
-    revoke(tileBlobs);
-    vars = next;
-    tileBlobs = tiles.blobs;
+    let level = levels.get(at);
+    if (!level) {
+      const rendered = await renderTiles(from, at);
+      // Kept even if the zoom moved on, as long as it's for this lattice.
+      if (from !== lattice) return revoke(rendered.blobs);
+      level = rendered;
+      levels.set(at, level);
+    }
+    if (id === tileRun) await preloadImages(Object.values(level.vars));
+    if (id !== tileRun || from !== lattice) return;
+    // Most recently shown last; drop the least recent beyond the limit,
+    // never the level going or coming.
+    levels.delete(at);
+    levels.set(at, level);
+    for (const [key, old] of levels) {
+      if (levels.size <= MAX_LEVELS) break;
+      if (key === at || key === from.detail) continue;
+      levels.delete(key);
+      revoke(old.blobs);
+    }
     from.detail = at;
+    void crossfade(level.vars);
+  }
+
+  /** Sets new tiles, keeping the old ones set while they fade out. */
+  async function crossfade(tiles: Record<string, string>) {
+    const id = ++fadeRun;
+    const ms = lodFadeMs();
+    if (ms <= 0) {
+      fading.value = false;
+      return setVars({ ...withoutOld(vars), ...tiles });
+    }
+    setVars({
+      ...vars,
+      '--tile-old-dark': vars['--tile-dark']!,
+      '--tile-old-light': vars['--tile-light']!,
+      ...tiles,
+    });
+    fades.value++;
+    fading.value = true;
+    await sleep(ms);
+    if (id !== fadeRun) return;
+    setVars(withoutOld(vars));
+    fading.value = false;
+  }
+
+  function setVars(next: Record<string, string>) {
+    write(target(), target(), vars, next);
+    vars = next;
   }
 
   watch(detail, retile);
@@ -149,10 +210,33 @@ export function useBoardBackground(
   onScopeDispose(() => {
     run++;
     tileRun++;
-    revoke(spotBlobs, tileBlobs);
+    fadeRun++;
+    revoke(spotBlobs, levelBlobs(levels));
   });
 
-  return { themed: readonly(themed), shown: readonly(shown) };
+  return {
+    themed: readonly(themed),
+    shown: readonly(shown),
+    fading: readonly(fading),
+    fades: readonly(fades),
+  };
+}
+
+/** One level of detail: both themes' tiles, and the blob URLs behind them. */
+interface Level {
+  vars: Record<string, string>;
+  blobs: string[];
+}
+
+const levelBlobs = (levels: Map<number, Level>) =>
+  [...levels.values()].flatMap((level) => level.blobs);
+
+/** The variables without the old tiles a crossfade keeps. */
+function withoutOld(vars: Record<string, string>): Record<string, string> {
+  const rest = { ...vars };
+  delete rest['--tile-old-dark'];
+  delete rest['--tile-old-light'];
+  return rest;
 }
 
 /** A selection's lattice tiles as SVG `url()` values, and the detail last rendered at. */
@@ -166,12 +250,12 @@ interface Lattice {
 interface Built {
   vars: Record<string, string>;
   spotBlobs: string[];
-  tileBlobs: string[];
   lattice: Lattice | null;
+  levels: Map<number, Level>;
 }
 
 async function empty(): Promise<Built> {
-  return { vars: {}, spotBlobs: [], tileBlobs: [], lattice: null };
+  return { vars: {}, spotBlobs: [], lattice: null, levels: new Map() };
 }
 
 /**
@@ -208,13 +292,13 @@ async function build(selection: string, detail: number): Promise<Built> {
       '--spots-height': `${dark.s?.height ?? 0}px`,
     },
     spotBlobs,
-    tileBlobs: tiles.blobs,
     lattice,
+    levels: new Map([[detail, tiles]]),
   };
 }
 
 /** Renders a lattice's tiles at `detail`, falling back to the SVG for any that fail. */
-async function renderTiles(lattice: Lattice, detail: number) {
+async function renderTiles(lattice: Lattice, detail: number): Promise<Level> {
   const px = Math.min(MAX_TILE_PX, Math.round(lattice.size * detail));
   const blobs: string[] = [];
   const render = async (svg: string) => {
@@ -261,9 +345,9 @@ const afterPaint = () =>
       : setTimeout(done),
   );
 
-function defaultFadeOut(): number {
-  return typeof matchMedia === 'function' &&
-    matchMedia('(prefers-reduced-motion: reduce)').matches
-    ? 0
-    : FADE_OUT_MS;
-}
+const reducedMotion = () =>
+  typeof matchMedia === 'function' &&
+  matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const defaultFadeOut = () => (reducedMotion() ? 0 : FADE_OUT_MS);
+const defaultLodFade = () => (reducedMotion() ? 0 : LOD_FADE_MS);

@@ -101,7 +101,7 @@ const defaults: AppSettings = {
   arrangeShortcutEnabled: true,
   boardBackgroundEnabled: true,
   boardColors: [],
-  boardSpotlightsEnabled: true,
+  boardSpotlightsEnabled: false,
 };
 
 /**

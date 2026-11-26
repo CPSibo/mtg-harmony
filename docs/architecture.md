@@ -241,8 +241,8 @@ a session shows a toast.
 ## The board
 
 `components/playArea/Board.vue` renders a fixed 5000 × 5000 px canvas inside a full-screen wrapper. The canvas is
-moved and scaled with a single CSS `transform`. The grid and vignette behind it are a viewport-sized CSS background
-(`.board-backdrop`) that follows the pan and zoom through CSS variables, so a pan or zoom never repaints a
+moved and scaled with a single CSS `transform`. The grid and vignette behind it are viewport-sized CSS backgrounds
+(`.board-layer`s) that follow the pan and zoom through CSS variables, so a pan or zoom never repaints a
 5000 px layer. While panning, the board is its own GPU layer (`will-change: transform`); not otherwise, because a
 layer kept through a zoom stays rastered at the old scale and blurs. The wrapper is `overflow: clip`, not `hidden`: a hidden box can
 still be scrolled, and focusing a card partly off-screen scrolled it, shifting every card behind the pan's back
@@ -259,12 +259,15 @@ The themed background (#246, on by default) replaces the grid lines in the same 
   8 × 8-cell block so no neighbours match, from a fixed seed; 2 make a checkerboard. The SVG is rendered into a
   PNG (`rasterUrl`) and that's what's set: panning moves the background every frame, and a browser may draw a large
   SVG with clips and masks from scratch each time, where a bitmap is only a texture. It's rendered for the zoom
-  times the pixel ratio, rounded up to a power of √2 and capped at 4096 px, and rendered again without a fade
-  once the zoom rests (300 ms) at a value that needs another step. Where rendering fails, the SVG is set.
+  times the pixel ratio, rounded up to a power of √2 and capped at 4096 px, and rendered again once the zoom
+  rests (300 ms) at a value that needs another step. The new level crossfades in over 300 ms: the old and new
+  tiles sit in an isolated group, the old one blended with `plus-lighter`, so the semi-transparent lines neither
+  double nor dim midway. The last 6 levels for the selection are kept (a few MB of PNG each at most), so zooming
+  back to one swaps it in without rendering. Where rendering fails, the SVG is set.
 - **Spotlights**: soft radial glows, one colour each, repeating to the board's edges. They're computed as pixels
   into a small PNG (one pixel per 16 board px) that the browser scales up, not drawn as SVG or canvas gradients:
   the browser dithers those, and once the image is scaled the noise smears into faint stripes.
-  The **Colour wash** setting (`boardSpotlightsEnabled`, on by default) leaves them out.
+  The **Colour wash** setting (`boardSpotlightsEnabled`, off by default) leaves them out.
 - **Themes**: each tile is built in a light and a dark version (`colors.ts`, `spotlights.ts`) and CSS picks one
   under `.dark`.
 

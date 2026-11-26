@@ -103,22 +103,22 @@ describe('settings store', () => {
     const store = useSettingsStore();
     expect(store.boardBackgroundEnabled).toBe(true);
     expect(store.boardColors).toEqual([]);
-    expect(store.boardSpotlightsEnabled).toBe(true);
+    expect(store.boardSpotlightsEnabled).toBe(false);
 
     store.setBoardBackgroundEnabled(false);
     store.setBoardColors(['G', 'W', 'G', 'C']);
-    store.setBoardSpotlightsEnabled(false);
+    store.setBoardSpotlightsEnabled(true);
     expect(store.boardColors).toEqual(['W', 'G', 'C']);
 
     const reloaded = await reload();
     expect(reloaded.boardBackgroundEnabled).toBe(false);
     expect(reloaded.boardColors).toEqual(['W', 'G', 'C']);
-    expect(reloaded.boardSpotlightsEnabled).toBe(false);
+    expect(reloaded.boardSpotlightsEnabled).toBe(true);
 
     reloaded.reset();
     expect(reloaded.boardBackgroundEnabled).toBe(true);
     expect(reloaded.boardColors).toEqual([]);
-    expect(reloaded.boardSpotlightsEnabled).toBe(true);
+    expect(reloaded.boardSpotlightsEnabled).toBe(false);
   });
 
   it('toggles one board colour at a time', () => {
@@ -146,7 +146,9 @@ describe('settings store', () => {
       setActivePinia(createPinia());
       expect(useSettingsStore().boardColors, String(bad)).toEqual([]);
       expect(useSettingsStore().boardBackgroundEnabled, String(bad)).toBe(true);
-      expect(useSettingsStore().boardSpotlightsEnabled, String(bad)).toBe(true);
+      expect(useSettingsStore().boardSpotlightsEnabled, String(bad)).toBe(
+        false,
+      );
     }
   });
 
