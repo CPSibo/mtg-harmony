@@ -16,6 +16,10 @@ import {
   type CastFlight,
   type CastLanding,
 } from '~/features/castAnimation/options';
+import {
+  normalizeBoardColors,
+  type BoardColor,
+} from '~/features/boardBackground/colors';
 import { prefersReducedData } from '~/utils/saveData';
 export interface AppSettings {
   /** Whether the Screen Wake Lock API is requested. */
@@ -59,6 +63,12 @@ export interface AppSettings {
 
   /** Whether Space, Space runs Smart arrange and zooms to fit (#235). */
   arrangeShortcutEnabled: boolean;
+
+  /** Whether the board shows the themed background instead of the grid (#246). */
+  boardBackgroundEnabled: boolean;
+
+  /** The colours the board background shows, in WUBRGC order; none is a neutral board (#246). */
+  boardColors: BoardColor[];
 }
 
 /** The most On-deck may fetch or keep queued, as the settings dialog allows. */
@@ -86,6 +96,8 @@ const defaults: AppSettings = {
   preloadImagesEnabled: true,
   arrangeNewCards: false,
   arrangeShortcutEnabled: true,
+  boardBackgroundEnabled: true,
+  boardColors: [],
 };
 
 /**
@@ -141,6 +153,23 @@ export const useSettingsStore = defineStore('settings', () => {
   const arrangeNewCards = ref<boolean>(defaults.arrangeNewCards);
   const arrangeShortcutEnabled = ref<boolean>(defaults.arrangeShortcutEnabled);
 
+  const boardBackgroundEnabled = ref<boolean>(defaults.boardBackgroundEnabled);
+  function setBoardBackgroundEnabled(value: boolean) {
+    boardBackgroundEnabled.value = value;
+  }
+
+  const boardColors = ref<BoardColor[]>([...defaults.boardColors]);
+  function setBoardColors(value: readonly BoardColor[]) {
+    boardColors.value = normalizeBoardColors(value);
+  }
+  function toggleBoardColor(color: BoardColor) {
+    setBoardColors(
+      boardColors.value.includes(color)
+        ? boardColors.value.filter((c) => c !== color)
+        : [...boardColors.value, color],
+    );
+  }
+
   function reset() {
     // Ask again: the preference may have changed since the store started.
     const defaults = deviceDefaults();
@@ -158,6 +187,8 @@ export const useSettingsStore = defineStore('settings', () => {
     preloadImagesEnabled.value = defaults.preloadImagesEnabled;
     arrangeNewCards.value = defaults.arrangeNewCards;
     arrangeShortcutEnabled.value = defaults.arrangeShortcutEnabled;
+    boardBackgroundEnabled.value = defaults.boardBackgroundEnabled;
+    boardColors.value = [...defaults.boardColors];
   }
 
   function save() {
@@ -179,6 +210,8 @@ export const useSettingsStore = defineStore('settings', () => {
         preloadImagesEnabled: preloadImagesEnabled.value,
         arrangeNewCards: arrangeNewCards.value,
         arrangeShortcutEnabled: arrangeShortcutEnabled.value,
+        boardBackgroundEnabled: boardBackgroundEnabled.value,
+        boardColors: boardColors.value,
       },
       SAVE_VERSION,
     );
@@ -230,6 +263,12 @@ export const useSettingsStore = defineStore('settings', () => {
     if (typeof data.arrangeShortcutEnabled === 'boolean')
       arrangeShortcutEnabled.value = data.arrangeShortcutEnabled;
 
+    if (typeof data.boardBackgroundEnabled === 'boolean')
+      boardBackgroundEnabled.value = data.boardBackgroundEnabled;
+
+    if (Array.isArray(data.boardColors))
+      boardColors.value = normalizeBoardColors(data.boardColors);
+
     return true;
   }
 
@@ -251,6 +290,8 @@ export const useSettingsStore = defineStore('settings', () => {
       preloadImagesEnabled,
       arrangeNewCards,
       arrangeShortcutEnabled,
+      boardBackgroundEnabled,
+      boardColors,
     ],
     save,
   );
@@ -285,5 +326,12 @@ export const useSettingsStore = defineStore('settings', () => {
     preloadImagesEnabled,
     arrangeNewCards,
     arrangeShortcutEnabled,
+
+    boardBackgroundEnabled,
+    setBoardBackgroundEnabled,
+
+    boardColors,
+    setBoardColors,
+    toggleBoardColor,
   };
 });

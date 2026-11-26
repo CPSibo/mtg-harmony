@@ -97,6 +97,47 @@ describe('settings store', () => {
     expect(store.preloadImagesEnabled).toBe(true);
   });
 
+  // #246
+  it('saves the board background and its colours', async () => {
+    vi.useFakeTimers();
+    const store = useSettingsStore();
+    expect(store.boardBackgroundEnabled).toBe(true);
+    expect(store.boardColors).toEqual([]);
+
+    store.setBoardBackgroundEnabled(false);
+    store.setBoardColors(['G', 'W', 'G', 'C']);
+    expect(store.boardColors).toEqual(['W', 'G', 'C']);
+
+    const reloaded = await reload();
+    expect(reloaded.boardBackgroundEnabled).toBe(false);
+    expect(reloaded.boardColors).toEqual(['W', 'G', 'C']);
+
+    reloaded.reset();
+    expect(reloaded.boardBackgroundEnabled).toBe(true);
+    expect(reloaded.boardColors).toEqual([]);
+  });
+
+  it('toggles one board colour at a time', () => {
+    const store = useSettingsStore();
+    store.toggleBoardColor('R');
+    store.toggleBoardColor('U');
+    expect(store.boardColors).toEqual(['U', 'R']);
+    store.toggleBoardColor('R');
+    expect(store.boardColors).toEqual(['U']);
+  });
+
+  it('ignores invalid saved board colours', () => {
+    for (const bad of ['WUB', 3]) {
+      localStorage.setItem(
+        'mtg-harmony_settings',
+        JSON.stringify([{ boardColors: 1, boardBackgroundEnabled: 1 }, bad]),
+      );
+      setActivePinia(createPinia());
+      expect(useSettingsStore().boardColors, String(bad)).toEqual([]);
+      expect(useSettingsStore().boardBackgroundEnabled, String(bad)).toBe(true);
+    }
+  });
+
   // #108
   it('saves the drag menu delay and ignores invalid values', async () => {
     vi.useFakeTimers();

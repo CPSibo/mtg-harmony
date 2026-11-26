@@ -70,6 +70,20 @@
 
       <DefineField>
         <UFormField
+          label="Board background"
+          description="A lattice of medallions in your colours, in place of the grid lines. Snapping still works"
+        >
+          <USwitch v-model="boardBackgroundEnabled" />
+        </UFormField>
+
+        <UFormField
+          label="Background colours"
+          description="Pick any colours, or none for a neutral board"
+        >
+          <SettingsBoardColorPicker />
+        </UFormField>
+
+        <UFormField
           label="Grid snapping"
           description="Snap cards to a grid of the given size. 0 to disable"
         >
@@ -239,6 +253,7 @@
 
 <script setup lang="ts">
 import UFormField from '@nuxt/ui/components/FormField.vue';
+import SettingsBoardColorPicker from '~/components/settings/BoardColorPicker.vue';
 // Nuxt UI's plain-Vue Icon; components/Icon.vue is the Nuxt-only variant.
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
 import UInputNumber from '@nuxt/ui/components/InputNumber.vue';
@@ -284,6 +299,7 @@ const {
   preloadImagesEnabled,
   arrangeNewCards,
   arrangeShortcutEnabled,
+  boardBackgroundEnabled,
 } = storeToRefs(settingsStore);
 
 const flightItems = [

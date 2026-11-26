@@ -248,6 +248,23 @@ layer kept through a zoom stays rastered at the old scale and blurs. The wrapper
 still be scrolled, and focusing a card partly off-screen scrolled it, shifting every card behind the pan's back
 (#212).
 
+### Board background (`features/boardBackground`)
+
+The themed background (#246, on by default) replaces the grid lines in the same backdrop. It's built from the
+`boardColors` setting (W, U, B, R, G and C; none is a neutral board):
+
+- **Lattice tile**: one SVG, a diagonal lattice with a medallion per cell holding the colour's motif. Each motif is
+  drawn once in `<defs>` and placed with `<use>`; the motifs are brushed outlines computed from centre-line paths
+  (`geometry.ts`, `motifs.ts`) and kept per motif. With 3 or more colours, `shuffleLayout` lays them over an
+  8 × 8-cell block so no neighbours match, from a fixed seed; 2 make a checkerboard.
+- **Spotlights**: a second SVG tile of soft radial gradients, one colour each, repeating to the board's edges.
+- **Themes**: each tile is built in a light and a dark version (`colors.ts`, `spotlights.ts`) and CSS picks one
+  under `.dark`.
+
+`useBoardBackground` sets the tiles as CSS variables on a wrapper around the backdrop, not through `:style`: Vue
+re-sets every property of a bound style each render, and the board renders on every frame of a pan. Pan and zoom
+only change `--x`, `--y` and `--s`; the tiles are rebuilt only when the selection changes.
+
 ### Pan and zoom (`usePanAndZoom`)
 
 - Mouse: drag to pan, wheel to zoom around the cursor. Trackpad pinch arrives as a wheel event with `ctrlKey`.

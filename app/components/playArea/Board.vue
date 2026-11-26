@@ -11,13 +11,22 @@
     @mouseup="onMouseUp"
     @mouseleave="onMouseLeave"
   >
-    <!-- The grid, outside the board's transform: a viewport-sized background
-         that follows the pan and zoom, so they never repaint a 5000 px layer. -->
+    <!-- The grid or themed background, outside the board's transform: a
+         viewport-sized background that follows the pan and zoom, so they
+         never repaint a 5000 px layer. The themed background's images are
+         large, so `useBoardBackground` sets them on a wrapper the backdrop
+         inherits them from, outside the render a pan triggers. -->
     <div
-      class="board-backdrop"
-      aria-hidden="true"
-      :style="backdropStyle"
-    />
+      ref="backgroundVars"
+      class="contents"
+    >
+      <div
+        class="board-backdrop"
+        :class="{ 'board-backdrop--themed': settings.boardBackgroundEnabled }"
+        aria-hidden="true"
+        :style="backdropStyle"
+      />
+    </div>
     <div
       ref="board"
       class="board"
@@ -121,6 +130,7 @@ import {
 import { useCopyAllAnimation } from '~/features/castAnimation';
 import { createMenuGesture } from '~/features/battlefield/contextMenu';
 import { useWidget } from '~/features/widgets';
+import { useBoardBackground } from '~/features/boardBackground';
 import { useSettingsStore } from '~/stores/settings';
 import { gridLevels } from '~/utils/gridLevels';
 import { PRESS_SLOP } from '~/utils/press';
@@ -672,6 +682,15 @@ const backdropStyle = computed(() => {
   );
 });
 
+// The themed background's tiles and spotlights (#246), rebuilt only when its
+// settings change; it reads the pan and zoom from the variables above.
+const backgroundVarsEl = useTemplateRef('backgroundVars');
+useBoardBackground(
+  () => backgroundVarsEl.value,
+  () => settings.boardBackgroundEnabled,
+  () => settings.boardColors,
+);
+
 // Screen pixels at the view's edges that don't count as in view when placing
 // a new card: the top, for the corner buttons.
 const VIEW_INSET = { top: 64, right: 0, bottom: 0, left: 0 };
@@ -1089,6 +1108,34 @@ const showCardModifiers = (card: BoardCard) => {
     var(--minor) var(--minor);
   background-repeat: no-repeat, repeat, repeat, repeat, repeat;
   background-position: var(--x) var(--y);
+}
+
+/* The themed background (#246) replaces the grid lines: the vignette, the
+   lattice tile, then the spotlights. Each image comes in a light and a dark
+   version. */
+.board-backdrop--themed {
+  --tile: var(--tile-light);
+  --spots: var(--spots-light);
+
+  background-image:
+    radial-gradient(
+      circle calc(3500px * var(--s)) at center,
+      transparent,
+      rgb(0 0 0 / 0.65)
+    ),
+    var(--tile), var(--spots);
+  background-size:
+    calc(5000px * var(--s)) calc(5000px * var(--s)),
+    calc(var(--tile-size) * var(--s)) calc(var(--tile-size) * var(--s)),
+    calc(var(--spots-width) * var(--s)) calc(var(--spots-height) * var(--s));
+  background-repeat: no-repeat, repeat, repeat;
+  background-position: var(--x) var(--y);
+}
+
+/* Scoped CSS only scopes the last part, so `.dark` matches <html>. */
+.dark .board-backdrop--themed {
+  --tile: var(--tile-dark);
+  --spots: var(--spots-dark);
 }
 
 .board {
