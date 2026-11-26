@@ -55,6 +55,7 @@
 
   <PlayAreaSelectionBar />
   <PlayAreaFindBar v-if="find.isOpen" />
+  <PlayAreaSelectTypeBar v-if="selectByType.isOpen" />
 
   <PlayAreaCardDetails
     v-model:open="cardDetailsIsOpen"
@@ -87,6 +88,7 @@ import PlayAreaBoardCardStack from '~/components/playArea/BoardCardStack.vue';
 import PlayAreaDragRadialMenu from '~/components/playArea/DragRadialMenu.vue';
 import PlayAreaSelectionBar from '~/components/playArea/SelectionBar.vue';
 import PlayAreaFindBar from '~/components/playArea/FindBar.vue';
+import PlayAreaSelectTypeBar from '~/components/playArea/SelectTypeBar.vue';
 import { useBlockBrowserZoom } from '~/composables/useBlockBrowserZoom';
 import { BADGES_HELD } from '~/components/playArea/badgesHeld';
 import { usePanAndZoom } from '~/composables/usePanAndZoom';
@@ -111,6 +113,7 @@ import {
   dragMenu,
   useBattlefieldStore,
   useBoardFind,
+  useSelectByType,
   useSelectionStore,
 } from '~/features/battlefield';
 import { useCopyAllAnimation } from '~/features/castAnimation';
@@ -230,7 +233,67 @@ useWidget({
       description: 'By name, type or text',
       icon: 'i-lucide-search',
       kbds: 'f-b',
-      execute: () => find.open(),
+      execute: () => {
+        selectByType.done();
+        find.open();
+      },
+    },
+  ],
+});
+
+// ─── Building a selection (#220) ──────────────────────────────────────────────
+
+const selectByType = useSelectByType();
+const anyStacks = () => battlefield.stacks.length > 0;
+
+useWidget({
+  id: 'select',
+  label: 'Select',
+  icon: 'i-lucide-square-dashed-mouse-pointer',
+  commands: [
+    {
+      id: 'select.all',
+      label: 'Select all',
+      icon: 'i-lucide-square-check-big',
+      kbds: 's-a',
+      enabled: anyStacks,
+      execute: () => selection.selectAll(),
+    },
+    {
+      id: 'select.invert',
+      label: 'Invert selection',
+      icon: 'i-lucide-flip-horizontal-2',
+      kbds: 's-i',
+      enabled: anyStacks,
+      execute: () => selection.invert(),
+    },
+    {
+      id: 'select.tapped',
+      label: 'Select tapped',
+      icon: 'i-lucide-rotate-cw-square',
+      kbds: 's-t',
+      enabled: () => battlefield.stacks.some((s) => s.primary.tapped),
+      execute: () => selection.selectTapped(true),
+    },
+    {
+      id: 'select.untapped',
+      label: 'Select untapped',
+      icon: 'i-lucide-square',
+      kbds: 's-u',
+      enabled: () => battlefield.stacks.some((s) => !s.primary.tapped),
+      execute: () => selection.selectTapped(false),
+    },
+    {
+      id: 'select.byType',
+      label: 'Select by type…',
+      description: 'Goblin, creature, artifact…',
+      icon: 'i-lucide-text-search',
+      kbds: 's-y',
+      enabled: anyStacks,
+      execute: () => {
+        find.close();
+        selectByType.open();
+      },
     },
   ],
 });
@@ -733,6 +796,16 @@ useWidget({
         selection.size === battlefield.stacks.length
           ? toggleArtOrText()
           : battlefield.showAllAs(selectedCards(), settings.imagesEnabled),
+    },
+    {
+      id: 'selection.sameName',
+      label: 'Select all with the same name',
+      icon: 'i-lucide-copy-check',
+      kbds: 's-n',
+      scope: 'selection',
+      bar: 'menu',
+      enabled: () => selection.size > 0,
+      execute: () => selection.selectSameName(),
     },
     {
       id: 'selection.clear',
