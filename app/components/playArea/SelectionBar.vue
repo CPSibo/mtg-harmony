@@ -15,11 +15,8 @@
     <Transition name="selection-bar">
       <div
         v-if="shown"
-        class="selection-bar-actions flex items-center gap-1 absolute end-0 top-full mt-3 rounded-md bg-elevated/90 ring ring-default shadow-lg p-1 ps-3 min-[1400px]:static min-[1400px]:mt-0 min-[1400px]:bg-transparent min-[1400px]:ring-0 min-[1400px]:shadow-none min-[1400px]:p-0 min-[1400px]:ps-3"
+        class="selection-bar-actions flex items-center gap-1 absolute end-0 top-full mt-3 rounded-md bg-elevated/90 ring ring-default shadow-lg p-1 min-[1400px]:static min-[1400px]:mt-0 min-[1400px]:bg-transparent min-[1400px]:ring-0 min-[1400px]:shadow-none min-[1400px]:p-0 min-[1400px]:ps-1"
       >
-        <span class="text-sm whitespace-nowrap max-sm:sr-only">
-          {{ label }}
-        </span>
         <template
           v-for="cmd in buttons"
           :key="cmd.id"
@@ -29,6 +26,8 @@
             v-if="cmd.choices"
             :items="choiceItems(cmd)"
             :content="{ side: 'bottom' }"
+            :size="menuSize"
+            :ui="menuUi"
           >
             <UButton
               :icon="cmd.icon"
@@ -54,6 +53,8 @@
           v-if="menu.length"
           :items="menu"
           :content="{ side: 'bottom' }"
+          :size="menuSize"
+          :ui="menuUi"
         >
           <UButton
             icon="i-lucide-ellipsis"
@@ -90,9 +91,18 @@ import {
   type WidgetCommand,
 } from '~/features/widgets';
 import { useInputModeStore } from '~/stores/inputMode';
+import { useSmallScreen } from '~/composables/useSmallScreen';
 
 const selection = useSelectionStore();
 const inputMode = useInputModeStore();
+const smallScreen = useSmallScreen();
+/**
+ * Menu entries big enough for a finger on touch or a small screen (#237):
+ * Nuxt UI's largest size, and about 48px tall.
+ */
+const bigMenus = computed(() => inputMode.isTouch || smallScreen.value);
+const menuSize = computed(() => (bigMenus.value ? 'xl' : 'md'));
+const menuUi = computed(() => (bigMenus.value ? { item: 'py-3' } : {}));
 
 const registry = useWidgetRegistry();
 
@@ -126,14 +136,6 @@ const menu = computed(() =>
           },
     ),
 );
-
-const label = computed(() => {
-  const n = selection.size;
-  if (n) return `${n} selected`;
-  return inputMode.isTouch
-    ? 'Tap stacks or drag a box'
-    : 'Click stacks or drag a box';
-});
 
 /** Clears the selection and leaves selection mode. */
 function clear() {

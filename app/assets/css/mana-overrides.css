@@ -35,10 +35,22 @@
   font-size: 24px;
 }
 
-button:has(.ms:only-child) {
+button:has(.ms:not(.mana-icon):only-child) {
   padding: 8px;
 }
 
-button.text-xs:has(.ms:only-child) {
+button.text-xs:has(.ms:not(.mana-icon):only-child) {
   padding: 6px;
+}
+
+/*
+ * A mana symbol standing in for an icon (manaIcon.ts, #237): Nuxt UI sizes
+ * the box, and the glyph fills it, about as big as a Lucide icon looks.
+ */
+.ms.mana-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4em;
+  line-height: 1;
 }

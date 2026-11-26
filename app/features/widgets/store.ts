@@ -1,7 +1,8 @@
-import { defineShortcuts, useToast } from '@nuxt/ui/composables';
+import { defineShortcuts } from '@nuxt/ui/composables';
 import { defineStore } from 'pinia';
 import { computed, shallowRef, triggerRef } from 'vue';
 import type { Fn } from '@vueuse/core';
+import { useActionToast } from '~/composables/useActionToast';
 import { useSelectionStore } from '~/features/battlefield/selection';
 import type {
   WidgetCommand,
@@ -31,28 +32,21 @@ export const useWidgetRegistry = defineStore('widgetRegistry', () => {
   const widgets = shallowRef(new Map<string, WidgetDefinition>());
   const widgetShortcuts = new Map<string, Fn>();
   const selection = useSelectionStore();
-  const toast = useToast();
+  const actionToast = useActionToast();
 
   /**
    * Runs a command, or one of its choices, from the palette, its shortcut or
    * the selection bar. Anything not about the selection leaves selection
    * mode first (#235); the selection stays. Then its toast (#237), if it has one,
-   * says what it did. The toast is named after the command, so running it
-   * again bumps the one already showing rather than stacking another.
+   * says what it did, named after the command: a card's own button for the
+   * same thing uses the same name (`useActionToast`).
    */
   function run(cmd: WidgetCommand, choice?: WidgetCommandChoice) {
     if (cmd.scope !== 'selection' && !cmd.keepsSelectionMode)
       selection.setMode(false);
     const title = (choice ?? cmd).toast?.();
     (choice ?? cmd).execute();
-    if (title)
-      toast.add({
-        id: choice ? `${cmd.id}:${choice.label}` : cmd.id,
-        title,
-        color: 'info',
-        icon: (choice ?? cmd).icon,
-        duration: 2500,
-      });
+    if (title) actionToast(cmd.id, title, (choice ?? cmd).icon);
   }
 
   function register(widget: WidgetDefinition) {

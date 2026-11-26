@@ -88,6 +88,8 @@ import PlayAreaDragRadialMenu from '~/components/playArea/DragRadialMenu.vue';
 import PlayAreaFindBar from '~/components/playArea/FindBar.vue';
 import PlayAreaSelectTypeBar from '~/components/playArea/SelectTypeBar.vue';
 import { useBlockBrowserZoom } from '~/composables/useBlockBrowserZoom';
+import { cardsLabel } from '~/composables/useActionToast';
+import { manaIcon } from '~/components/shared/manaIcon';
 import { BADGES_HELD } from '~/components/playArea/badgesHeld';
 import { usePanAndZoom } from '~/composables/usePanAndZoom';
 import { storeToRefs } from 'pinia';
@@ -684,6 +686,11 @@ function toggleArtOrText() {
 
 const selectedCards = () => selection.stacks().map((s) => s.primary);
 
+const tapIcon = manaIcon(() =>
+  selectedCards().some((c) => !c.tapped) ? 'ms-tap' : 'ms-untap',
+);
+const countersIcon = manaIcon('ms-ability-first-strike');
+
 // The selection's cards, fixed when a selection window opens (#221), so the
 // window keeps them even if the selection changes behind it.
 const targetCards = shallowRef<BoardCard[]>([]);
@@ -717,10 +724,11 @@ useWidget({
     {
       id: 'selection.tap',
       toast: () =>
-        `${selectedCards().some((c) => !c.tapped) ? 'Tapped' : 'Untapped'} ${count(selection.size)}`,
+        `${selectedCards().some((c) => !c.tapped) ? 'Tapped' : 'Untapped'} ${cardsLabel(selectedCards())}`,
       // Tap if any is untapped, else Untap (#235).
       label: () => (selectedCards().some((c) => !c.tapped) ? 'Tap' : 'Untap'),
-      icon: 'i-lucide-rotate-cw-square',
+      // The card's own symbols, as on its details (#237).
+      icon: tapIcon,
       kbds: 't-t',
       scope: 'selection',
       bar: 'button',
@@ -731,7 +739,7 @@ useWidget({
     {
       id: 'selection.counters',
       label: 'Counters and keywords…',
-      icon: 'i-lucide-wrench',
+      icon: countersIcon,
       kbds: 'c-c',
       scope: 'selection',
       bar: 'button',
@@ -754,7 +762,7 @@ useWidget({
       ).map(([mode, label, icon]) => ({
         label,
         icon,
-        toast: () => `Copied ${count(selection.size)}`,
+        toast: () => `Copied ${cardsLabel(selectedCards())}`,
         execute: () =>
           copyAll(
             selection.stacks().map((s) => s.primary),
@@ -777,7 +785,7 @@ useWidget({
     {
       id: 'selection.proliferate',
       toast: () =>
-        `Proliferated ${count(selectedCards().filter((c) => c.modifiers.size > 0).length)}`,
+        `Proliferated ${cardsLabel(selectedCards().filter((c) => c.modifiers.size > 0))}`,
       label: 'Proliferate',
       description: 'One more of each counter already on each card',
       icon: 'i-lucide-chevrons-up',
@@ -809,7 +817,7 @@ useWidget({
     },
     {
       id: 'selection.front',
-      toast: () => `Brought ${count(selection.size)} to the front`,
+      toast: () => `Brought ${cardsLabel(selectedCards())} to the front`,
       label: 'Bring to front',
       icon: 'i-lucide-bring-to-front',
       scope: 'selection',
@@ -819,7 +827,7 @@ useWidget({
     },
     {
       id: 'selection.flip',
-      toast: () => `Flipped ${count(selection.size)}`,
+      toast: () => `Flipped ${cardsLabel(selectedCards())}`,
       label: 'Flip over',
       icon: 'i-lucide-flip-vertical-2',
       scope: 'selection',
@@ -862,7 +870,7 @@ useWidget({
     {
       id: 'selection.artOrText',
       toast: () =>
-        `Showing ${count(selection.size)} as ${settings.imagesEnabled ? 'text' : 'art'}`,
+        `Showing ${cardsLabel(selectedCards())} as ${settings.imagesEnabled ? 'text' : 'art'}`,
       label: 'Show as art or text',
       description: 'Every card selected changes the setting',
       icon: 'i-lucide-image',

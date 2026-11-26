@@ -137,7 +137,11 @@ A command may have:
   what it acts on. A choice can have its own. Commands that ask for more (Add card, Find, Select by type, Attach
   all to…) or open something (On-deck, the event log, a window or a confirm) have none. The toast's id is the
   command's, so running it again bumps the one showing rather than stacking another. All runs go through the
-  registry's `run`, from the palette, a shortcut or the selection bar.
+  registry's `run`, from the palette, a shortcut or the selection bar. The same action done another way (a stack's
+  own buttons, card details, the remove confirms, the top bar's tap button, creating a token) shows the same toast
+  under the same id, through `useActionToast`. `cardsLabel` names one card and counts more.
+- `icon` is an Iconify name or a component. `manaIcon('ms-tap')` makes a mana-font symbol one, so Tap and Counters
+  show the symbols card details uses; it takes a getter for one that follows the state.
 
 A widget may have:
 
@@ -151,7 +155,8 @@ selection is dragged. The top bar's tap button taps or untaps the selection whil
 card otherwise. On-deck's Next and Previous open the panel to show the card; its other commands work with it shut.
 
 The selection bar (`SelectionBar.vue`) sits in the top row of buttons, at their size, and holds the selection mode
-button. Off with nothing selected, it's only that button. Below 1400px the row has no room for it beside the
+button, which shows the count: "Selecting (3)". Off with nothing selected, it's only that button. Its menus have
+bigger entries on touch and small screens. Below 1400px the row has no room for it beside the
 search button, so it opens as a tray under the row.
 
 There's no separate "active card": a plain tap or click on a stack, or Tab onto its card, selects just that stack,

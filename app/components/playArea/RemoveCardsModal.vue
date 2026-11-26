@@ -48,6 +48,7 @@
 </template>
 
 <script setup lang="ts">
+import { cardsLabel, useActionToast } from '~/composables/useActionToast';
 import UButton from '@nuxt/ui/components/Button.vue';
 // Nuxt UI's plain-Vue Icon; components/Icon.vue is the Nuxt-only variant.
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
@@ -77,9 +78,16 @@ const freesOthers = computed(() =>
   ),
 );
 
+const actionToast = useActionToast();
+
 function remove() {
   open.value = false;
   emit('removed');
+  actionToast(
+    'selection.remove',
+    `Removed ${cardsLabel(props.cards)}`,
+    'i-lucide-trash',
+  );
   void removeAll(props.cards);
 }
 </script>

@@ -11,7 +11,7 @@
       :disabled="battlefield.isAttaching"
       :aria-label="stack.primary.tapped ? 'Untap' : 'Tap'"
       :title="stack.primary.tapped ? 'Untap' : 'Tap'"
-      @click="battlefield.toggleTapped(stack.primary)"
+      @click="tap"
     >
       <span
         class="ms"
@@ -39,18 +39,18 @@
         {
           label: 'Copy card',
           icon: 'i-lucide-copy',
-          onSelect: () => copyCard(stack.primary, 'card'),
+          onSelect: () => copy('card'),
           color: 'primary',
         },
         {
           label: 'Copy card + counters',
           icon: 'i-lucide-copy-plus',
-          onSelect: () => copyCard(stack.primary, 'counters'),
+          onSelect: () => copy('counters'),
         },
         {
           label: 'Copy everything',
           icon: 'i-lucide-square-stack',
-          onSelect: () => copyCard(stack.primary, 'stack'),
+          onSelect: () => copy('stack'),
         },
       ]"
       :content="{
@@ -95,8 +95,14 @@ import PlayAreaRemoveCardModal from '~/components/playArea/RemoveCardModal.vue';
 import { useInputModeStore } from '~/stores/inputMode';
 import { storeToRefs } from 'pinia';
 import { ref } from 'vue';
-import { useBattlefieldStore, useSelectionStore } from '~/features/battlefield';
+import {
+  useBattlefieldStore,
+  useSelectionStore,
+  type CopyMode,
+} from '~/features/battlefield';
 import { useCopyAnimation } from '~/features/castAnimation';
+import { cardsLabel, useActionToast } from '~/composables/useActionToast';
+import { manaIcon } from '~/components/shared/manaIcon';
 import type { BoardCard, BoardCardStack } from '~/types/PlayArea';
 
 const props = defineProps<{
@@ -114,6 +120,28 @@ const battlefield = useBattlefieldStore();
 // A stack's own buttons are outside selection mode (#235).
 const selection = useSelectionStore();
 const copyCard = useCopyAnimation();
+
+// The same toasts as the selection's commands (#237).
+const actionToast = useActionToast();
+
+function tap() {
+  const card = props.stack.primary;
+  battlefield.toggleTapped(card);
+  actionToast(
+    'selection.tap',
+    `${card.tapped ? 'Tapped' : 'Untapped'} ${cardsLabel([card])}`,
+    manaIcon(card.tapped ? 'ms-tap' : 'ms-untap'),
+  );
+}
+
+function copy(mode: CopyMode) {
+  copyCard(props.stack.primary, mode);
+  actionToast(
+    'selection.copy',
+    `Copied ${cardsLabel([props.stack.primary])}`,
+    'i-lucide-copy',
+  );
+}
 
 const showConfirmRemove = ref(false);
 // The menu renders in a portal, so opening it ends the stack's hover. Without this the

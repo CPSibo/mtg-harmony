@@ -1,9 +1,17 @@
+import type { Component } from 'vue';
+
+/**
+ * An Iconify name (`i-lucide-…`), or a component, such as a mana symbol from
+ * `manaIcon` (#237). Nuxt UI renders either.
+ */
+export type WidgetIcon = string | Component;
+
 export interface WidgetCommand {
   id: string;
   /** A function for a label that follows the state, like Tap or Untap (#235). */
   label: string | (() => string);
   description?: string;
-  icon: string;
+  icon: WidgetIcon;
   kbds?: string;
   /**
    * Whether the command applies right now (#216). The palette hides it and
@@ -49,7 +57,7 @@ export interface WidgetCommand {
 
 export interface WidgetCommandChoice {
   label: string;
-  icon: string;
+  icon: WidgetIcon;
   /** As the command's `toast`, for this choice. */
   toast?: () => string;
   execute: () => void;
@@ -58,7 +66,7 @@ export interface WidgetCommandChoice {
 export interface WidgetDefinition {
   id: string;
   label: string;
-  icon: string;
+  icon: WidgetIcon;
   /** Where its group goes in the palette, lowest first; missing goes last. */
   order?: number;
   /**

@@ -38,12 +38,15 @@ describe('SelectionBar (#216)', () => {
     expect(bar()).toBeNull();
     // Only the selection mode button (#237).
     expect(
-      document.querySelector('.selection-bar [aria-label="Select stacks"]'),
+      document.querySelector(
+        '.selection-bar [aria-label="Select stacks, 1 selected"]',
+      ),
     ).not.toBeNull();
 
     selection.toggle(b!);
     await flushPromises();
-    expect(bar()?.textContent).toContain('2 selected');
+    // The count is in the selection mode button (#237).
+    expect(bar()?.textContent).toContain('(2)');
   });
 
   it('shows for one stack in selection mode', async () => {
@@ -53,7 +56,8 @@ describe('SelectionBar (#216)', () => {
     selection.selectOnly(a!);
     mountInApp(SelectionBar);
     await flushPromises();
-    expect(bar()?.textContent).toContain('1 selected');
+    expect(bar()?.textContent).toContain('Selecting');
+    expect(bar()?.textContent).toContain('(1)');
   });
 
   it('shows the selection commands meant for it, as buttons', async () => {
