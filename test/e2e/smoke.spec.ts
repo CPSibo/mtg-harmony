@@ -267,8 +267,8 @@ test.describe('selecting by tap', () => {
       await page.getByRole('button', { name: 'Cast to board' }).click();
     }
     await expect(page.locator('.board-card-stack')).toHaveCount(2);
-    // On-deck hands focus back to its button once it has finished closing,
-    // which would close a palette opened before then.
+    // On-deck has finished closing once it hands focus back to its button,
+    // so the Tab test starts from there.
     await expect(page.getByRole('button', { name: 'On-deck' })).toBeFocused();
   });
 

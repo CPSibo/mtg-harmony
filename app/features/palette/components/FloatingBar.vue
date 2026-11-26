@@ -33,12 +33,16 @@
     </UButton>
 
     <template #content>
-      <UCommandPalette
-        ref="palette"
-        v-model:search-term="searchTerm"
-        :groups="groups"
-        @update:model-value="open = false"
-      />
+      <div
+        ref="content"
+        class="contents"
+      >
+        <UCommandPalette
+          v-model:search-term="searchTerm"
+          :groups="groups"
+          @update:model-value="open = false"
+        />
+      </div>
       <!-- A picked command runs and the palette gets out of its way, so a
            window it opens (like Add Card) isn't left stacked under it. -->
     </template>
@@ -50,7 +54,13 @@ import UButton from '@nuxt/ui/components/Button.vue';
 import UKbd from '@nuxt/ui/components/Kbd.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
 import { defineShortcuts } from '@nuxt/ui/composables';
-import { computed, defineAsyncComponent, ref, useTemplateRef } from 'vue';
+import {
+  computed,
+  defineAsyncComponent,
+  ref,
+  useTemplateRef,
+  watch,
+} from 'vue';
 import { useCloseOnTouchOutside } from '~/composables/useCloseOnTouchOutside';
 import { useWidgetRegistry } from '~/features/widgets';
 import { whenIdle } from '~/utils/whenIdle';
@@ -74,6 +84,22 @@ const groups = computed(() => registry.paletteGroups);
 
 const searchTerm = ref('');
 
-const palette = useTemplateRef<{ $el: Element }>('palette');
-useCloseOnTouchOutside(open, () => palette.value?.$el);
+// The palette's own `$el` can be a text node, so the touch and focus checks
+// test against this wrapper (`display: contents`, so layout is unchanged).
+const content = useTemplateRef('content');
+useCloseOnTouchOutside(open, content);
+
+// Let go of focus as soon as the palette starts closing (#230). Its search box
+// stays on screen while it animates out, and a press on the board doesn't take
+// focus, so the next "/" went into the box (shortcuts ignore inputs) instead
+// of opening the palette again.
+watch(open, (isOpen) => {
+  const active = document.activeElement;
+  if (
+    !isOpen &&
+    active instanceof HTMLElement &&
+    content.value?.contains(active)
+  )
+    active.blur();
+});
 </script>
