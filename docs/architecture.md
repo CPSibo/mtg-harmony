@@ -86,8 +86,27 @@ The flow:
 4. The registry's `paletteGroups` turns every widget into a group of `UCommandPalette` items. The palette
    (`features/palette/components/FloatingBar.vue`) opens with `/` or the search button at the top of the screen.
 
-Add Card and the event log register widgets. Widgets have no settings of their own: the settings dialog binds to the
-stores directly.
+A command that needs a component (its window, its state) registers from that component with `useWidget(definition)`,
+which registers on mount and unregisters on unmount.
+
+### Commands that depend on the selection
+
+A command may have:
+
+- `enabled()`: whether it applies now. The palette hides it, and its shortcut does nothing, while this is false. It's
+  read reactively, so it should read reactive state (usually the selection store).
+- `scope: 'selection'`: it acts on the selected stacks (`useSelectionStore().stacks()`). The palette lists these in
+  one **Selection** group at the top, whichever widget they come from.
+- `bar: 'button' | 'menu'`: where the selection bar shows it, as a button or in its "More…" menu. Without it, a
+  selection command is in the palette only.
+
+There's no separate "active card": a plain tap or click on a stack, or Tab onto its card, selects just that stack,
+and selection commands act on it. A drag, a double tap (which opens the card), and mouse focus left over from a click
+don't select. The selection bar stays hidden for a single selected stack outside selection mode, so a tap doesn't
+bring it up. Board selection commands (Show card details, Clear selection) register from `Board.vue`.
+
+Add Card, the event log and the board register widgets. Widgets have no settings of their own: the settings dialog
+binds to the stores directly.
 
 ## Stores and persistence
 

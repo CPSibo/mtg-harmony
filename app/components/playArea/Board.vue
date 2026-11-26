@@ -57,13 +57,13 @@
 
   <PlayAreaCardDetails
     v-model:open="cardDetailsIsOpen"
-    :card="selectedCard"
+    :card="windowCard"
     @show-card-modifiers="showCardModifiers"
   />
 
   <PlayAreaModifiersMenu
     v-model:open="cardModifiersIsOpen"
-    :card="selectedCard"
+    :card="windowCard"
     @after:leave="badgesHeld = null"
   />
 
@@ -96,6 +96,7 @@ import {
   useBattlefieldStore,
   useSelectionStore,
 } from '~/features/battlefield';
+import { useWidget } from '~/features/widgets';
 import { useSettingsStore } from '~/stores/settings';
 import { gridLevels } from '~/utils/gridLevels';
 import { whenIdle } from '~/utils/whenIdle';
@@ -363,12 +364,25 @@ useBlockBrowserZoom(wrapperEl);
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-const selectedCard = ref<BoardCard | undefined>();
+// The card the details and modifiers windows show. Kept after they close, so
+// they can animate out; it isn't the target of anything (the selection is).
+const windowCard = ref<BoardCard | undefined>();
 
 const cardDetailsIsOpen = ref(false);
 
 const showCardDetails = (card: BoardCard) => {
-  selectedCard.value = card;
+  // A double tap selects the stack on its first tap. Opening the card is an
+  // action of its own, so it leaves nothing selected (#216).
+  const [only] = selection.stacks();
+  if (
+    selection.size === 1 &&
+    only &&
+    (only.primary === card ||
+      only.attachments.has(card) ||
+      only.unders.has(card))
+  )
+    selection.clear();
+  windowCard.value = card;
   cardModifiersIsOpen.value = false;
   cardDetailsIsOpen.value = true;
 };
@@ -379,8 +393,37 @@ const cardModifiersIsOpen = ref(false);
 const badgesHeld = shallowRef<BoardCard | null>(null);
 provide(BADGES_HELD, badgesHeld);
 
+// Selection commands of the board's own (#216). Others come from the features
+// that own them.
+useWidget({
+  id: 'boardSelection',
+  label: 'Selection',
+  icon: 'i-lucide-square-dashed-mouse-pointer',
+  commands: [
+    {
+      id: 'selection.details',
+      label: 'Show card details',
+      icon: 'i-lucide-ellipsis',
+      scope: 'selection',
+      enabled: () => selection.size === 1,
+      execute: () => {
+        const stack = selection.stacks()[0];
+        if (stack) showCardDetails(stack.primary);
+      },
+    },
+    {
+      id: 'selection.clear',
+      label: 'Clear selection',
+      icon: 'i-lucide-x',
+      scope: 'selection',
+      enabled: () => selection.size > 0,
+      execute: () => selection.clear(),
+    },
+  ],
+});
+
 const showCardModifiers = (card: BoardCard) => {
-  selectedCard.value = card;
+  windowCard.value = card;
   badgesHeld.value = card;
   cardDetailsIsOpen.value = false;
   cardModifiersIsOpen.value = true;
