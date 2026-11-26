@@ -37,9 +37,11 @@
         ref="content"
         class="contents"
       >
+        <!-- A shorter list, so the board shows below it (#235). -->
         <UCommandPalette
           v-model:search-term="searchTerm"
           :groups="groups"
+          :ui="{ viewport: 'max-h-[min(22rem,50svh)]' }"
           @update:model-value="open = false"
         />
       </div>

@@ -72,9 +72,13 @@ test('/ opens the command palette', async ({ page }) => {
 
 // #218: the app's actions are in the palette, with shortcuts for the frequent ones.
 test('the palette fetches, casts and runs board commands', async ({ page }) => {
+  // On-deck's commands show once they can run (#235), so wait for the one
+  // wanted before clicking: the list may still be filling in.
   const run = async (name: string) => {
     await page.keyboard.press('/');
-    await page.getByRole('option', { name }).click();
+    const option = page.getByRole('option', { name });
+    await expect(option).toBeVisible();
+    await option.click();
   };
 
   await run('Next card');
@@ -208,7 +212,7 @@ test('Smart arrange lines cards up in a row in view', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'On-deck' })).toBeFocused();
 
   await page.keyboard.press('/');
-  await page.getByRole('option', { name: /Smart arrange/ }).click();
+  await page.getByRole('option', { name: /^Smart arrange Creatures/ }).click();
 
   await expect(async () => {
     const boxes = await Promise.all(
@@ -220,6 +224,59 @@ test('Smart arrange lines cards up in a row in view', async ({ page }) => {
     expect(lefts[1]! - lefts[0]!).toBeGreaterThan(boxes[0]!.width);
   }).toPass();
   for (let i = 0; i < 3; i++) await expect(cards.nth(i)).toBeInViewport();
+});
+
+// #235: Space, Space runs Smart arrange and zooms to fit, once the board has
+// focus rather than a button.
+test('Space, Space arranges the cards and zooms to fit', async ({ page }) => {
+  for (let i = 0; i < 3; i++) {
+    await page.getByRole('button', { name: 'On-deck' }).click();
+    await page.getByRole('button', { name: 'Next card' }).click();
+    await page.getByRole('button', { name: 'Cast to board' }).click();
+  }
+  const cards = page.locator('.board-card-stack .primary-card [role=img]');
+  await expect(cards).toHaveCount(3);
+  await expect(page.getByRole('button', { name: 'On-deck' })).toBeFocused();
+
+  // A press on the board takes focus off the On-deck button.
+  await page.mouse.click(40, 700);
+  await page.keyboard.press(' ');
+  await page.keyboard.press(' ');
+
+  await expect(async () => {
+    const boxes = await Promise.all(
+      [0, 1, 2].map(async (i) => (await cards.nth(i).boundingBox())!),
+    );
+    expect(new Set(boxes.map((b) => Math.round(b.y))).size).toBe(1);
+  }).toPass();
+  for (let i = 0; i < 3; i++) await expect(cards.nth(i)).toBeInViewport();
+});
+
+// #235: with a selection, the palette leaves out what isn't about it.
+test('the palette leaves out On-deck and Add card with a selection', async ({
+  page,
+}) => {
+  await page.getByRole('button', { name: 'On-deck' }).click();
+  await page.getByRole('button', { name: 'Next card' }).click();
+  await page.getByRole('button', { name: 'Cast to board' }).click();
+  const boardCard = page.locator('.board-card').getByRole('img', {
+    name: card.name,
+  });
+  await expect(boardCard).toBeVisible();
+
+  await page.keyboard.press('/');
+  await expect(page.getByRole('option', { name: /^Add card/ })).toBeVisible();
+  await expect(
+    page.getByRole('option', { name: /Invert selection/ }),
+  ).toHaveCount(0);
+  await page.getByRole('option', { name: /^Select all/ }).click();
+
+  await page.keyboard.press('/');
+  await expect(
+    page.getByRole('option', { name: /Invert selection/ }),
+  ).toBeVisible();
+  await expect(page.getByRole('option', { name: /^Add card/ })).toHaveCount(0);
+  await expect(page.getByRole('option', { name: /^Next card/ })).toHaveCount(0);
 });
 
 // #219: find a card on the board by its text and bring it into view.
@@ -396,7 +453,7 @@ test('the selection bar acts on every selected card', async ({ page }) => {
   const bar = page.locator('.selection-bar');
   await expect(bar).toContainText('2 selected');
 
-  await bar.getByRole('button', { name: 'Tap or untap' }).click();
+  await bar.getByRole('button', { name: 'Tap', exact: true }).click();
   await expect(primaries.nth(0)).toHaveClass(/tapped/);
   await expect(primaries.nth(1)).toHaveClass(/tapped/);
 

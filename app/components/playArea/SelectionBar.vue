@@ -26,8 +26,8 @@
             variant="ghost"
             size="sm"
             class="rounded-full"
-            :title="cmd.label"
-            :aria-label="cmd.label"
+            :title="commandLabel(cmd)"
+            :aria-label="commandLabel(cmd)"
           />
         </UDropdownMenu>
         <UButton
@@ -37,8 +37,8 @@
           variant="ghost"
           size="sm"
           class="rounded-full"
-          :title="cmd.label"
-          :aria-label="cmd.label"
+          :title="commandLabel(cmd)"
+          :aria-label="commandLabel(cmd)"
           @click="cmd.execute()"
         />
       </template>
@@ -77,7 +77,11 @@ import UDropdownMenu from '@nuxt/ui/components/DropdownMenu.vue';
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
 import { computed } from 'vue';
 import { useSelectionStore } from '~/features/battlefield';
-import { useWidgetRegistry, type WidgetCommand } from '~/features/widgets';
+import {
+  commandLabel,
+  useWidgetRegistry,
+  type WidgetCommand,
+} from '~/features/widgets';
 import { useInputModeStore } from '~/stores/inputMode';
 
 const selection = useSelectionStore();
@@ -107,8 +111,8 @@ const menu = computed(() =>
     .filter((c) => c.bar === 'menu')
     .map((c) =>
       c.choices
-        ? { label: c.label, icon: c.icon, children: choiceItems(c) }
-        : { label: c.label, icon: c.icon, onSelect: c.execute },
+        ? { label: commandLabel(c), icon: c.icon, children: choiceItems(c) }
+        : { label: commandLabel(c), icon: c.icon, onSelect: c.execute },
     ),
 );
 

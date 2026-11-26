@@ -55,6 +55,9 @@ export interface AppSettings {
 
   /** Whether new cards go in their row of the view (#223). */
   arrangeNewCards: boolean;
+
+  /** Whether Space, Space runs Smart arrange and zooms to fit (#235). */
+  arrangeShortcutEnabled: boolean;
 }
 
 /** The most On-deck may fetch or keep queued, as the settings dialog allows. */
@@ -81,6 +84,7 @@ const defaults: AppSettings = {
   minQueuedCardCount: 3,
   preloadImagesEnabled: true,
   arrangeNewCards: false,
+  arrangeShortcutEnabled: true,
 };
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -119,6 +123,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const minQueuedCardCount = ref<number>(defaults.minQueuedCardCount);
   const preloadImagesEnabled = ref<boolean>(defaults.preloadImagesEnabled);
   const arrangeNewCards = ref<boolean>(defaults.arrangeNewCards);
+  const arrangeShortcutEnabled = ref<boolean>(defaults.arrangeShortcutEnabled);
 
   function reset() {
     wakeLockEnabled.value = defaults.wakeLockEnabled;
@@ -134,6 +139,7 @@ export const useSettingsStore = defineStore('settings', () => {
     minQueuedCardCount.value = defaults.minQueuedCardCount;
     preloadImagesEnabled.value = defaults.preloadImagesEnabled;
     arrangeNewCards.value = defaults.arrangeNewCards;
+    arrangeShortcutEnabled.value = defaults.arrangeShortcutEnabled;
   }
 
   function save() {
@@ -154,6 +160,7 @@ export const useSettingsStore = defineStore('settings', () => {
         minQueuedCardCount: minQueuedCardCount.value,
         preloadImagesEnabled: preloadImagesEnabled.value,
         arrangeNewCards: arrangeNewCards.value,
+        arrangeShortcutEnabled: arrangeShortcutEnabled.value,
       },
       SAVE_VERSION,
     );
@@ -202,6 +209,9 @@ export const useSettingsStore = defineStore('settings', () => {
     if (typeof data.arrangeNewCards === 'boolean')
       arrangeNewCards.value = data.arrangeNewCards;
 
+    if (typeof data.arrangeShortcutEnabled === 'boolean')
+      arrangeShortcutEnabled.value = data.arrangeShortcutEnabled;
+
     return true;
   }
 
@@ -222,6 +232,7 @@ export const useSettingsStore = defineStore('settings', () => {
       minQueuedCardCount,
       preloadImagesEnabled,
       arrangeNewCards,
+      arrangeShortcutEnabled,
     ],
     save,
   );
@@ -255,5 +266,6 @@ export const useSettingsStore = defineStore('settings', () => {
     minQueuedCardCount,
     preloadImagesEnabled,
     arrangeNewCards,
+    arrangeShortcutEnabled,
   };
 });

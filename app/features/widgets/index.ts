@@ -1,4 +1,4 @@
-export { useWidgetRegistry } from './store';
+export { commandLabel, useWidgetRegistry } from './store';
 export { useWidget } from './useWidget';
 export type {
   WidgetCommand,

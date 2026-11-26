@@ -2,6 +2,7 @@
   <div
     class="stack-actions flex-col gap-4 flex"
     :class="{ 'is-touch': isTouch, 'is-menu-open': copyMenuOpen }"
+    @click.capture="selection.setMode(false)"
   >
     <UButton
       :ui="{ base: 'bg-primary/80 text-black' }"
@@ -94,7 +95,7 @@ import PlayAreaRemoveCardModal from '~/components/playArea/RemoveCardModal.vue';
 import { useInputModeStore } from '~/stores/inputMode';
 import { storeToRefs } from 'pinia';
 import { ref } from 'vue';
-import { useBattlefieldStore } from '~/features/battlefield';
+import { useBattlefieldStore, useSelectionStore } from '~/features/battlefield';
 import { useCopyAnimation } from '~/features/castAnimation';
 import type { BoardCard, BoardCardStack } from '~/types/PlayArea';
 
@@ -110,6 +111,8 @@ const inputModeStore = useInputModeStore();
 const { isTouch } = storeToRefs(inputModeStore);
 
 const battlefield = useBattlefieldStore();
+// A stack's own buttons are outside selection mode (#235).
+const selection = useSelectionStore();
 const copyCard = useCopyAnimation();
 
 const showConfirmRemove = ref(false);

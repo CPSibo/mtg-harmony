@@ -621,6 +621,12 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     return newStacks;
   }
 
+  /** Whether any card on the board is tapped, for Untap all (#235). */
+  const anyTapped = computed(() => {
+    for (const card of allCards()) if (card.tapped) return true;
+    return false;
+  });
+
   function untapAll() {
     for (let i = 0; i < stacks.value.length; i++) {
       const stack = stacks.value[i];
@@ -992,6 +998,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     toggleSnapping,
 
     untapAll,
+    anyTapped,
     toggleTapped,
     tapOrUntap,
     toggleFlipped,

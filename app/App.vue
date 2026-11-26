@@ -51,6 +51,7 @@ import {
   useEventLogStore,
 } from '~/features/eventLog';
 import { FloatingBar } from '~/features/palette';
+import { useBattlefieldStore } from '~/features/battlefield';
 import { useWidget } from '~/features/widgets';
 import { useInputModeStore } from '~/stores/inputMode';
 import { useUpdateCheck } from '~/pwa/updateCheck';
@@ -65,6 +66,7 @@ const EventLogWindow = defineAsyncComponent(
 );
 const addCard = useAddCard();
 const log = useEventLogStore();
+const battlefield = useBattlefieldStore();
 // True from the first open on (a computed gets its previous value).
 const addCardLoaded = computed(
   (was: boolean | undefined) => !!was || addCard.addCardWindowIsOpen,
@@ -128,11 +130,14 @@ useWidget({
   id: 'app',
   label: 'App',
   icon: 'i-lucide-flame',
+  order: 80,
+  hideWithSelection: true,
   commands: [
     {
       id: 'app.clearBoard',
       label: 'Clear board',
       icon: 'i-lucide-brush-cleaning',
+      enabled: () => battlefield.stacks.length > 0,
       execute: () => (showConfirmClearBoard.value = true),
     },
     {
