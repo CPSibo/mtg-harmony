@@ -288,8 +288,9 @@ const castToGraveyard = () => {
   drawerIsOpen.value = false;
 };
 
-// The panel's actions in the palette (#218). Each works with the panel
-// closed; a cast then has no flight from the panel.
+// The panel's actions in the palette (#218). Next and Previous open the panel
+// to show the card (#237); the rest work with it closed, and a cast then has
+// no flight from the panel.
 useWidget({
   id: 'onDeck',
   label: 'On-deck',
@@ -312,7 +313,9 @@ useWidget({
       // Each shows only while its button in the panel works (#235).
       enabled: () => !cantFetch.value && !loading.value,
       execute: () => {
-        if (!cantFetch.value && !loading.value) void goNext();
+        if (cantFetch.value || loading.value) return;
+        drawerIsOpen.value = true;
+        void goNext();
       },
     },
     {
@@ -322,7 +325,9 @@ useWidget({
       kbds: 'o-p',
       enabled: () => canGoPrevious.value,
       execute: () => {
-        if (canGoPrevious.value) discordFetchStore.prev();
+        if (!canGoPrevious.value) return;
+        drawerIsOpen.value = true;
+        discordFetchStore.prev();
       },
     },
     {
@@ -331,6 +336,7 @@ useWidget({
       icon: 'i-lucide-user-plus',
       kbds: 'o-c',
       enabled: () => !!card.value?.id,
+      toast: () => `Cast ${card.value?.scryfallInfo.name} to the board`,
       execute: () => cast(),
     },
     {
@@ -339,6 +345,7 @@ useWidget({
       icon: 'i-lucide-skull',
       kbds: 'o-g',
       enabled: () => !!card.value?.id,
+      toast: () => `Cast ${card.value?.scryfallInfo.name} to the graveyard`,
       execute: castToGraveyard,
     },
     {
@@ -346,6 +353,7 @@ useWidget({
       label: 'Clear On-deck card',
       icon: 'i-lucide-x',
       enabled: () => !!card.value?.id,
+      toast: () => 'Cleared the On-deck card',
       execute: () => {
         if (card.value) discordFetchStore.clearCard();
       },

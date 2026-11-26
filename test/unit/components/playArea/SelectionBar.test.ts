@@ -22,23 +22,36 @@ function twoStacks() {
   );
 }
 
-const bar = () => document.querySelector('.selection-bar');
+/** The bar while it's open; closed, it's only the selection mode button. */
+const bar = () => document.querySelector('.selection-bar[role="status"]');
 
 describe('SelectionBar (#216)', () => {
   afterEach(unmountAll);
 
-  it('stays hidden for one stack selected outside selection mode', async () => {
+  it('is only the selection mode button with nothing selected', async () => {
+    twoStacks();
+    mountInApp(SelectionBar);
+    await flushPromises();
+    expect(bar()).toBeNull();
+    expect(
+      document.querySelector('.selection-bar [aria-label="Select stacks"]'),
+    ).not.toBeNull();
+  });
+
+  it('opens for any selection, outside selection mode too (#237)', async () => {
     const [a, b] = twoStacks();
     const selection = useSelectionStore();
     mountInApp(SelectionBar);
 
     selection.selectOnly(a!);
     await flushPromises();
-    expect(bar()).toBeNull();
+    expect(selection.mode).toBe(false);
+    expect(bar()?.textContent).toContain('(1)');
 
     selection.toggle(b!);
     await flushPromises();
-    expect(bar()?.textContent).toContain('2 selected');
+    // The count is in the selection mode button (#237).
+    expect(bar()?.textContent).toContain('(2)');
   });
 
   it('shows for one stack in selection mode', async () => {
@@ -48,7 +61,8 @@ describe('SelectionBar (#216)', () => {
     selection.selectOnly(a!);
     mountInApp(SelectionBar);
     await flushPromises();
-    expect(bar()?.textContent).toContain('1 selected');
+    expect(bar()?.textContent).toContain('Selecting');
+    expect(bar()?.textContent).toContain('(1)');
   });
 
   it('shows the selection commands meant for it, as buttons', async () => {

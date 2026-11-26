@@ -2,8 +2,13 @@ import { defineShortcuts } from '@nuxt/ui/composables';
 import { defineStore } from 'pinia';
 import { computed, shallowRef, triggerRef } from 'vue';
 import type { Fn } from '@vueuse/core';
+import { useActionToast } from '~/composables/useActionToast';
 import { useSelectionStore } from '~/features/battlefield/selection';
-import type { WidgetCommand, WidgetDefinition } from '~/features/widgets/types';
+import type {
+  WidgetCommand,
+  WidgetCommandChoice,
+  WidgetDefinition,
+} from '~/features/widgets/types';
 
 const applies = (cmd: WidgetCommand) => cmd.enabled?.() ?? true;
 
@@ -27,18 +32,21 @@ export const useWidgetRegistry = defineStore('widgetRegistry', () => {
   const widgets = shallowRef(new Map<string, WidgetDefinition>());
   const widgetShortcuts = new Map<string, Fn>();
   const selection = useSelectionStore();
+  const actionToast = useActionToast();
 
   /**
-   * Runs a command from the palette or its shortcut. Anything not about the
-   * selection leaves selection mode first (#235); the selection stays.
+   * Runs a command, or one of its choices, from the palette, its shortcut or
+   * the selection bar. Anything not about the selection leaves selection
+   * mode first (#235); the selection stays. Then its toast (#237), if it has one,
+   * says what it did, named after the command: a card's own button for the
+   * same thing uses the same name (`useActionToast`).
    */
-  function run(
-    cmd: Pick<WidgetCommand, 'scope' | 'keepsSelectionMode'>,
-    action: () => void,
-  ) {
+  function run(cmd: WidgetCommand, choice?: WidgetCommandChoice) {
     if (cmd.scope !== 'selection' && !cmd.keepsSelectionMode)
       selection.setMode(false);
-    action();
+    const title = (choice ?? cmd).toast?.();
+    (choice ?? cmd).execute();
+    if (title) actionToast(cmd.id, title, (choice ?? cmd).icon);
   }
 
   function register(widget: WidgetDefinition) {
@@ -49,8 +57,7 @@ export const useWidgetRegistry = defineStore('widgetRegistry', () => {
     for (const cmd of widget.commands)
       if (cmd.kbds)
         shortcuts[shortcutKey(cmd.kbds)] = () => {
-          if (applies(cmd) && (cmd.shortcutGuard?.() ?? true))
-            run(cmd, cmd.execute);
+          if (applies(cmd) && (cmd.shortcutGuard?.() ?? true)) run(cmd);
         };
     widgetShortcuts.set(widget.id, defineShortcuts(shortcuts));
   }
@@ -85,12 +92,12 @@ export const useWidgetRegistry = defineStore('widgetRegistry', () => {
     icon: cmd.icon,
     // Shortcuts are chords like 'b-a'; the palette shows one key per entry.
     kbds: cmd.kbds?.split('-'),
-    onSelect: () => run(cmd, cmd.execute),
+    onSelect: () => run(cmd),
     // The palette opens these as a page of their own.
     children: cmd.choices?.map((c) => ({
       label: c.label,
       icon: c.icon,
-      onSelect: () => run(cmd, c.execute),
+      onSelect: () => run(cmd, c),
     })),
   });
 
@@ -116,6 +123,7 @@ export const useWidgetRegistry = defineStore('widgetRegistry', () => {
   return {
     register,
     unregister,
+    run,
     allCommands,
     selectionCommands,
     paletteGroups,

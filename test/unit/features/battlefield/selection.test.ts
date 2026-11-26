@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { nextTick } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield/store';
 import { useSelectionStore } from '~/features/battlefield/selection';
 import { makeCard } from '../../fixtures/cards';
@@ -65,6 +66,22 @@ describe('useSelectionStore (#138)', () => {
     selection.toggle(stacks[0]!.id);
     battlefield.removeCard(stacks[0]!.primary);
     expect(selection.size).toBe(0);
+  });
+
+  it('leaves selection mode once the board is empty (#237)', async () => {
+    const { battlefield, stacks } = boardWithStacks(
+      { x: 0, y: 0 },
+      { x: 500, y: 0 },
+    );
+    const selection = useSelectionStore();
+    selection.setMode(true);
+    battlefield.removeCard(stacks[0]!.primary);
+    await nextTick();
+    expect(selection.mode).toBe(true);
+
+    battlefield.removeCard(battlefield.stacks[0]!.primary);
+    await nextTick();
+    expect(selection.mode).toBe(false);
   });
 
   it("moves the other selected stacks by the leader's offset", () => {

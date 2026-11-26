@@ -9,6 +9,14 @@ import {
 import { putOnBoard } from '../../fixtures/board';
 import { makeCard } from '../../fixtures/cards';
 
+const toasts: { id?: string; title?: string }[] = [];
+vi.mock('@nuxt/ui/composables', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@nuxt/ui/composables')>()),
+  useToast: () => ({
+    add: (toast: (typeof toasts)[number]) => toasts.push(toast),
+  }),
+}));
+
 const cmd = (over: Partial<WidgetCommand> = {}): WidgetCommand => ({
   id: 'c',
   label: 'C',
@@ -150,5 +158,57 @@ describe('palette context (#235)', () => {
     press(' ');
     press(' ');
     expect(execute).toHaveBeenCalledOnce();
+  });
+
+  describe('toasts', () => {
+    afterEach(() => (toasts.length = 0));
+
+    it('says what a command did, read before it runs', () => {
+      const n = ref(1);
+      register(
+        widget({
+          commands: [
+            cmd({
+              kbds: 'q',
+              toast: () => `Did ${n.value}`,
+              execute: () => n.value++,
+            }),
+          ],
+        }),
+      );
+      press('q');
+      expect(toasts).toEqual([
+        expect.objectContaining({ id: 'c', title: 'Did 1' }),
+      ]);
+    });
+
+    it('says nothing for a command without one', () => {
+      register(widget({ commands: [cmd({ kbds: 'q' })] }));
+      press('q');
+      expect(toasts).toEqual([]);
+    });
+
+    it('uses a choice’s own toast', () => {
+      register(
+        widget({
+          commands: [
+            cmd({
+              label: 'Copy',
+              choices: [
+                {
+                  label: 'Card only',
+                  icon: 'i-lucide-copy',
+                  toast: () => 'Copied',
+                  execute: () => {},
+                },
+              ],
+            }),
+          ],
+        }),
+      );
+      const item = useWidgetRegistry().paletteGroups[0]!.items[0]!;
+      item.children![0]!.onSelect();
+      expect(toasts).toEqual([expect.objectContaining({ title: 'Copied' })]);
+    });
   });
 });

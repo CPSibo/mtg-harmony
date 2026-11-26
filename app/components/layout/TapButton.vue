@@ -17,6 +17,8 @@
 <script setup lang="ts">
 import UButton from '@nuxt/ui/components/Button.vue';
 import { computed } from 'vue';
+import { manaIcon } from '~/components/shared/manaIcon';
+import { cardsLabel, useActionToast } from '~/composables/useActionToast';
 import { useBattlefieldStore, useSelectionStore } from '~/features/battlefield';
 
 const battlefield = useBattlefieldStore();
@@ -34,8 +36,30 @@ const label = computed(() => {
   return `${tapsSelection.value ? 'Tap' : 'Untap'} ${what}`;
 });
 
+// The same toasts as Untap all and the selection's Tap (#237).
+const actionToast = useActionToast();
+
 function act() {
-  if (selection.size) battlefield.tapOrUntap(selected.value);
-  else battlefield.untapAll();
+  if (selection.size) {
+    const cards = selected.value;
+    const tapping = tapsSelection.value;
+    battlefield.tapOrUntap(cards);
+    // One card turning says enough; several get a toast (#237).
+    if (cards.length > 1)
+      actionToast(
+        'selection.tap',
+        `${tapping ? 'Tapped' : 'Untapped'} ${cardsLabel(cards)}`,
+        manaIcon(tapping ? 'ms-tap' : 'ms-untap'),
+      );
+  } else {
+    const several = battlefield.untapAllCount() > 1;
+    battlefield.untapAll();
+    if (several)
+      actionToast(
+        'board.untapAll',
+        'Untapped every card',
+        'i-lucide-rotate-ccw',
+      );
+  }
 }
 </script>

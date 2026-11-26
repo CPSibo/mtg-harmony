@@ -94,7 +94,7 @@
           color="neutral"
           variant="soft"
           size="xl"
-          @click="battlefield.toggleShownAs(card!, settings.imagesEnabled)"
+          @click="toggleShownAs"
         >
           {{ showImage ? 'Show text' : 'Show art' }}
         </UButton>
@@ -232,18 +232,18 @@
             {
               label: 'Copy card',
               icon: 'i-lucide-copy',
-              onSelect: () => copyCard(card!, 'card'),
+              onSelect: () => copy('card'),
               color: 'primary',
             },
             {
               label: 'Copy card + counters',
               icon: 'i-lucide-copy-plus',
-              onSelect: () => copyCard(card!, 'counters'),
+              onSelect: () => copy('counters'),
             },
             {
               label: 'Copy everything',
               icon: 'i-lucide-square-stack',
-              onSelect: () => copyCard(card!, 'stack'),
+              onSelect: () => copy('stack'),
             },
           ]"
           :content="{
@@ -328,6 +328,7 @@ import UInputNumber from '@nuxt/ui/components/InputNumber.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
 import USeparator from '@nuxt/ui/components/Separator.vue';
 import { useToast } from '@nuxt/ui/composables';
+import { cardsLabel, useActionToast } from '~/composables/useActionToast';
 import { fetchCardById } from '~/composables/useScryfall';
 import { meldResult } from '~/features/battlefield/meld';
 import { tokenParts } from '~/features/battlefield/tokens';
@@ -338,7 +339,7 @@ import SharedOracleText from '~/components/shared/OracleText.vue';
 import { useSettingsStore } from '~/stores/settings';
 import { useOnline } from '@vueuse/core';
 import { computed, defineAsyncComponent, ref } from 'vue';
-import { useBattlefieldStore } from '~/features/battlefield';
+import { useBattlefieldStore, type CopyMode } from '~/features/battlefield';
 import SharedCardImage from '~/components/shared/CardImage.vue';
 import {
   canTurn,
@@ -422,10 +423,17 @@ const confirmRemovedCanceled = () => {
   open.value = true;
 };
 
-const toggleTap = () => {
-  if (!props.card) return;
+// What each action did, in the same toasts as the palette's commands (#237).
+// Names shared with a command (`selection.tap`) share its toast.
+const actionToast = useActionToast();
+const name = (card: BoardCard) => cardsLabel([card]);
 
-  battlefield.toggleTapped(props.card);
+const toggleTap = () => {
+  const card = props.card;
+  if (!card) return;
+
+  // One card turning needs no toast (#237).
+  battlefield.toggleTapped(card);
 
   open.value = false;
 };
@@ -433,19 +441,53 @@ const toggleTap = () => {
 const flipOver = () => {
   if (!props.card) return;
   battlefield.toggleFlipped(props.card);
+  actionToast(
+    'selection.flip',
+    `Flipped ${name(props.card)}`,
+    'i-lucide-flip-horizontal-2',
+  );
+};
+
+const toggleShownAs = () => {
+  const card = props.card;
+  if (!card) return;
+  const asText = showImage.value;
+  battlefield.toggleShownAs(card, settings.imagesEnabled);
+  actionToast(
+    'selection.artOrText',
+    `Showing ${name(card)} as ${asText ? 'text' : 'art'}`,
+    asText ? 'i-lucide-text' : 'i-lucide-image',
+  );
+};
+
+const copy = (mode: CopyMode) => {
+  if (!props.card) return;
+  copyCard(props.card, mode);
+  actionToast('selection.copy', `Copied ${name(props.card)}`, 'i-lucide-copy');
 };
 
 // Like tapping, locking a door is done with the card, so the window closes
 // (#205).
 const toggleDoor = (i: number) => {
   if (!props.card) return;
-  battlefield.setDoorLocked(props.card, i, !isLocked(i));
+  const lock = !isLocked(i);
+  battlefield.setDoorLocked(props.card, i, lock);
+  actionToast(
+    'card.door',
+    `${lock ? 'Locked' : 'Unlocked'} ${doorNames(props.card)[i]}`,
+    lock ? 'i-lucide-lock' : 'i-lucide-lock-open',
+  );
   open.value = false;
 };
 
 const turn = () => {
   if (!props.card) return;
   battlefield.toggleTurned(props.card);
+  actionToast(
+    'card.turn',
+    `Turned ${name(props.card)} 180°`,
+    'i-lucide-rotate-cw',
+  );
   open.value = false;
 };
 
@@ -469,7 +511,10 @@ const meld = async () => {
   melding.value = true;
   try {
     const data = await fetchCardById(result.id);
-    if (melder.meld(card, data)) open.value = false;
+    if (melder.meld(card, data)) {
+      actionToast('card.meld', `Melded into ${result.name}`, 'i-lucide-merge');
+      open.value = false;
+    }
   } catch {
     toast.add({
       title: `Could not fetch ${result.name}`,
@@ -484,6 +529,7 @@ const meld = async () => {
 
 const unmeld = () => {
   if (!props.card) return;
+  actionToast('card.meld', `Unmelded ${name(props.card)}`, 'i-lucide-split');
   melder.unmeld(props.card);
   open.value = false;
 };
@@ -537,8 +583,14 @@ const tryDetach = () => {
   const card = props.card!;
   const play = animateMove([card.id]);
   const hostId = card.stack?.primary.id ?? null;
+  const under = isUnder.value;
   battlefield.detach(card);
   play(hostId, false);
+  actionToast(
+    'card.detach',
+    under ? `Took ${name(card)} out` : `Detached ${name(card)}`,
+    under ? 'i-lucide-arrow-up-from-line' : 'i-lucide-unlink',
+  );
   open.value = false;
 };
 
@@ -549,6 +601,11 @@ const explodeStack = () => {
   );
   battlefield.explodeStack(stack);
   play(stack.primary.id, false);
+  actionToast(
+    'selection.explode',
+    'Split the stack into a card each',
+    'i-lucide-unlink',
+  );
   open.value = false;
 };
 

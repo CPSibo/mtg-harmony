@@ -15,7 +15,13 @@ import {
   readSavedCard,
 } from './boardCard';
 import { findMeldPartner } from './meld';
-import { arrangeInGrid, arrangeInRows, arrangeRow, rowBand } from './arrange';
+import {
+  arrangeInGrid,
+  arrangeInRows,
+  arrangeRow,
+  rowBand,
+  stackReach,
+} from './arrange';
 import { BOARD_SIZE, findFreeSpot, type Rect } from './placement';
 import { useSettingsStore } from '~/stores/settings';
 
@@ -233,6 +239,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
         row: arrangeRow(s.primary),
         size: stackSize(s),
         position: s.position,
+        reach: stackReach(s),
       })),
       {
         x: shown.x + ARRANGE_GAP,
@@ -265,6 +272,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
       id: s.id,
       size: stackSize(s),
       position: s.position,
+      reach: stackReach(s),
     }));
     const origin = {
       x: Math.min(...items.map((i) => i.position.x)),
@@ -626,6 +634,18 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     for (const card of allCards()) if (card.tapped) return true;
     return false;
   });
+
+  /**
+   * How many cards Untap all would untap: primaries and attachments. Its
+   * toast is for several (#237).
+   */
+  function untapAllCount() {
+    let n = 0;
+    for (const stack of stacks.value)
+      for (const card of [stack.primary, ...stack.attachments])
+        if (card.tapped) n++;
+    return n;
+  }
 
   function untapAll() {
     for (let i = 0; i < stacks.value.length; i++) {
@@ -999,6 +1019,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
 
     untapAll,
     anyTapped,
+    untapAllCount,
     toggleTapped,
     tapOrUntap,
     toggleFlipped,

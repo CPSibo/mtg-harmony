@@ -3,6 +3,7 @@ import {
   arrangeInRows,
   arrangeRow,
   rowBand,
+  stackReach,
   createBoardCard,
   useBattlefieldStore,
   type Rect,
@@ -98,6 +99,31 @@ describe('arrangeInRows (#223)', () => {
     expect(at.get('c')).toEqual({ x: 50, y: 170 });
   });
 
+  it('leaves room for what a stack reaches past its box (#237)', () => {
+    const at = arrangeInRows(
+      [
+        { ...item('a', 'creatures', 0), reach: { left: 20, right: 30 } },
+        item('b', 'creatures', 1),
+      ],
+      { x: 0, y: 0, width: 1000 },
+      10,
+    );
+    expect(at.get('a')).toEqual({ x: 20, y: 0 });
+    expect(at.get('b')).toEqual({ x: 20 + 100 + 30 + 10, y: 0 });
+  });
+
+  it('wraps by what a stack reaches, too (#237)', () => {
+    const at = arrangeInRows(
+      [
+        item('a', 'creatures', 0),
+        { ...item('b', 'creatures', 1), reach: { left: 0, right: 30 } },
+      ],
+      { x: 0, y: 0, width: 230 },
+      10,
+    );
+    expect(at.get('b')).toEqual({ x: 0, y: 150 });
+  });
+
   it('leaves no gap for an empty row', () => {
     const at = arrangeInRows(
       [item('bear', 'creatures'), item('land', 'lands')],
@@ -110,6 +136,49 @@ describe('arrangeInRows (#223)', () => {
       10,
     );
     expect(at.get('land')!.y).toBeLessThan(withOther.get('land')!.y);
+  });
+});
+
+describe('stackReach (#237)', () => {
+  const board = () => useBattlefieldStore();
+
+  it('reaches nowhere for an upright card without badges', () => {
+    const stack = putOnBoard(board(), card('Creature — Bear'));
+    expect(stackReach(stack)).toEqual({ left: 0, right: 0 });
+  });
+
+  it('reaches both sides for a tapped card', () => {
+    const stack = putOnBoard(board(), card('Creature — Bear'));
+    stack.primary.tapped = true;
+    const reach = stackReach(stack);
+    expect(reach.left).toBeGreaterThan(0);
+    expect(reach.right).toBe(reach.left);
+  });
+
+  it('reaches right for each column of badges', () => {
+    const stack = putOnBoard(board(), card('Creature — Bear'));
+    stack.primary.modifiers.set('flying', 1);
+    const one = stackReach(stack).right;
+    expect(one).toBeGreaterThan(0);
+
+    for (const key of ['trample', 'haste', 'reach', 'menace'] as const)
+      stack.primary.modifiers.set(key, 1);
+    expect(stackReach(stack).right).toBe(one);
+
+    stack.primary.modifiers.set('vigilance', 1);
+    expect(stackReach(stack).right).toBeGreaterThan(one);
+  });
+
+  it('counts an attachment’s badges, three to a column', () => {
+    const stack = putOnBoard(board(), card('Creature — Bear'));
+    const aura = card('Enchantment — Aura');
+    for (const key of ['flying', 'trample', 'haste', 'reach'] as const)
+      aura.modifiers.set(key, 1);
+    stack.attachments.add(aura);
+    const two = stackReach(stack).right;
+
+    aura.modifiers.delete('reach');
+    expect(stackReach(stack).right).toBeLessThan(two);
   });
 });
 

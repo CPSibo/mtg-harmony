@@ -156,6 +156,7 @@ useWidget({
       id: 'app.fullscreen',
       label: 'Turn fullscreen on or off',
       icon: 'i-lucide-expand',
+      toast: () => `Fullscreen ${fullscreen.isFullscreen.value ? 'off' : 'on'}`,
       execute: () => void fullscreen.toggle(),
     },
     {

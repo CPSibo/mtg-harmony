@@ -1,9 +1,17 @@
+import type { Component } from 'vue';
+
+/**
+ * An Iconify name (`i-lucide-…`), or a component, such as a mana symbol from
+ * `manaIcon` (#237). Nuxt UI renders either.
+ */
+export type WidgetIcon = string | Component;
+
 export interface WidgetCommand {
   id: string;
   /** A function for a label that follows the state, like Tap or Untap (#235). */
   label: string | (() => string);
   description?: string;
-  icon: string;
+  icon: WidgetIcon;
   kbds?: string;
   /**
    * Whether the command applies right now (#216). The palette hides it and
@@ -37,19 +45,28 @@ export interface WidgetCommand {
    * that mean something else where focus is, like Space on a button.
    */
   shortcutGuard?: () => boolean;
+  /**
+   * An info toast saying what the command did (#237), read just before it
+   * runs, so it can count or name what it acts on. Commands that ask for
+   * more (Add card, Find) or open something (On-deck, the event log) have
+   * none: what opens says enough.
+   */
+  toast?: () => string;
   execute: () => void;
 }
 
 export interface WidgetCommandChoice {
   label: string;
-  icon: string;
+  icon: WidgetIcon;
+  /** As the command's `toast`, for this choice. */
+  toast?: () => string;
   execute: () => void;
 }
 
 export interface WidgetDefinition {
   id: string;
   label: string;
-  icon: string;
+  icon: WidgetIcon;
   /** Where its group goes in the palette, lowest first; missing goes last. */
   order?: number;
   /**

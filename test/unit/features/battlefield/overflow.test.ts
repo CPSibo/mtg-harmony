@@ -61,6 +61,31 @@ describe('the selection overflow (#222)', () => {
     expect(at.get('c')).toEqual({ x: 10, y: 165 });
   });
 
+  it('makes the cells wide enough for what items reach (#237)', () => {
+    const size = { width: 100, height: 140 };
+    const at = arrangeInGrid(
+      [
+        {
+          id: 'a',
+          size,
+          position: { x: 0, y: 0 },
+          reach: { left: 0, right: 40 },
+        },
+        {
+          id: 'b',
+          size,
+          position: { x: 50, y: 0 },
+          reach: { left: 15, right: 15 },
+        },
+      ],
+      { x: 0, y: 0 },
+      2,
+      5,
+    );
+    // a's badges end at 140; b's overhang starts 15 before its cell.
+    expect(at.get('b')!.x - 15).toBeGreaterThanOrEqual(140);
+  });
+
   it('arranges stacks in a row from their top-left corner', () => {
     const battlefield = useBattlefieldStore();
     const targets = stacks(3);

@@ -82,14 +82,22 @@ test('the palette fetches, casts and runs board commands', async ({ page }) => {
   };
 
   await run('Next card');
+  // Next card opens On-deck to show it (#237).
+  await expect(
+    page.getByRole('button', { name: 'Cast to board' }),
+  ).toBeVisible();
   await run('Cast On-deck card to board');
   const boardCard = page.locator('.board-card').getByRole('img', {
     name: card.name,
   });
   await expect(boardCard).toBeVisible();
+  // It says what it did (#237).
+  await expect(
+    page.getByText(`Cast ${card.name} to the board`, { exact: true }),
+  ).toBeVisible();
 
   await run('Turn selection mode on or off');
-  await expect(page.getByRole('status')).toContainText('Click stacks');
+  await expect(page.getByRole('status')).toContainText('Selecting');
 
   await run('Clear board');
   await expect(page.getByRole('dialog')).toBeVisible();
@@ -100,8 +108,8 @@ test('shortcuts fetch, cast and zoom to fit', async ({ page }) => {
     await page.keyboard.press(a);
     await page.keyboard.press(b);
   };
+  // Next card opens On-deck to show it (#237).
   await chord('o', 'n');
-  await chord('o', 'o');
   await expect(page.getByRole('img', { name: card.name })).toBeVisible();
   await chord('o', 'c');
   const boardCard = page.locator('.board-card').getByRole('img', {
@@ -315,6 +323,42 @@ test('Find on board pans to a match and selects it', async ({ page }) => {
   await expect(page.getByRole('search')).toBeHidden();
 });
 
+// #237: a box drawn in selection mode ends it, whatever it caught.
+test('selection mode ends after a box is drawn', async ({ page }) => {
+  await page.getByRole('button', { name: 'On-deck' }).click();
+  await page.getByRole('button', { name: 'Next card' }).click();
+  await page.getByRole('button', { name: 'Cast to board' }).click();
+  await expect(page.locator('.board-card-stack')).toHaveCount(1);
+  // On-deck has finished closing once it hands focus back to its button.
+  await expect(page.getByRole('button', { name: 'On-deck' })).toBeFocused();
+
+  const mode = page.getByRole('button', {
+    name: /^(Select stacks|Leave selection mode)/,
+  });
+  for (const catches of [false, true]) {
+    await mode.click();
+    await expect(mode).toHaveAttribute('aria-pressed', 'true');
+    // An empty corner first, then a box over the whole view.
+    const [from, to] = catches
+      ? [
+          { x: 5, y: 90 },
+          { x: 1270, y: 715 },
+        ]
+      : [
+          { x: 5, y: 600 },
+          { x: 60, y: 700 },
+        ];
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y, { steps: 5 });
+    await page.mouse.up();
+    await expect(mode).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.locator('.board-card-stack.selected')).toHaveCount(
+      catches ? 1 : 0,
+    );
+  }
+});
+
 // #216: a plain tap selects one stack, the target of palette commands.
 test.describe('selecting by tap', () => {
   test.beforeEach(async ({ page }) => {
@@ -333,23 +377,30 @@ test.describe('selecting by tap', () => {
   const selected = (page: Page) => page.locator('.board-card-stack.selected');
   const cardIn = (stack: Locator) => stack.locator('.primary-card [role=img]');
 
-  test('a click selects one stack, without the selection bar', async ({
+  test('a click selects one stack, and the selection bar opens', async ({
     page,
   }) => {
+    const bar = page.locator('.selection-bar[role="status"]');
+    await expect(bar).toBeHidden();
     await cardIn(stacks(page).first()).click();
     await expect(selected(page)).toHaveCount(1);
-    await expect(page.locator('.selection-bar')).toBeHidden();
+    // Its actions, outside selection mode too (#237).
+    await expect(bar).toContainText('(1)');
+    await expect(
+      bar.getByRole('button', { name: 'Tap', exact: true }),
+    ).toBeVisible();
 
     // Another click moves the selection; a modified click adds to it.
     await cardIn(stacks(page).nth(1)).click();
     await expect(selected(page)).toHaveCount(1);
     await cardIn(stacks(page).first()).click({ modifiers: ['Control'] });
     await expect(selected(page)).toHaveCount(2);
-    await expect(page.locator('.selection-bar')).toContainText('2 selected');
+    await expect(page.locator('.selection-bar')).toContainText('(2)');
 
     // A click on the empty board clears it.
     await page.mouse.click(40, 700);
     await expect(selected(page)).toHaveCount(0);
+    await expect(bar).toBeHidden();
   });
 
   test('dragging a stack does not select it', async ({ page }) => {
@@ -451,7 +502,7 @@ test('the selection bar acts on every selected card', async ({ page }) => {
     .getByRole('img')
     .click({ modifiers: ['Control'] });
   const bar = page.locator('.selection-bar');
-  await expect(bar).toContainText('2 selected');
+  await expect(bar).toContainText('(2)');
 
   await bar.getByRole('button', { name: 'Tap', exact: true }).click();
   await expect(primaries.nth(0)).toHaveClass(/tapped/);
@@ -499,7 +550,7 @@ test('the selection bar arranges and attaches several cards', async ({
   await cards.nth(0).click();
   await cards.nth(1).click({ modifiers: ['Control'] });
   const bar = page.locator('.selection-bar');
-  await expect(bar).toContainText('2 selected');
+  await expect(bar).toContainText('(2)');
   const more = async (name: string) => {
     await bar.getByRole('button', { name: 'More' }).click();
     await page.getByRole('menuitem', { name }).click();

@@ -1,5 +1,6 @@
 import { useToast } from '@nuxt/ui/composables';
 import { ref } from 'vue';
+import { useActionToast } from '~/composables/useActionToast';
 import { fetchCardById } from '~/composables/useScryfall';
 import { useTokenAnimation } from '~/features/castAnimation';
 import type { BoardCard } from '~/types/PlayArea';
@@ -13,6 +14,7 @@ import type { ScryfallCard, ScryfallRelatedCard } from '~/types/Scryfall';
 export function useCreateToken() {
   const createToken = useTokenAnimation();
   const toast = useToast();
+  const actionToast = useActionToast();
   const creating = ref<string | null>(null);
 
   /** Whether the token went on the board. */
@@ -28,6 +30,7 @@ export function useCreateToken() {
       // Measured once the fetch is done, so the slide starts where the
       // source is then.
       createToken(source, card);
+      actionToast('card.token', `Created ${card.name}`, 'i-lucide-circle-plus');
       return true;
     } catch {
       toast.add({
