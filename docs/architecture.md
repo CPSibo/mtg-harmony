@@ -90,7 +90,7 @@ A command that needs a component (its window, its confirm modal, its pan and zoo
 with `useWidget(definition)`, which does steps 2 and the unregister for it. The board (`Board.vue`), On-deck
 (`SidePanel.vue`) and the app menu's actions (`App.vue`) register this way.
 
-Widgets with commands: Add Card, the event log, Board, Find, Arrange, On-deck and App. Widgets have no settings of their own: the
+Widgets with commands: Add Card, the event log, Board, Find, Select, Arrange, On-deck and App. Widgets have no settings of their own: the
 settings dialog binds to the stores directly.
 
 | Shortcut              | Command                                                   |
@@ -106,6 +106,10 @@ settings dialog binds to the stores directly.
 | `o-c` / `o-g`         | Cast the On-deck card to the board / to the graveyard     |
 | `f-b`                 | Find on board                                             |
 | `a-a`                 | Smart arrange the selection, or every card                |
+| `s-a` / `s-i`         | Select all / invert the selection                         |
+| `s-t` / `s-u`         | Select tapped / untapped                                  |
+| `s-n`                 | Select every card with the same name as the selection     |
+| `s-y`                 | Select by type                                            |
 | `t-t`                 | Tap or untap the selection                                |
 | `c-c`                 | Counters and keywords on the selection                    |
 | `r-r`                 | Remove the selection (asks first)                         |
