@@ -6,6 +6,7 @@
     description="Fetch random non-land, paper cards"
     :modal="false"
     :dismissible="false"
+    :content="{ onCloseAutoFocus: keepFocusElsewhere }"
     :ui="{
       overlay: 'bg-elevated',
       content: 'border-primary-900! border-r-3',
@@ -203,6 +204,7 @@ import { useDragToCast } from '~/composables/useDragToCast';
 import { cardImage, useBattlefieldStore } from '~/features/battlefield';
 import { OFFLINE_MESSAGE, useDiscordFetcherStore } from '..';
 import { useWidget } from '~/features/widgets';
+import { keepFocusElsewhere } from '~/utils/keepFocusElsewhere';
 
 const toast = useToast();
 
