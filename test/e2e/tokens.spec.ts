@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { searchText } from './scryfall';
 
 // #203: a card's tokens can be created from its details.
 
@@ -55,7 +56,7 @@ async function mockScryfall(page: Page) {
   await page.route('https://api.scryfall.com/**', (route) => {
     const url = new URL(route.request().url());
     if (url.pathname === '/cards/search') {
-      const q = url.searchParams.get('q')?.trim().toLowerCase() ?? '';
+      const q = searchText(url);
       const found = cards.filter((c) => c.name.toLowerCase().includes(q));
       if (!q || !found.length)
         return route.fulfill({ status: 404, json: { object: 'error' } });

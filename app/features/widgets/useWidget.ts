@@ -4,7 +4,7 @@ import type { WidgetDefinition } from './types';
 
 /**
  * Registers a widget's commands while the calling component is mounted, so
- * commands can call into that component (its windows, its state).
+ * commands can call into that component (its windows, its state, its confirm modals).
  */
 export function useWidget(widget: WidgetDefinition) {
   const registry = useWidgetRegistry();

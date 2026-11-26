@@ -14,6 +14,12 @@ export {
   MIN_DRAG_MENU_DELAY_MS,
   type DragMenuHit,
 } from './dragMenu';
-export { BOARD_SIZE, findFreeSpot, overlaps, type Rect } from './placement';
+export {
+  BOARD_SIZE,
+  boundingRect,
+  findFreeSpot,
+  overlaps,
+  type Rect,
+} from './placement';
 export { useSelectionStore } from './selection';
 export { useBattlefieldStore, type AttachMode, type CopyMode } from './store';

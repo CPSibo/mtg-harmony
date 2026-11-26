@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { searchText } from './scryfall';
 
 const IMAGE_URL = 'https://cards.scryfall.io/border_crop/front/test-card.jpg';
 
@@ -28,7 +29,7 @@ async function mockScryfall(page: Page) {
     if (url.pathname === '/cards/random') return route.fulfill({ json: card });
     if (url.pathname === '/cards/search') {
       // Like Scryfall: 400 for an empty query, 404 for no matches.
-      const q = url.searchParams.get('q')?.trim().toLowerCase() ?? '';
+      const q = searchText(url);
       if (!q) return route.fulfill({ status: 400, json: { object: 'error' } });
       if (!card.name.toLowerCase().includes(q))
         return route.fulfill({ status: 404, json: { object: 'error' } });
@@ -67,6 +68,51 @@ test('/ opens the command palette', async ({ page }) => {
   await page.keyboard.press('/');
 
   await expect(page.getByRole('option', { name: /Add card/i })).toBeVisible();
+});
+
+// #218: the app's actions are in the palette, with shortcuts for the frequent ones.
+test('the palette fetches, casts and runs board commands', async ({ page }) => {
+  const run = async (name: string) => {
+    await page.keyboard.press('/');
+    await page.getByRole('option', { name }).click();
+  };
+
+  await run('Next card');
+  await run('Cast On-deck card to board');
+  const boardCard = page.locator('.board-card').getByRole('img', {
+    name: card.name,
+  });
+  await expect(boardCard).toBeVisible();
+
+  await run('Turn selection mode on or off');
+  await expect(page.getByRole('status')).toContainText('Click stacks');
+
+  await run('Clear board');
+  await expect(page.getByRole('dialog')).toBeVisible();
+});
+
+test('shortcuts fetch, cast and zoom to fit', async ({ page }) => {
+  const chord = async (a: string, b: string) => {
+    await page.keyboard.press(a);
+    await page.keyboard.press(b);
+  };
+  await chord('o', 'n');
+  await chord('o', 'o');
+  await expect(page.getByRole('img', { name: card.name })).toBeVisible();
+  await chord('o', 'c');
+  const boardCard = page.locator('.board-card').getByRole('img', {
+    name: card.name,
+  });
+  await expect(boardCard).toBeVisible();
+
+  // Pan the card off-screen, then zoom to fit brings it back.
+  await page.mouse.move(640, 360);
+  await page.mouse.down();
+  await page.mouse.move(-600, -400, { steps: 5 });
+  await page.mouse.up();
+  await expect(boardCard).not.toBeInViewport();
+  await chord('z', 'f');
+  await expect(boardCard).toBeInViewport();
 });
 
 // The board cancels touchstart to pan, which stops the click Reka waits for
@@ -489,7 +535,44 @@ test('Add Card prompts before searching and says when nothing matches', async ({
 
   await addCard.getByRole('textbox').fill('nonexistent');
   await expect(addCard.getByText('No cards found.')).toBeVisible();
-  expect(searches).toEqual(['nonexistent']);
+  expect(searches).toEqual(['(nonexistent) not:extras']);
+});
+
+// #217: Regular is on by default; Tokens and Extras widen the search.
+test('Add Card filters by regular cards, tokens and extras', async ({
+  page,
+}) => {
+  const searches: string[] = [];
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (url.pathname === '/cards/search')
+      searches.push(url.searchParams.get('q') ?? '');
+  });
+
+  await page.keyboard.press('/');
+  await page.getByRole('option', { name: /Add card/i }).click();
+  const addCard = page.getByRole('dialog', { name: 'Add card' });
+  const regular = addCard.getByRole('button', { name: 'Regular' });
+  const tokens = addCard.getByRole('button', { name: 'Tokens' });
+
+  await expect(regular).toHaveAttribute('aria-pressed', 'true');
+  await expect(tokens).toHaveAttribute('aria-pressed', 'false');
+
+  await addCard.getByRole('textbox').fill('goblin');
+  await expect.poll(() => searches.at(-1)).toBe('(goblin) not:extras');
+
+  await tokens.click();
+  await expect
+    .poll(() => searches.at(-1))
+    .toBe('(goblin) include:extras (not:extras or t:token)');
+
+  await regular.click();
+  await expect
+    .poll(() => searches.at(-1))
+    .toBe('(goblin) include:extras t:token');
+
+  await tokens.click();
+  await expect(addCard.getByText('Pick at least one kind')).toBeVisible();
 });
 
 // #59: installable from the home screen, so iOS edge swipes can't navigate away.
