@@ -86,8 +86,24 @@ The flow:
 4. The registry's `paletteGroups` turns every widget into a group of `UCommandPalette` items. The palette
    (`features/palette/components/FloatingBar.vue`) opens with `/` or the search button at the top of the screen.
 
-Add Card and the event log register widgets. Widgets have no settings of their own: the settings dialog binds to the
-stores directly.
+A command that needs a component (its window, its confirm modal, its pan and zoom) registers from that component
+with `useWidget(definition)`, which does steps 2 and the unregister for it. The board (`Board.vue`), On-deck
+(`SidePanel.vue`) and the app menu's actions (`App.vue`) register this way.
+
+Widgets with commands: Add Card, the event log, Board, On-deck and App. Widgets have no settings of their own: the
+settings dialog binds to the stores directly.
+
+| Shortcut              | Command                                                   |
+| --------------------- | --------------------------------------------------------- |
+| `/`                   | Open the palette                                          |
+| `b-a`                 | Add card                                                  |
+| `e-l`                 | Event log                                                 |
+| `u-u`                 | Untap all                                                 |
+| `z-f` / `z-s` / `z-r` | Zoom to fit all cards / to the selection / reset the view |
+| `s-m`                 | Selection mode on or off                                  |
+| `o-o`                 | Show or hide On-deck                                      |
+| `o-n` / `o-p`         | Next / previous On-deck card                              |
+| `o-c` / `o-g`         | Cast the On-deck card to the board / to the graveyard     |
 
 ## Stores and persistence
 

@@ -15,6 +15,22 @@ const LAYER_OFFSET = 40;
 /** The board canvas, in board pixels. */
 export const BOARD_SIZE = Object.freeze({ width: 5000, height: 5000 });
 
+/** The smallest rect covering all of `rects`, or null for none. */
+export function boundingRect(rects: readonly Rect[]): Rect | null {
+  if (!rects.length) return null;
+  let left = Infinity;
+  let top = Infinity;
+  let right = -Infinity;
+  let bottom = -Infinity;
+  for (const r of rects) {
+    left = Math.min(left, r.x);
+    top = Math.min(top, r.y);
+    right = Math.max(right, r.x + r.width);
+    bottom = Math.max(bottom, r.y + r.height);
+  }
+  return { x: left, y: top, width: right - left, height: bottom - top };
+}
+
 export function overlaps(a: Rect, b: Rect) {
   return (
     a.x < b.x + b.width &&

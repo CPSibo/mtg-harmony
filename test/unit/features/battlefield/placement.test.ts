@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { findFreeSpot, overlaps, type Rect } from '~/features/battlefield';
+import {
+  boundingRect,
+  findFreeSpot,
+  overlaps,
+  type Rect,
+} from '~/features/battlefield';
 
 const size = { width: 100, height: 140 };
 const view: Rect = { x: 0, y: 0, width: 1000, height: 600 };
@@ -101,5 +106,24 @@ describe('findFreeSpot', () => {
     const small: Rect = { x: 0, y: 0, width: 50, height: 50 };
 
     expect(findFreeSpot(small, [], size)).toEqual({ x: -25, y: -45 });
+  });
+});
+
+describe('boundingRect', () => {
+  it('is null for no rects', () => {
+    expect(boundingRect([])).toBeNull();
+  });
+
+  it('is the rect itself for one rect', () => {
+    expect(boundingRect([at(10, 20)])).toEqual(at(10, 20));
+  });
+
+  it('covers every rect', () => {
+    expect(boundingRect([at(100, 50), at(400, 300), at(0, 200)])).toEqual({
+      x: 0,
+      y: 50,
+      width: 500,
+      height: 390,
+    });
   });
 });

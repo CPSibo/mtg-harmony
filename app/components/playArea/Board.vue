@@ -92,10 +92,12 @@ import {
 } from 'vue';
 import {
   BOARD_SIZE,
+  boundingRect,
   dragMenu,
   useBattlefieldStore,
   useSelectionStore,
 } from '~/features/battlefield';
+import { useWidget } from '~/features/widgets';
 import { useSettingsStore } from '~/stores/settings';
 import { gridLevels } from '~/utils/gridLevels';
 import { whenIdle } from '~/utils/whenIdle';
@@ -132,6 +134,8 @@ const {
   style,
   isDragging,
   panBy,
+  fitRect,
+  resetView,
   onWheel,
   onMouseDown,
   onMouseMove,
@@ -151,6 +155,77 @@ const {
   },
   disabled: () => battlefield.isAttaching,
   smoothing: () => settings.pointerSmoothing,
+});
+
+// ─── Board commands in the palette (#218) ─────────────────────────────────────
+
+/** Shows every stack in `ids`, or the middle of the board if there's none. */
+function zoomToStacks(ids?: readonly string[]) {
+  const stacks = ids
+    ? battlefield.stacks.filter((s) => ids.includes(s.id))
+    : battlefield.stacks;
+  const rect = boundingRect(
+    stacks.map((s) => ({ ...s.position, ...battlefield.stackSize(s) })),
+  );
+  if (rect) fitRect(rect);
+  else resetView();
+}
+
+useWidget({
+  id: 'board',
+  label: 'Board',
+  icon: 'i-lucide-layout-dashboard',
+  commands: [
+    {
+      id: 'board.untapAll',
+      label: 'Untap all',
+      icon: 'i-lucide-rotate-ccw',
+      kbds: 'u-u',
+      execute: () => battlefield.untapAll(),
+    },
+    {
+      id: 'board.zoomToFit',
+      label: 'Zoom to fit all cards',
+      icon: 'i-lucide-scan',
+      kbds: 'z-f',
+      execute: () => zoomToStacks(),
+    },
+    {
+      id: 'board.zoomToSelection',
+      label: 'Zoom to selection',
+      description: 'All cards when nothing is selected',
+      icon: 'i-lucide-zoom-in',
+      kbds: 'z-s',
+      execute: () => zoomToStacks(selection.size ? selection.ids() : undefined),
+    },
+    {
+      id: 'board.resetView',
+      label: 'Reset view',
+      icon: 'i-lucide-locate-fixed',
+      kbds: 'z-r',
+      execute: resetView,
+    },
+    {
+      id: 'board.selectionMode',
+      label: 'Turn selection mode on or off',
+      icon: 'i-lucide-square-dashed-mouse-pointer',
+      kbds: 's-m',
+      execute: () => selection.setMode(!selection.mode),
+    },
+    {
+      id: 'board.gridSnapping',
+      label: 'Turn grid snapping on or off',
+      icon: 'i-lucide-grid-3x3',
+      execute: () => battlefield.toggleSnapping(),
+    },
+    {
+      id: 'board.artOrText',
+      label: 'Show all cards as art or text',
+      description: 'Changes the setting; cards set on their own keep it',
+      icon: 'i-lucide-image',
+      execute: () => settings.setImagesEnabled(!settings.imagesEnabled),
+    },
+  ],
 });
 
 const anyCardIsDragging = ref(false);

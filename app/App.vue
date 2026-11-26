@@ -34,7 +34,7 @@
 import UApp from '@nuxt/ui/components/App.vue';
 import UMain from '@nuxt/ui/components/Main.vue';
 import { useOverlay, useToast } from '@nuxt/ui/composables';
-import { useEventListener } from '@vueuse/core';
+import { useEventListener, useFullscreen } from '@vueuse/core';
 import { computed, defineAsyncComponent, onMounted, ref } from 'vue';
 import GlobalButtons from '~/components/layout/GlobalButtons.vue';
 import PlayAreaBoard from '~/components/playArea/Board.vue';
@@ -51,6 +51,7 @@ import {
   useEventLogStore,
 } from '~/features/eventLog';
 import { FloatingBar } from '~/features/palette';
+import { useWidget } from '~/features/widgets';
 import { useInputModeStore } from '~/stores/inputMode';
 import { useUpdateCheck } from '~/pwa/updateCheck';
 
@@ -119,6 +120,47 @@ function openSettings() {
 const showConfirmClearBoard = ref(false);
 const showConfirmNewGame = ref(false);
 const showConfirmResetAppData = ref(false);
+
+const fullscreen = useFullscreen();
+
+// The menu's actions in the palette too (#218).
+useWidget({
+  id: 'app',
+  label: 'App',
+  icon: 'i-lucide-flame',
+  commands: [
+    {
+      id: 'app.clearBoard',
+      label: 'Clear board',
+      icon: 'i-lucide-brush-cleaning',
+      execute: () => (showConfirmClearBoard.value = true),
+    },
+    {
+      id: 'app.newGame',
+      label: 'New game',
+      icon: 'i-lucide-flag',
+      execute: () => (showConfirmNewGame.value = true),
+    },
+    {
+      id: 'app.settings',
+      label: 'Settings',
+      icon: 'i-lucide-settings',
+      execute: openSettings,
+    },
+    {
+      id: 'app.fullscreen',
+      label: 'Turn fullscreen on or off',
+      icon: 'i-lucide-expand',
+      execute: () => void fullscreen.toggle(),
+    },
+    {
+      id: 'app.about',
+      label: 'About',
+      icon: 'i-lucide-info',
+      execute: () => aboutModal.open(),
+    },
+  ],
+});
 
 // Load the store globally, so the values get set.
 useInputModeStore();
