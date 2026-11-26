@@ -52,6 +52,9 @@ export interface AppSettings {
 
   /** Whether On-deck preloads the next queued card's image. */
   preloadImagesEnabled: boolean;
+
+  /** Whether new cards go in their row of the view (#223). */
+  arrangeNewCards: boolean;
 }
 
 /** The most On-deck may fetch or keep queued, as the settings dialog allows. */
@@ -77,6 +80,7 @@ const defaults: AppSettings = {
   fetchCardCount: 10,
   minQueuedCardCount: 3,
   preloadImagesEnabled: true,
+  arrangeNewCards: false,
 };
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -114,6 +118,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const fetchCardCount = ref<number>(defaults.fetchCardCount);
   const minQueuedCardCount = ref<number>(defaults.minQueuedCardCount);
   const preloadImagesEnabled = ref<boolean>(defaults.preloadImagesEnabled);
+  const arrangeNewCards = ref<boolean>(defaults.arrangeNewCards);
 
   function reset() {
     wakeLockEnabled.value = defaults.wakeLockEnabled;
@@ -128,6 +133,7 @@ export const useSettingsStore = defineStore('settings', () => {
     fetchCardCount.value = defaults.fetchCardCount;
     minQueuedCardCount.value = defaults.minQueuedCardCount;
     preloadImagesEnabled.value = defaults.preloadImagesEnabled;
+    arrangeNewCards.value = defaults.arrangeNewCards;
   }
 
   function save() {
@@ -147,6 +153,7 @@ export const useSettingsStore = defineStore('settings', () => {
         fetchCardCount: fetchCardCount.value,
         minQueuedCardCount: minQueuedCardCount.value,
         preloadImagesEnabled: preloadImagesEnabled.value,
+        arrangeNewCards: arrangeNewCards.value,
       },
       SAVE_VERSION,
     );
@@ -192,6 +199,9 @@ export const useSettingsStore = defineStore('settings', () => {
     if (typeof data.preloadImagesEnabled === 'boolean')
       preloadImagesEnabled.value = data.preloadImagesEnabled;
 
+    if (typeof data.arrangeNewCards === 'boolean')
+      arrangeNewCards.value = data.arrangeNewCards;
+
     return true;
   }
 
@@ -211,6 +221,7 @@ export const useSettingsStore = defineStore('settings', () => {
       fetchCardCount,
       minQueuedCardCount,
       preloadImagesEnabled,
+      arrangeNewCards,
     ],
     save,
   );
@@ -243,5 +254,6 @@ export const useSettingsStore = defineStore('settings', () => {
     fetchCardCount,
     minQueuedCardCount,
     preloadImagesEnabled,
+    arrangeNewCards,
   };
 });

@@ -22,5 +22,12 @@ export {
   type Rect,
 } from './placement';
 export { cardMatches, useBoardFind } from './find';
+export {
+  ARRANGE_ROWS,
+  arrangeInRows,
+  arrangeRow,
+  rowBand,
+  type ArrangeRow,
+} from './arrange';
 export { useSelectionStore } from './selection';
 export { useBattlefieldStore, type AttachMode, type CopyMode } from './store';

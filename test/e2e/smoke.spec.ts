@@ -196,6 +196,32 @@ test('the same card cast twice gives two separate cards', async ({ page }) => {
   await expect(boardCards).toHaveCount(2);
 });
 
+// #223: Smart arrange lines the cards up in rows in view.
+test('Smart arrange lines cards up in a row in view', async ({ page }) => {
+  for (let i = 0; i < 3; i++) {
+    await page.getByRole('button', { name: 'On-deck' }).click();
+    await page.getByRole('button', { name: 'Next card' }).click();
+    await page.getByRole('button', { name: 'Cast to board' }).click();
+  }
+  const cards = page.locator('.board-card-stack .primary-card [role=img]');
+  await expect(cards).toHaveCount(3);
+  await expect(page.getByRole('button', { name: 'On-deck' })).toBeFocused();
+
+  await page.keyboard.press('/');
+  await page.getByRole('option', { name: /Smart arrange/ }).click();
+
+  await expect(async () => {
+    const boxes = await Promise.all(
+      [0, 1, 2].map(async (i) => (await cards.nth(i).boundingBox())!),
+    );
+    const tops = boxes.map((b) => Math.round(b.y));
+    expect(new Set(tops).size).toBe(1);
+    const lefts = boxes.map((b) => b.x).sort((a, b) => a - b);
+    expect(lefts[1]! - lefts[0]!).toBeGreaterThan(boxes[0]!.width);
+  }).toPass();
+  for (let i = 0; i < 3; i++) await expect(cards.nth(i)).toBeInViewport();
+});
+
 // #219: find a card on the board by its text and bring it into view.
 test('Find on board pans to a match and selects it', async ({ page }) => {
   await page.getByRole('button', { name: 'On-deck' }).click();

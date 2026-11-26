@@ -162,6 +162,29 @@ const {
   smoothing: () => settings.pointerSmoothing,
 });
 
+// Smart arrange (#223): the selection, or every stack with none selected.
+useWidget({
+  id: 'arrange',
+  label: 'Arrange',
+  icon: 'i-lucide-layout-grid',
+  commands: [
+    {
+      id: 'arrange.smart',
+      label: 'Smart arrange',
+      description:
+        'Creatures in front, lands at the back. The selection, or all cards',
+      icon: 'i-lucide-layout-grid',
+      kbds: 'a-a',
+      execute: () =>
+        battlefield.arrangeStacks(
+          selection.size
+            ? battlefield.stacks.filter((s) => selection.has(s.id))
+            : battlefield.stacks,
+        ),
+    },
+  ],
+});
+
 // ─── Find on board (#219) ─────────────────────────────────────────────────────
 
 const find = useBoardFind();
