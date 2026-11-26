@@ -9,12 +9,21 @@ import type {
   WidgetCommandChoice,
   WidgetDefinition,
 } from '~/features/widgets/types';
+import type { Position } from '@vueuse/core';
 
-const applies = (cmd: WidgetCommand) => cmd.enabled?.() ?? true;
+/** Whether a command applies right now (`enabled`, or always). */
+export const commandApplies = (cmd: WidgetCommand) => cmd.enabled?.() ?? true;
+const applies = commandApplies;
 
 /** A command's label as it reads now. */
 export const commandLabel = (cmd: WidgetCommand) =>
   typeof cmd.label === 'function' ? cmd.label() : cmd.label;
+
+/**
+ * A command's shortcut as menus show it, one key per entry: shortcuts are
+ * chords like 'b-a' or combinations like 'meta_z'.
+ */
+export const commandKbds = (cmd: WidgetCommand) => cmd.kbds?.split(/[-_]/);
 
 /**
  * Nuxt UI matches a chord by the keys' values joined with '-', and Space's
@@ -39,13 +48,20 @@ export const useWidgetRegistry = defineStore('widgetRegistry', () => {
    * the selection bar. Anything not about the selection leaves selection
    * mode first (#235); the selection stays. Then its toast (#237), if it has one,
    * says what it did, named after the command: a card's own button for the
-   * same thing uses the same name (`useActionToast`).
+   * same thing uses the same name (`useActionToast`). From the board menu,
+   * `at` is the board point it opened at, for commands with `executeAt`.
    */
-  function run(cmd: WidgetCommand, choice?: WidgetCommandChoice) {
+  function run(
+    cmd: WidgetCommand,
+    choice?: WidgetCommandChoice,
+    at?: Position,
+  ) {
     if (cmd.scope !== 'selection' && !cmd.keepsSelectionMode)
       selection.setMode(false);
     const title = (choice ?? cmd).toast?.();
-    (choice ?? cmd).execute();
+    if (choice) choice.execute();
+    else if (at && cmd.executeAt) cmd.executeAt(at);
+    else cmd.execute();
     if (title) actionToast(cmd.id, title, (choice ?? cmd).icon, cmd.undoable);
   }
 
@@ -90,9 +106,7 @@ export const useWidgetRegistry = defineStore('widgetRegistry', () => {
     label: commandLabel(cmd),
     description: cmd.description,
     icon: cmd.icon,
-    // Shortcuts are chords like 'b-a' or combinations like 'meta_z'; the
-    // palette shows one key per entry.
-    kbds: cmd.kbds?.split(/[-_]/),
+    kbds: commandKbds(cmd),
     onSelect: () => run(cmd),
     // The palette opens these as a page of their own.
     children: cmd.choices?.map((c) => ({

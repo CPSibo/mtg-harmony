@@ -1,4 +1,5 @@
 import type { Component } from 'vue';
+import type { Position } from '@vueuse/core';
 
 /**
  * An Iconify name (`i-lucide-…`), or a component, such as a mana symbol from
@@ -58,6 +59,11 @@ export interface WidgetCommand {
    */
   undoable?: boolean;
   execute: () => void;
+  /**
+   * Runs the command at a board point instead, from the board menu (#244),
+   * such as casting where it opened. Missing means `execute`.
+   */
+  executeAt?: (at: Position) => void;
 }
 
 export interface WidgetCommandChoice {

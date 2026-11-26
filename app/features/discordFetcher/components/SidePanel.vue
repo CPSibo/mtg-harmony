@@ -339,6 +339,8 @@ useWidget({
       enabled: () => !!card.value?.id,
       toast: () => `Cast ${card.value?.scryfallInfo.name} to the board`,
       execute: () => cast(),
+      // From the board menu, where it opened (#244).
+      executeAt: (at) => cast(at),
     },
     {
       id: 'onDeck.castToGraveyard',

@@ -53,6 +53,7 @@
     />
   </div>
 
+  <PlayAreaBoardContextMenu ref="boardMenu" />
   <PlayAreaFindBar v-if="find.isOpen" />
   <PlayAreaSelectTypeBar v-if="selectByType.isOpen" />
 
@@ -84,6 +85,7 @@
 
 <script setup lang="ts">
 import PlayAreaBoardCardStack from '~/components/playArea/BoardCardStack.vue';
+import PlayAreaBoardContextMenu from '~/components/playArea/BoardContextMenu.vue';
 import PlayAreaDragRadialMenu from '~/components/playArea/DragRadialMenu.vue';
 import PlayAreaFindBar from '~/components/playArea/FindBar.vue';
 import PlayAreaSelectTypeBar from '~/components/playArea/SelectTypeBar.vue';
@@ -117,9 +119,11 @@ import {
   useSelectionStore,
 } from '~/features/battlefield';
 import { useCopyAllAnimation } from '~/features/castAnimation';
+import { createMenuGesture } from '~/features/battlefield/contextMenu';
 import { useWidget } from '~/features/widgets';
 import { useSettingsStore } from '~/stores/settings';
 import { gridLevels } from '~/utils/gridLevels';
+import { PRESS_SLOP } from '~/utils/press';
 import { whenIdle } from '~/utils/whenIdle';
 import type { BoardCard } from '~/types/PlayArea';
 
@@ -461,9 +465,6 @@ const anyCardIsDragging = ref(false);
 // in selection mode, instead of panning. Any other press there that doesn't
 // move clears the selection.
 
-/** Screen pixels a press may move and still count as a click. */
-const CLICK_SLOP = 6;
-
 // Only the handlers read the press; the box's corner is rendered.
 const box = { active: false, pointerId: -1, additive: false };
 let press: { id: number; x: number; y: number; moved: boolean } | null = null;
@@ -495,9 +496,13 @@ function onPointerDown(e: PointerEvent) {
   const focused = document.activeElement;
   if (focused instanceof HTMLElement && !wrapperEl.value?.contains(focused))
     focused.blur();
-  if (e.button !== 0 || battlefield.isAttaching || press || box.active) return;
   const target = e.target as Element | null;
-  if (target?.closest('[data-stack-id], [data-drag-menu-option]')) return;
+  const onEmptyBoard = !target?.closest(
+    '[data-stack-id], [data-drag-menu-option]',
+  );
+  menuGesture.down(e, onEmptyBoard);
+  if (e.button !== 0 || battlefield.isAttaching || press || box.active) return;
+  if (!onEmptyBoard) return;
   press = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
   if ((e.pointerType === 'mouse' && e.shiftKey) || selection.mode) {
     box.active = true;
@@ -513,7 +518,7 @@ function onPointerDown(e: PointerEvent) {
 
 function onPressMove(e: PointerEvent) {
   if (!press || e.pointerId !== press.id) return;
-  if (Math.hypot(e.clientX - press.x, e.clientY - press.y) > CLICK_SLOP)
+  if (Math.hypot(e.clientX - press.x, e.clientY - press.y) > PRESS_SLOP)
     press.moved = true;
   if (box.active && press.moved) boxEnd.value = { x: e.clientX, y: e.clientY };
 }
@@ -531,7 +536,14 @@ function onPressEnd(e: PointerEvent) {
   box.active = false;
   if (e.type === 'pointerup') {
     if (wasBox && moved && end) selectBox(end);
-    else if (!moved && !e.shiftKey && !e.ctrlKey && !e.metaKey)
+    // A hold that opened the board menu isn't a tap either (#244).
+    else if (
+      !moved &&
+      !menuGesture.held &&
+      !e.shiftKey &&
+      !e.ctrlKey &&
+      !e.metaKey
+    )
       selection.clear();
   }
   // A box drawn is the selection made: selection mode ends with it, whether
@@ -553,6 +565,61 @@ function selectBox(end: { x: number; y: number }) {
     box.additive,
   );
 }
+
+// ─── Board menu (#244) ────────────────────────────────────────────────────────
+//
+// A right-click that doesn't move, or one finger held still, on empty board
+// opens the board menu there. A right-drag still pans; in selection mode a
+// touch press draws a box, so holding doesn't open it.
+
+const boardMenuEl = useTemplateRef('boardMenu');
+
+const menuGesture = createMenuGesture({
+  open: (at) => boardMenuEl.value?.open(at),
+  canOpen: () => !battlefield.isAttaching,
+  canHold: () => !selection.mode,
+});
+onUnmounted(menuGesture.dispose);
+useEventListener(window, 'pointermove', menuGesture.move, { passive: true });
+useEventListener(window, 'pointerup', menuGesture.up, { passive: true });
+useEventListener(window, 'pointercancel', menuGesture.cancel, {
+  passive: true,
+});
+
+// The Menu key or Shift+F10 opens it in the middle of the view, while focus
+// is on nothing or on the empty board, not a card, control or dialog.
+let swallowContextMenu: ReturnType<typeof setTimeout> | undefined;
+useEventListener(window, 'keydown', (e: KeyboardEvent) => {
+  if (e.defaultPrevented || battlefield.isAttaching) return;
+  if (e.key !== 'ContextMenu' && !(e.shiftKey && e.key === 'F10')) return;
+  const focused = document.activeElement;
+  const onBoard =
+    !focused ||
+    focused === document.body ||
+    (!!wrapperEl.value?.contains(focused) &&
+      !focused.closest('[data-stack-id]'));
+  if (!onBoard) return;
+  e.preventDefault();
+  boardMenuEl.value?.open({
+    x: windowWidth.value / 2,
+    y: (windowHeight.value + VIEW_INSET.top) / 2,
+  });
+  // The key's own `contextmenu` event may follow (on keyup, on Windows):
+  // not the browser's menu as well.
+  clearTimeout(swallowContextMenu);
+  swallowContextMenu = setTimeout(() => (swallowContextMenu = undefined), 1000);
+});
+useEventListener(
+  window,
+  'contextmenu',
+  (e: MouseEvent) => {
+    if (!swallowContextMenu || !e.isTrusted) return;
+    e.preventDefault();
+    clearTimeout(swallowContextMenu);
+    swallowContextMenu = undefined;
+  },
+  { capture: true },
+);
 
 // Tab to a card off screen makes the browser scroll the wrapper to it, which
 // the pan and the pointer maths know nothing about. Undo the scroll and pan
