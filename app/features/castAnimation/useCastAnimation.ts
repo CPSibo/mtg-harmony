@@ -13,6 +13,7 @@ import {
   playRemoveAnimation,
   type CastSource,
 } from './play';
+import type { ScreenRect } from './keyframes';
 
 /** Plays the cast animation with the user's chosen style (#124). */
 export function useCastAnimation() {
@@ -92,6 +93,55 @@ export function useRemoveAnimation() {
     const from = measureCards(freed);
     await playRemoveAnimation(card.id);
     battlefield.removeCard(card);
+    if (from.size) void playMoveAnimation(from, null, false);
+  };
+}
+
+/** Copies several cards at once, each sliding out from its source (#221). */
+export function useCopyAllAnimation() {
+  const settings = useSettingsStore();
+  const battlefield = useBattlefieldStore();
+  return (cards: readonly BoardCard[], mode: CopyMode) => {
+    const sourceIds = cards.map((card) =>
+      mode === 'stack' && card.stack ? card.stack.primary.id : card.id,
+    );
+    const from = settings.attachFlareEnabled
+      ? measureCards(sourceIds)
+      : new Map<string, ScreenRect>();
+    const copies = battlefield.copyCards(cards, mode);
+    copies.forEach((copy, i) => {
+      const rect = from.get(sourceIds[i]!);
+      if (rect)
+        void playMoveAnimation(
+          new Map([[copy.primary.id, rect]]),
+          sourceIds[i]!,
+          false,
+        );
+    });
+    return copies;
+  };
+}
+
+/**
+ * Removes several cards at once after playing them out (#221), logged as
+ * one group. Cards freed from removed primaries slide to their new spots.
+ */
+export function useRemoveAllAnimation() {
+  const settings = useSettingsStore();
+  const battlefield = useBattlefieldStore();
+  return async (cards: readonly BoardCard[]) => {
+    if (!settings.attachFlareEnabled) {
+      battlefield.removeCards(cards);
+      return;
+    }
+    const freed = cards.flatMap((card) =>
+      card.stack && card.stack.primary === card
+        ? [...card.stack.attachments, ...card.stack.unders].map((c) => c.id)
+        : [],
+    );
+    const from = measureCards(freed);
+    await Promise.all(cards.map((card) => playRemoveAnimation(card.id)));
+    battlefield.removeCards(cards);
     if (from.size) void playMoveAnimation(from, null, false);
   };
 }

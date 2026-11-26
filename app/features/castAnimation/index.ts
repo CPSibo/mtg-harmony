@@ -19,10 +19,12 @@ export {
 } from './play';
 export {
   useCastAnimation,
+  useCopyAllAnimation,
   useCopyAnimation,
   useGraveyardAnimation,
   useMeldAnimation,
   useMoveAnimation,
+  useRemoveAllAnimation,
   useRemoveAnimation,
   useTokenAnimation,
 } from './useCastAnimation';

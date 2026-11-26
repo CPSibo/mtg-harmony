@@ -229,6 +229,23 @@ export const useEventLogStore = defineStore('eventLog', () => {
     return true;
   }
 
+  /** The group entries recorded now join, inside `group()`. */
+  let currentGroup: string | undefined;
+
+  /**
+   * Records every entry `action` records as one group (#221), which the log
+   * window shows as one row. Nested groups join the outer one.
+   */
+  function group<R>(action: () => R): R {
+    if (currentGroup) return action();
+    currentGroup = randomUUID();
+    try {
+      return action();
+    } finally {
+      currentGroup = undefined;
+    }
+  }
+
   /** Adds an entry for the current game and returns it. */
   function record<T extends EventType>(
     type: T,
@@ -246,6 +263,7 @@ export const useEventLogStore = defineStore('eventLog', () => {
       at: Date.now(),
       type,
       gameId: gameId.value,
+      ...(currentGroup && { groupId: currentGroup }),
     } as EventEntryOf<T>;
 
     entries.value.push(entry as EventEntry);
@@ -319,6 +337,7 @@ export const useEventLogStore = defineStore('eventLog', () => {
     entries,
     gameId,
     record,
+    group,
     startNewGame,
     reset,
     nearlyFull,

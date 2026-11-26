@@ -106,6 +106,9 @@ settings dialog binds to the stores directly.
 | `o-c` / `o-g`         | Cast the On-deck card to the board / to the graveyard     |
 | `f-b`                 | Find on board                                             |
 | `a-a`                 | Smart arrange the selection, or every card                |
+| `t-t`                 | Tap or untap the selection                                |
+| `c-c`                 | Counters and keywords on the selection                    |
+| `r-r`                 | Remove the selection (asks first)                         |
 
 ### Commands that depend on the selection
 
@@ -343,6 +346,10 @@ Rules the battlefield store enforces:
 
 `features/eventLog` keeps one list of meaningful changes, newest last: fetched, cast, added, attached, put under,
 copied, removed, melded, unmelded, tokens created, board cleared and game markers. Moving, tapping and counters aren't logged.
+
+One action on several cards, such as removing or copying the selection, records each card's entry inside
+`log.group()`, which gives them a shared `groupId` (#221). The log window folds a run of them into one row
+(`groupRows`, `describeGroup`) that opens to list each card. Filters and export still see each entry.
 
 The log is split in two (#81):
 

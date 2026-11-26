@@ -343,6 +343,55 @@ test.describe('selecting by tap', () => {
   });
 });
 
+// #221: the selection bar taps, counts, copies and removes several cards.
+test('the selection bar acts on every selected card', async ({ page }) => {
+  for (let i = 0; i < 2; i++) {
+    await page.getByRole('button', { name: 'On-deck' }).click();
+    await page.getByRole('button', { name: 'Next card' }).click();
+    await page.getByRole('button', { name: 'Cast to board' }).click();
+  }
+  const stacks = page.locator('.board-card-stack');
+  await expect(stacks).toHaveCount(2);
+  await expect(page.getByRole('button', { name: 'On-deck' })).toBeFocused();
+  const primaries = stacks.locator('.primary-card');
+  await primaries.nth(0).getByRole('img').click();
+  await primaries
+    .nth(1)
+    .getByRole('img')
+    .click({ modifiers: ['Control'] });
+  const bar = page.locator('.selection-bar');
+  await expect(bar).toContainText('2 selected');
+
+  await bar.getByRole('button', { name: 'Tap or untap' }).click();
+  await expect(primaries.nth(0)).toHaveClass(/tapped/);
+  await expect(primaries.nth(1)).toHaveClass(/tapped/);
+
+  await bar.getByRole('button', { name: 'Counters and keywords…' }).click();
+  const counters = page.getByRole('dialog', {
+    name: 'Counters and keywords on 2 cards',
+  });
+  await counters.getByRole('button', { name: 'Add +1/+1' }).click();
+  await expect(counters).toContainText('on 2 of 2');
+  await counters.getByRole('button', { name: 'Done' }).click();
+  await expect(counters).toBeHidden();
+
+  await bar.getByRole('button', { name: 'Copy' }).click();
+  await page.getByRole('menuitem', { name: 'Copy: card only' }).click();
+  await expect(stacks).toHaveCount(4);
+
+  await bar.getByRole('button', { name: 'Remove…' }).click();
+  await page.getByRole('button', { name: 'Remove 2 cards' }).click();
+  await expect(stacks).toHaveCount(2);
+
+  await page.getByRole('button', { name: 'Open menu' }).click();
+  await page.getByRole('menuitem', { name: 'Event log' }).click();
+  const events = page
+    .getByRole('dialog', { name: 'Event log' })
+    .getByRole('list', { name: 'Events' });
+  await expect(events.getByText('Removed 2 cards')).toBeVisible();
+  await expect(events.getByText('Copied 2 cards (card only)')).toBeVisible();
+});
+
 // #78: every cast card used to land on the same spot.
 test('cards cast in a row sit side by side in view', async ({ page }) => {
   for (let i = 0; i < 3; i++) {

@@ -68,6 +68,11 @@ interface EntryBase<T extends EventType> {
   at: number;
   type: T;
   gameId: string;
+  /**
+   * Shared by the entries one action recorded together, such as removing
+   * several selected cards (#221). The log window shows them as one row.
+   */
+  groupId?: string;
 }
 
 export type EventEntryOf<T extends EventType> = EntryBase<T> &
