@@ -263,7 +263,7 @@ The themed background (#246, on by default) replaces the grid lines in the same 
   rests (300 ms) at a value that needs another step. The new level crossfades in over 300 ms: the old and new
   tiles sit in an isolated group, the old one blended with `plus-lighter`, so the semi-transparent lines neither
   double nor dim midway. The last 6 levels for the selection are kept (a few MB of PNG each at most), so zooming
-  back to one swaps it in without rendering. Where rendering fails, the SVG is set.
+  back to one swaps it in at once: no rendering, no crossfade, and no wait for the zoom to rest. Where rendering fails, the SVG is set.
 - **Spotlights**: soft radial glows, one colour each, repeating to the board's edges. They're computed as pixels
   into a small PNG (one pixel per 16 board px) that the browser scales up, not drawn as SVG or canvas gradients:
   the browser dithers those, and once the image is scaled the noise smears into faint stripes.

@@ -50,6 +50,7 @@ function setup({
   wash = true,
   fadeOutMs = 0,
   lodFadeMs = 0,
+  settleMs = 0,
   detail = 1,
 } = {}) {
   const el = document.createElement('div');
@@ -67,7 +68,7 @@ function setup({
       {
         fadeOutMs: () => fadeOutMs,
         resolution: () => resolution.value,
-        settleMs: 0,
+        settleMs,
         lodFadeMs: () => lodFadeMs,
       },
     ),
@@ -187,6 +188,24 @@ describe('useBoardBackground', () => {
     await vi.waitFor(() => expect(bg.fading.value).toBe(false));
     expect(el.style.getPropertyValue('--tile-old-dark')).toBe('');
     expect(bg.shown.value).toBe(true);
+    scope.stop();
+  });
+
+  it('swaps a level it kept straight in, without a crossfade or waiting for the zoom to rest', async () => {
+    const { el, resolution, bg, scope } = setup({
+      lodFadeMs: 250,
+      settleMs: 150,
+    });
+    await vi.waitFor(() => expect(bg.shown.value).toBe(true));
+    const first = tile(el);
+    resolution.value = 1.2;
+    await vi.waitFor(() => expect(tile(el)).toMatch(/blob:tile-283-/));
+    await vi.waitFor(() => expect(bg.fading.value).toBe(false));
+    resolution.value = 1;
+    await new Promise((done) => setTimeout(done, 30));
+    expect(tile(el)).toBe(first);
+    expect(bg.fading.value).toBe(false);
+    expect(el.style.getPropertyValue('--tile-old-dark')).toBe('');
     scope.stop();
   });
 

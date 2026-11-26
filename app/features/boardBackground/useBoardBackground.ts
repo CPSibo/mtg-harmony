@@ -75,8 +75,8 @@ export function detailStep(resolution: number): number {
  * a resolution that needs another step, the tiles are rendered again and
  * crossfade in (`fading`), without the backdrop fading out; until then the
  * old ones scale. Up to MAX_LEVELS levels are kept for the selection, so
- * zooming back to one swaps it straight in. Where rendering fails, the SVG is
- * set instead.
+ * zooming back to one swaps it straight in, without a fade and without
+ * waiting for the zoom to rest. Where rendering fails, the SVG is set instead.
  *
  * Set here, not through a `:style` binding: Vue re-sets every property of a
  * bound style each time the component renders, and the board renders on
@@ -148,12 +148,16 @@ export function useBoardBackground(
     { immediate: true },
   );
 
-  async function retile() {
+  /**
+   * Sets the tiles for detail `at`: a level kept from before straight away,
+   * otherwise rendered and crossfaded in.
+   */
+  async function retile(at = detail.value) {
     const from = lattice;
-    const at = detail.value;
     if (!from || from.detail === at) return;
     const id = ++tileRun;
     let level = levels.get(at);
+    const fresh = !level;
     if (!level) {
       const rendered = await renderTiles(from, at);
       // Kept even if the zoom moved on, as long as it's for this lattice.
@@ -174,13 +178,17 @@ export function useBoardBackground(
       revoke(old.blobs);
     }
     from.detail = at;
-    void crossfade(level.vars);
+    void crossfade(level.vars, fresh);
   }
 
-  /** Sets new tiles, keeping the old ones set while they fade out. */
-  async function crossfade(tiles: Record<string, string>) {
+  /**
+   * Sets new tiles, keeping the old ones set while they fade out if `fade`.
+   * Only a newly rendered level fades: one kept from before swaps straight in,
+   * so zooming back to it shows its detail at once.
+   */
+  async function crossfade(tiles: Record<string, string>, fade: boolean) {
     const id = ++fadeRun;
-    const ms = lodFadeMs();
+    const ms = fade ? lodFadeMs() : 0;
     if (ms <= 0) {
       fading.value = false;
       return setVars({ ...withoutOld(vars), ...tiles });
@@ -204,7 +212,10 @@ export function useBoardBackground(
     vars = next;
   }
 
-  watch(detail, retile);
+  // A kept level swaps in as soon as the zoom reaches it; rendering waits
+  // for the zoom to rest.
+  watch(step, (at) => levels.has(at) && retile(at));
+  watch(detail, (at) => retile(at));
   watch(target, (el, oldEl) => write(el, oldEl, vars, vars));
 
   onScopeDispose(() => {
