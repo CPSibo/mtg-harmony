@@ -5,12 +5,12 @@ import type { ScryfallCard } from '~/types/Scryfall';
 import { useSelectionStore } from './selection';
 import { useBattlefieldStore } from './store';
 
-/** A card's searchable text: name, type line and text, of every face. */
-function searchText(card: ScryfallCard): string {
-  const parts = [card.name, card.type_line, card.oracle_text];
-  for (const face of card.card_faces ?? [])
-    parts.push(face.name, face.type_line, face.oracle_text);
-  return parts.filter(Boolean).join('\n').toLowerCase();
+/** Whether every word of `query` is in `parts`, ignoring case. */
+function hasEveryWord(parts: (string | undefined)[], query: string): boolean {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return false;
+  const text = parts.filter(Boolean).join('\n').toLowerCase();
+  return words.every((w) => text.includes(w));
 }
 
 /**
@@ -18,10 +18,22 @@ function searchText(card: ScryfallCard): string {
  * on any face, ignoring case (#219). A blank query matches nothing.
  */
 export function cardMatches(card: ScryfallCard, query: string): boolean {
-  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
-  if (!words.length) return false;
-  const text = searchText(card);
-  return words.every((w) => text.includes(w));
+  const parts = [card.name, card.type_line, card.oracle_text];
+  for (const face of card.card_faces ?? [])
+    parts.push(face.name, face.type_line, face.oracle_text);
+  return hasEveryWord(parts, query);
+}
+
+/**
+ * Whether every word of `query` is in the card's type line, on any face,
+ * ignoring case (#220). A blank query matches nothing.
+ */
+export function typeLineMatches(card: ScryfallCard, query: string): boolean {
+  const faces = card.card_faces ?? [];
+  return hasEveryWord(
+    [card.type_line, ...faces.map((f) => f.type_line)],
+    query,
+  );
 }
 
 const cardsOf = (stack: BoardCardStack): BoardCard[] => [

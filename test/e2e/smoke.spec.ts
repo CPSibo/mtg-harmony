@@ -343,6 +343,40 @@ test.describe('selecting by tap', () => {
   });
 });
 
+// #220: build a selection from the palette.
+test('the palette selects all, inverts and selects by type', async ({
+  page,
+}) => {
+  for (let i = 0; i < 2; i++) {
+    await page.getByRole('button', { name: 'On-deck' }).click();
+    await page.getByRole('button', { name: 'Next card' }).click();
+    await page.getByRole('button', { name: 'Cast to board' }).click();
+  }
+  const selected = page.locator('.board-card-stack.selected');
+  await expect(page.locator('.board-card-stack')).toHaveCount(2);
+  await expect(page.getByRole('button', { name: 'On-deck' })).toBeFocused();
+  const run = async (name: string) => {
+    await page.keyboard.press('/');
+    await page.getByRole('option', { name }).click();
+  };
+
+  await run('Select all');
+  await expect(selected).toHaveCount(2);
+  await run('Invert selection');
+  await expect(selected).toHaveCount(0);
+
+  await run('Select by type…');
+  const box = page.getByRole('search', { name: 'Select by type' });
+  await box.getByRole('textbox').fill('goblin');
+  await expect(box).toContainText('No matches');
+  await box.getByRole('textbox').fill('creature ooze');
+  await expect(box).toContainText('2 stacks');
+  await expect(selected).toHaveCount(2);
+  await box.getByRole('textbox').press('Enter');
+  await expect(box).toBeHidden();
+  await expect(selected).toHaveCount(2);
+});
+
 // #78: every cast card used to land on the same spot.
 test('cards cast in a row sit side by side in view', async ({ page }) => {
   for (let i = 0; i < 3; i++) {
