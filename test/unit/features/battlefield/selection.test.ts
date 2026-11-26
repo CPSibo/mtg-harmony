@@ -107,3 +107,25 @@ describe('useSelectionStore (#138)', () => {
     expect(selection.startGroupDrag(stacks[0]!.id)).toBe(false);
   });
 });
+
+describe('useSelectionStore targets (#216)', () => {
+  it('selects one stack, replacing the selection', () => {
+    const { stacks } = boardWithStacks({ x: 0, y: 0 }, { x: 500, y: 0 });
+    const selection = useSelectionStore();
+    selection.toggle(stacks[0]!.id);
+    selection.selectOnly(stacks[1]!.id);
+    expect(selection.ids()).toEqual([stacks[1]!.id]);
+  });
+
+  it('gives the selected stacks themselves, in board order', () => {
+    const { stacks } = boardWithStacks(
+      { x: 0, y: 0 },
+      { x: 500, y: 0 },
+      { x: 1000, y: 0 },
+    );
+    const selection = useSelectionStore();
+    selection.toggle(stacks[2]!.id);
+    selection.toggle(stacks[0]!.id);
+    expect(selection.stacks()).toEqual([stacks[0], stacks[2]]);
+  });
+});

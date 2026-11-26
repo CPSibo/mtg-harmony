@@ -253,6 +253,19 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
   }
 
   const snapScale = ref<number>(defaults.snapScale);
+  // The size to go back to when snapping is turned on again. Only read by
+  // the toggle, and not saved: after a reload it's the default.
+  let lastSnapScale = 0;
+
+  /** Turns grid snapping off, or back on at the size it had (#218). */
+  function toggleSnapping() {
+    if (snapScale.value) {
+      lastSnapScale = snapScale.value;
+      snapScale.value = 0;
+    } else {
+      snapScale.value = lastSnapScale || createDefaults().snapScale;
+    }
+  }
 
   function addStackByCard(card: BoardCard, position = center.value) {
     const newStack: BoardCardStack = {
@@ -827,6 +840,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
 
     snapScale,
     arrangeStacks,
+    toggleSnapping,
 
     untapAll,
     toggleTapped,
