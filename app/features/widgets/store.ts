@@ -46,7 +46,7 @@ export const useWidgetRegistry = defineStore('widgetRegistry', () => {
       selection.setMode(false);
     const title = (choice ?? cmd).toast?.();
     (choice ?? cmd).execute();
-    if (title) actionToast(cmd.id, title, (choice ?? cmd).icon);
+    if (title) actionToast(cmd.id, title, (choice ?? cmd).icon, cmd.undoable);
   }
 
   function register(widget: WidgetDefinition) {
@@ -90,8 +90,9 @@ export const useWidgetRegistry = defineStore('widgetRegistry', () => {
     label: commandLabel(cmd),
     description: cmd.description,
     icon: cmd.icon,
-    // Shortcuts are chords like 'b-a'; the palette shows one key per entry.
-    kbds: cmd.kbds?.split('-'),
+    // Shortcuts are chords like 'b-a' or combinations like 'meta_z'; the
+    // palette shows one key per entry.
+    kbds: cmd.kbds?.split(/[-_]/),
     onSelect: () => run(cmd),
     // The palette opens these as a page of their own.
     children: cmd.choices?.map((c) => ({

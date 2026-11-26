@@ -366,6 +366,30 @@ useWidget({
   icon: 'i-lucide-layout-dashboard',
   order: 30,
   commands: [
+    // Structural changes only: cards arriving, leaving or changing stacks
+    // (#215). Taps, counters and moves aren't steps.
+    {
+      id: 'board.undo',
+      label: 'Undo',
+      description:
+        'Take back the last card cast, removed, copied or moved between stacks',
+      icon: 'i-lucide-undo-2',
+      kbds: 'meta_z',
+      keepsSelectionMode: true,
+      enabled: () => battlefield.canUndo,
+      toast: () => 'Undid the last change',
+      execute: () => battlefield.undo(),
+    },
+    {
+      id: 'board.redo',
+      label: 'Redo',
+      icon: 'i-lucide-redo-2',
+      kbds: 'meta_shift_z',
+      keepsSelectionMode: true,
+      enabled: () => battlefield.canRedo,
+      toast: () => 'Redid the change',
+      execute: () => battlefield.redo(),
+    },
     {
       id: 'board.untapAll',
       toast: () =>
@@ -758,6 +782,7 @@ useWidget({
     {
       id: 'selection.copy',
       label: 'Copy',
+      undoable: true,
       icon: 'i-lucide-copy',
       scope: 'selection',
       bar: 'button',
@@ -847,6 +872,7 @@ useWidget({
     {
       id: 'selection.explode',
       toast: () => 'Split the stacks into a card each',
+      undoable: true,
       label: 'Explode stacks',
       description: 'Each card becomes a stack of its own',
       icon: 'i-lucide-expand',

@@ -6,11 +6,16 @@ import CardDetails from '~/components/playArea/CardDetails.vue';
 import RemoveCardsModal from '~/components/playArea/RemoveCardsModal.vue';
 import { cardsLabel } from '~/composables/useActionToast';
 import { useBattlefieldStore, useSelectionStore } from '~/features/battlefield';
+import { useSettingsStore } from '~/stores/settings';
 import { putOnBoard } from '../../fixtures/board';
 import { makeCard } from '../../fixtures/cards';
 import { buttonNamed, mountInApp, unmountAll } from '../../fixtures/mount';
 
-const toasts: { id?: string; title?: string }[] = [];
+const toasts: {
+  id?: string;
+  title?: string;
+  actions?: { label: string; onClick: () => void }[];
+}[] = [];
 vi.mock('@nuxt/ui/composables', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@nuxt/ui/composables')>()),
   useToast: () => ({
@@ -132,5 +137,33 @@ describe('toasts for actions outside the palette (#237)', () => {
     expect(toasts.at(-1)).toEqual(
       expect.objectContaining({ id: 'selection.tap', title: 'Tapped 2 cards' }),
     );
+  });
+
+  // #215: structural actions offer Undo on their toast; others don't.
+  it('offers Undo on a removal, which brings the cards back', async () => {
+    useSettingsStore().attachFlareEnabled = false;
+    const cards = [boardCard().primary, boardCard('Llanowar Elves').primary];
+    mountInApp(RemoveCardsModal, { props: { open: true, cards } });
+    await flushPromises();
+
+    [...document.querySelectorAll('button')]
+      .find((b) => b.textContent?.includes('Remove'))!
+      .click();
+    await flushPromises();
+    expect(useBattlefieldStore().stacks).toHaveLength(0);
+    const undo = toasts[0]!.actions?.find((a) => a.label === 'Undo');
+    expect(undo).toBeDefined();
+
+    undo!.onClick();
+    expect(useBattlefieldStore().stacks).toHaveLength(2);
+  });
+
+  it('offers no Undo on a flip', async () => {
+    const stack = boardCard();
+    mountInApp(CardDetails, { props: { card: stack.primary, open: true } });
+    await flushPromises();
+
+    buttonNamed('Flip over').click();
+    expect(toasts[0]!.actions).toBeUndefined();
   });
 });

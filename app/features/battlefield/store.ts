@@ -1,13 +1,21 @@
 import { showsImage } from '~/features/battlefield/cardFaces';
 import { useLocalStorage } from '~/composables/useLocalStorage';
 import { defineStore } from 'pinia';
-import { computed, ref, shallowRef, toRaw, toValue, watch } from 'vue';
+import {
+  computed,
+  reactive,
+  ref,
+  shallowRef,
+  toRaw,
+  toValue,
+  watch,
+} from 'vue';
 import { isCounter, type ModifierKey } from '~/types/MtgConcepts';
 import type { Battlefield, BoardCard, BoardCardStack } from '~/types/PlayArea';
 import type { ScryfallCard } from '~/types/Scryfall';
 import { randomUUID } from '~/utils/randomUUID';
 import type { ElementSize, Position } from '@vueuse/core';
-import { useEventLogStore } from '~/features/eventLog';
+import { useEventLogStore, type EventEntry } from '~/features/eventLog';
 import {
   cardData,
   copyBoardCard,
@@ -24,6 +32,19 @@ import {
 } from './arrange';
 import { BOARD_SIZE, findFreeSpot, type Rect } from './placement';
 import { useSettingsStore } from '~/stores/settings';
+import {
+  captureLayout,
+  restoreLayout,
+  sameLayout,
+  UNDO_LIMIT,
+  type BoardLayout,
+} from './undo';
+
+/** One undoable action (#215): the board before it, and what it logged. */
+interface UndoStep {
+  layout: BoardLayout;
+  entries: EventEntry[];
+}
 
 /** How much of a card `copyCard` copies. */
 export type CopyMode = 'card' | 'counters' | 'stack';
@@ -935,6 +956,97 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     bringToFront(stack);
   }
 
+  // ─── Undo (#215) ──────────────────────────────────────────────────────────
+  // Structural actions only: cards arriving, leaving or changing stacks. Each
+  // public action that does one is wrapped in `step`, so one user action,
+  // bulk ones included, is one step. In memory only: a reload forgets them.
+
+  // Replaced, never changed in place; read for canUndo and canRedo.
+  const undoSteps = shallowRef<UndoStep[]>([]);
+  const redoSteps = shallowRef<UndoStep[]>([]);
+  const canUndo = computed(() => undoSteps.value.length > 0);
+  const canRedo = computed(() => redoSteps.value.length > 0);
+
+  /** Whether a step is running, so actions it calls aren't steps of their own. */
+  let stepping = false;
+
+  /**
+   * Runs `action` as one undoable step: remembers the layout before it and
+   * the log entries it records. An action that changed no stack (a meld whose
+   * other half had left, say) leaves no step.
+   */
+  function step<R>(action: () => R): R {
+    if (stepping) return action();
+    const before = captureLayout(stacks.value, zOrder.value);
+    stepping = true;
+    let outcome: { result: R; entries: EventEntry[] };
+    try {
+      outcome = log.capture(action);
+    } finally {
+      stepping = false;
+    }
+    if (!sameLayout(before, captureLayout(stacks.value, zOrder.value))) {
+      undoSteps.value = [
+        ...undoSteps.value.slice(1 - UNDO_LIMIT),
+        { layout: before, entries: outcome.entries },
+      ];
+      redoSteps.value = [];
+    }
+    return outcome.result;
+  }
+
+  /** Wraps a board action so each call is one undoable step. */
+  function undoable<A extends unknown[], R>(action: (...args: A) => R) {
+    return (...args: A) => step(() => action(...args));
+  }
+
+  function applyLayout(layout: BoardLayout) {
+    const restored = restoreLayout(
+      layout,
+      stacks.value,
+      zOrder.value,
+      (value) => reactive(value) as typeof value,
+    );
+    stacks.value = restored.stacks;
+    zOrder.value = restored.zOrder;
+    // Placing cards or choosing a Room's doors can't go on across the jump.
+    cancelAttaching();
+    const room = doorChoice.value && toRaw(doorChoice.value);
+    if (room && ![...allCards()].some((c) => toRaw(c) === room))
+      doorChoice.value = null;
+  }
+
+  /** Swaps the board for the newest layout in `from`, keeping today's in `to`. */
+  function travel(from: typeof undoSteps, to: typeof undoSteps) {
+    const last = from.value.at(-1);
+    if (!last) return null;
+    const now = captureLayout(stacks.value, zOrder.value);
+    applyLayout(last.layout);
+    from.value = from.value.slice(0, -1);
+    to.value = [...to.value, { layout: now, entries: last.entries }];
+    return last;
+  }
+
+  /** Takes back the last structural action and its log entries. */
+  function undo(): boolean {
+    const last = travel(undoSteps, redoSteps);
+    if (last) log.drop(last.entries);
+    return !!last;
+  }
+
+  /** Does the last undone action again, logging it again. */
+  function redo(): boolean {
+    const last = travel(redoSteps, undoSteps);
+    if (last) log.restore(last.entries);
+    return !!last;
+  }
+
+  /** Forgets every step, for a new game: undo stays within a game. */
+  function clearHistory() {
+    undoSteps.value = [];
+    redoSteps.value = [];
+  }
+
   function clearStacks() {
     stacks.value = [];
     zOrder.value = [];
@@ -1011,6 +1123,12 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     load,
     reset,
 
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    clearHistory,
+
     snapScale,
     arrangeStacks,
     arrangeInLine,
@@ -1040,8 +1158,8 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     setStackPosition,
     orderedStacks,
     stackZIndex,
-    castCard,
-    createToken,
+    castCard: undoable(castCard),
+    createToken: undoable(createToken),
     setView,
     setTransform,
     boardPointFromScreen,
@@ -1050,17 +1168,17 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     setStackSize,
     forgetStackSize,
     stackSize,
-    removeCard,
-    removeCards,
-    clearBoard,
-    copyCard,
-    copyCards,
+    removeCard: undoable(removeCard),
+    removeCards: undoable(removeCards),
+    clearBoard: undoable(clearBoard),
+    copyCard: undoable(copyCard),
+    copyCards: undoable(copyCards),
     swapPrinting,
     meldPartner,
-    meld,
-    unmeld,
-    explodeStack,
-    explodeAll,
+    meld: undoable(meld),
+    unmeld: undoable(unmeld),
+    explodeStack: undoable(explodeStack),
+    explodeAll: undoable(explodeAll),
 
     center,
     setCenter,
@@ -1072,14 +1190,14 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     startAttaching,
     startAttachingAll,
     cancelAttaching,
-    finishAttaching,
+    finishAttaching: undoable(finishAttaching),
     isAttaching,
     cardToAttachId,
     cardsToAttachIds,
     attachMode,
     isValidAttachmentTarget,
     canOfferDragMenu,
-    dropCardOn,
-    detach,
+    dropCardOn: undoable(dropCardOn),
+    detach: undoable(detach),
   };
 });

@@ -1,6 +1,7 @@
 import { useToast } from '@nuxt/ui/composables';
 import type { Component } from 'vue';
 import type { BoardCard } from '~/types/PlayArea';
+import { useBattlefieldStore } from '~/features/battlefield/store';
 
 /**
  * The info toast saying what an action did (#237), the same whether it ran
@@ -11,8 +12,36 @@ import type { BoardCard } from '~/types/PlayArea';
  */
 export function useActionToast() {
   const toast = useToast();
-  return (id: string, title: string, icon?: string | Component) =>
-    toast.add({ id, title, icon, color: 'info', duration: 2500 });
+  const battlefield = useBattlefieldStore();
+  /**
+   * `undoable` actions (structural ones, #215) get an Undo button, which
+   * undoes the newest step as Ctrl+Z does, and stay a little longer.
+   */
+  return (
+    id: string,
+    title: string,
+    icon?: string | Component,
+    undoable = false,
+  ) =>
+    toast.add({
+      id,
+      title,
+      icon,
+      color: 'info',
+      duration: undoable ? 5000 : 2500,
+      ...(undoable && { actions: [undoAction(battlefield)] }),
+    });
+}
+
+/** The Undo button on an action's toast (#215). */
+export function undoAction(battlefield: { undo: () => boolean }) {
+  return {
+    label: 'Undo',
+    icon: 'i-lucide-undo-2',
+    color: 'neutral' as const,
+    variant: 'outline' as const,
+    onClick: () => void battlefield.undo(),
+  };
 }
 
 /** "Grizzly Bears" for one card, "3 cards" for more: for toasts (#237). */

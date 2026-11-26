@@ -9,7 +9,7 @@ import {
 import { putOnBoard } from '../../fixtures/board';
 import { makeCard } from '../../fixtures/cards';
 
-const toasts: { id?: string; title?: string }[] = [];
+const toasts: { id?: string; title?: string; actions?: unknown[] }[] = [];
 vi.mock('@nuxt/ui/composables', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@nuxt/ui/composables')>()),
   useToast: () => ({
@@ -209,6 +209,23 @@ describe('palette context (#235)', () => {
       const item = useWidgetRegistry().paletteGroups[0]!.items[0]!;
       item.children![0]!.onSelect();
       expect(toasts).toEqual([expect.objectContaining({ title: 'Copied' })]);
+    });
+
+    it('offers Undo on an undoable command’s toast (#215)', () => {
+      register(
+        widget({
+          commands: [
+            cmd({ kbds: 'q', toast: () => 'Did', undoable: true }),
+            cmd({ id: 'd', kbds: 'w', toast: () => 'Did' }),
+          ],
+        }),
+      );
+      press('q');
+      press('w');
+      expect(toasts[0]!.actions).toEqual([
+        expect.objectContaining({ label: 'Undo' }),
+      ]);
+      expect(toasts[1]!.actions).toBeUndefined();
     });
   });
 });

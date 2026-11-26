@@ -8,6 +8,8 @@
 
     <SelectionBar />
 
+    <UndoButton />
+
     <LayoutTapButton />
 
     <LayoutMenu
@@ -24,6 +26,7 @@
 import LayoutMenu from '~/components/layout/Menu.vue';
 import SelectionBar from '~/components/playArea/SelectionBar.vue';
 import LayoutTapButton from '~/components/layout/TapButton.vue';
+import UndoButton from '~/components/layout/UndoButton.vue';
 import DiscordFetch from '../../features/discordFetcher/components/SidePanel.vue';
 
 const emit = defineEmits<{
