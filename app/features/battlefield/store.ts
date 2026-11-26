@@ -635,6 +635,18 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     return false;
   });
 
+  /**
+   * How many cards Untap all would untap: primaries and attachments. Its
+   * toast is for several (#237).
+   */
+  function untapAllCount() {
+    let n = 0;
+    for (const stack of stacks.value)
+      for (const card of [stack.primary, ...stack.attachments])
+        if (card.tapped) n++;
+    return n;
+  }
+
   function untapAll() {
     for (let i = 0; i < stacks.value.length; i++) {
       const stack = stacks.value[i];
@@ -1007,6 +1019,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
 
     untapAll,
     anyTapped,
+    untapAllCount,
     toggleTapped,
     tapOrUntap,
     toggleFlipped,

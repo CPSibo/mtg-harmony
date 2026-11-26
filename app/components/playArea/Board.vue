@@ -368,7 +368,8 @@ useWidget({
   commands: [
     {
       id: 'board.untapAll',
-      toast: () => 'Untapped every card',
+      toast: () =>
+        battlefield.untapAllCount() > 1 ? 'Untapped every card' : '',
       label: 'Untap all',
       icon: 'i-lucide-rotate-ccw',
       kbds: 'u-u',
@@ -504,9 +505,14 @@ function onPressEnd(e: PointerEvent) {
   boxEnd.value = null;
   const wasBox = box.active;
   box.active = false;
-  if (e.type !== 'pointerup') return;
-  if (wasBox && moved && end) selectBox(end);
-  else if (!moved && !e.shiftKey && !e.ctrlKey && !e.metaKey) selection.clear();
+  if (e.type === 'pointerup') {
+    if (wasBox && moved && end) selectBox(end);
+    else if (!moved && !e.shiftKey && !e.ctrlKey && !e.metaKey)
+      selection.clear();
+  }
+  // A box drawn is the selection made: selection mode ends with it, whether
+  // it caught anything or not (#237).
+  if (wasBox && moved) selection.setMode(false);
 }
 
 function selectBox(end: { x: number; y: number }) {
@@ -723,8 +729,11 @@ useWidget({
     },
     {
       id: 'selection.tap',
+      // One card turning says enough; several get a toast (#237).
       toast: () =>
-        `${selectedCards().some((c) => !c.tapped) ? 'Tapped' : 'Untapped'} ${cardsLabel(selectedCards())}`,
+        selection.size > 1
+          ? `${selectedCards().some((c) => !c.tapped) ? 'Tapped' : 'Untapped'} ${cardsLabel(selectedCards())}`
+          : '',
       // Tap if any is untapped, else Untap (#235).
       label: () => (selectedCards().some((c) => !c.tapped) ? 'Tap' : 'Untap'),
       // The card's own symbols, as on its details (#237).

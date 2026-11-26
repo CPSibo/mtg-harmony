@@ -40,18 +40,14 @@ describe('toasts for actions outside the palette (#237)', () => {
   beforeEach(() => (toasts.length = 0));
   afterEach(unmountAll);
 
-  it('a stack’s Tap button', async () => {
+  it('none for tapping one card with its own button', async () => {
     const stack = boardCard();
     mountInApp(BoardCardStackActions, { props: { stack } });
     await flushPromises();
 
     buttonLabelled('Tap').click();
-    expect(toasts).toEqual([
-      expect.objectContaining({
-        id: 'selection.tap',
-        title: 'Tapped Grizzly Bears',
-      }),
-    ]);
+    expect(stack.primary.tapped).toBe(true);
+    expect(toasts).toEqual([]);
   });
 
   it('removing a card from its details', async () => {
@@ -104,12 +100,18 @@ describe('toasts for actions outside the palette (#237)', () => {
     ]);
   });
 
-  it('the top bar’s tap button', async () => {
-    const stack = boardCard();
-    stack.primary.tapped = true;
+  it('the top bar’s tap button, for several cards only', async () => {
+    const one = boardCard();
+    const two = boardCard('Llanowar Elves');
+    one.primary.tapped = true;
     mountInApp(TapButton);
     await flushPromises();
 
+    buttonLabelled('Untap all').click();
+    expect(toasts).toEqual([]);
+
+    one.primary.tapped = true;
+    two.primary.tapped = true;
     buttonLabelled('Untap all').click();
     expect(toasts).toEqual([
       expect.objectContaining({
@@ -118,14 +120,17 @@ describe('toasts for actions outside the palette (#237)', () => {
       }),
     ]);
 
-    useSelectionStore().selectOnly(stack.id);
+    useSelectionStore().selectOnly(one.id);
     await flushPromises();
     buttonLabelled('Tap selected card').click();
+    expect(toasts).toHaveLength(1);
+
+    useSelectionStore().selectAll();
+    one.primary.tapped = false;
+    await flushPromises();
+    buttonLabelled('Tap selected cards').click();
     expect(toasts.at(-1)).toEqual(
-      expect.objectContaining({
-        id: 'selection.tap',
-        title: 'Tapped Grizzly Bears',
-      }),
+      expect.objectContaining({ id: 'selection.tap', title: 'Tapped 2 cards' }),
     );
   });
 });

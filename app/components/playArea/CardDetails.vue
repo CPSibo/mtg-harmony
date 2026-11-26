@@ -329,7 +329,6 @@ import UModal from '@nuxt/ui/components/Modal.vue';
 import USeparator from '@nuxt/ui/components/Separator.vue';
 import { useToast } from '@nuxt/ui/composables';
 import { cardsLabel, useActionToast } from '~/composables/useActionToast';
-import { manaIcon } from '~/components/shared/manaIcon';
 import { fetchCardById } from '~/composables/useScryfall';
 import { meldResult } from '~/features/battlefield/meld';
 import { tokenParts } from '~/features/battlefield/tokens';
@@ -433,12 +432,8 @@ const toggleTap = () => {
   const card = props.card;
   if (!card) return;
 
+  // One card turning needs no toast (#237).
   battlefield.toggleTapped(card);
-  actionToast(
-    'selection.tap',
-    `${card.tapped ? 'Tapped' : 'Untapped'} ${name(card)}`,
-    manaIcon(card.tapped ? 'ms-tap' : 'ms-untap'),
-  );
 
   open.value = false;
 };

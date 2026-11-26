@@ -44,14 +44,22 @@ function act() {
     const cards = selected.value;
     const tapping = tapsSelection.value;
     battlefield.tapOrUntap(cards);
-    actionToast(
-      'selection.tap',
-      `${tapping ? 'Tapped' : 'Untapped'} ${cardsLabel(cards)}`,
-      manaIcon(tapping ? 'ms-tap' : 'ms-untap'),
-    );
+    // One card turning says enough; several get a toast (#237).
+    if (cards.length > 1)
+      actionToast(
+        'selection.tap',
+        `${tapping ? 'Tapped' : 'Untapped'} ${cardsLabel(cards)}`,
+        manaIcon(tapping ? 'ms-tap' : 'ms-untap'),
+      );
   } else {
+    const several = battlefield.untapAllCount() > 1;
     battlefield.untapAll();
-    actionToast('board.untapAll', 'Untapped every card', 'i-lucide-rotate-ccw');
+    if (several)
+      actionToast(
+        'board.untapAll',
+        'Untapped every card',
+        'i-lucide-rotate-ccw',
+      );
   }
 }
 </script>

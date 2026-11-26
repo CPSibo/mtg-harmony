@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { computed, ref, shallowRef, triggerRef } from 'vue';
+import { computed, ref, shallowRef, triggerRef, watch } from 'vue';
 import type { Position } from '@vueuse/core';
 import { BOARD_SIZE, overlaps, type Rect } from './placement';
 import { useBattlefieldStore } from './store';
@@ -17,6 +17,15 @@ export const useSelectionStore = defineStore('selection', () => {
   const selected = shallowRef(new Set<string>());
   /** Taps toggle stacks and a drag on the empty board draws a box. */
   const mode = ref(false);
+
+  // Nothing left to select once the board is empty, say after removing every
+  // card: selection mode ends (#237).
+  watch(
+    () => battlefield.stacks.length === 0,
+    (empty) => {
+      if (empty) mode.value = false;
+    },
+  );
 
   /** Selected IDs of stacks still on the board, in board order. */
   const idList = computed(() =>

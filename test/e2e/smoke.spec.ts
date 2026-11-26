@@ -92,7 +92,9 @@ test('the palette fetches, casts and runs board commands', async ({ page }) => {
   });
   await expect(boardCard).toBeVisible();
   // It says what it did (#237).
-  await expect(page.getByText(`Cast ${card.name} to the board`)).toBeVisible();
+  await expect(
+    page.getByText(`Cast ${card.name} to the board`, { exact: true }),
+  ).toBeVisible();
 
   await run('Turn selection mode on or off');
   await expect(page.getByRole('status')).toContainText('Selecting');
@@ -319,6 +321,42 @@ test('Find on board pans to a match and selects it', async ({ page }) => {
 
   await findBox.press('Escape');
   await expect(page.getByRole('search')).toBeHidden();
+});
+
+// #237: a box drawn in selection mode ends it, whatever it caught.
+test('selection mode ends after a box is drawn', async ({ page }) => {
+  await page.getByRole('button', { name: 'On-deck' }).click();
+  await page.getByRole('button', { name: 'Next card' }).click();
+  await page.getByRole('button', { name: 'Cast to board' }).click();
+  await expect(page.locator('.board-card-stack')).toHaveCount(1);
+  // On-deck has finished closing once it hands focus back to its button.
+  await expect(page.getByRole('button', { name: 'On-deck' })).toBeFocused();
+
+  const mode = page.getByRole('button', {
+    name: /^(Select stacks|Leave selection mode)/,
+  });
+  for (const catches of [false, true]) {
+    await mode.click();
+    await expect(mode).toHaveAttribute('aria-pressed', 'true');
+    // An empty corner first, then a box over the whole view.
+    const [from, to] = catches
+      ? [
+          { x: 5, y: 90 },
+          { x: 1270, y: 715 },
+        ]
+      : [
+          { x: 5, y: 600 },
+          { x: 60, y: 700 },
+        ];
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y, { steps: 5 });
+    await page.mouse.up();
+    await expect(mode).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.locator('.board-card-stack.selected')).toHaveCount(
+      catches ? 1 : 0,
+    );
+  }
 });
 
 // #216: a plain tap selects one stack, the target of palette commands.

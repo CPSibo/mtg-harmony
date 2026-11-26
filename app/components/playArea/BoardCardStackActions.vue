@@ -11,7 +11,7 @@
       :disabled="battlefield.isAttaching"
       :aria-label="stack.primary.tapped ? 'Untap' : 'Tap'"
       :title="stack.primary.tapped ? 'Untap' : 'Tap'"
-      @click="tap"
+      @click="battlefield.toggleTapped(stack.primary)"
     >
       <span
         class="ms"
@@ -102,7 +102,6 @@ import {
 } from '~/features/battlefield';
 import { useCopyAnimation } from '~/features/castAnimation';
 import { cardsLabel, useActionToast } from '~/composables/useActionToast';
-import { manaIcon } from '~/components/shared/manaIcon';
 import type { BoardCard, BoardCardStack } from '~/types/PlayArea';
 
 const props = defineProps<{
@@ -121,18 +120,9 @@ const battlefield = useBattlefieldStore();
 const selection = useSelectionStore();
 const copyCard = useCopyAnimation();
 
-// The same toasts as the selection's commands (#237).
+// The same toasts as the selection's commands (#237). Tapping one card
+// needs none: it turns in front of you.
 const actionToast = useActionToast();
-
-function tap() {
-  const card = props.stack.primary;
-  battlefield.toggleTapped(card);
-  actionToast(
-    'selection.tap',
-    `${card.tapped ? 'Tapped' : 'Untapped'} ${cardsLabel([card])}`,
-    manaIcon(card.tapped ? 'ms-tap' : 'ms-untap'),
-  );
-}
 
 function copy(mode: CopyMode) {
   copyCard(props.stack.primary, mode);
