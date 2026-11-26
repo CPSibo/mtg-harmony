@@ -20,6 +20,18 @@ export interface WidgetCommand {
    * its "More…" `menu`. Missing means the palette only.
    */
   bar?: 'button' | 'menu';
+  /**
+   * Ways to run the command, such as Copy's three modes (#221). The palette
+   * lists them under the command, and the bar opens them as a menu. With
+   * choices, `execute` isn't used.
+   */
+  choices?: WidgetCommandChoice[];
+  execute: () => void;
+}
+
+export interface WidgetCommandChoice {
+  label: string;
+  icon: string;
   execute: () => void;
 }
 

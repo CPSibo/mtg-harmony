@@ -107,4 +107,32 @@ describe('useWidgetRegistry (#216)', () => {
     expect(execute).toHaveBeenCalledOnce();
     registry.unregister('w');
   });
+
+  it("lists a command's choices as its palette item's children (#221)", () => {
+    const picked: string[] = [];
+    const registry = useWidgetRegistry();
+    registry.register(
+      widget({
+        commands: [
+          {
+            id: 'copy',
+            label: 'Copy',
+            icon: 'i-lucide-copy',
+            execute: () => {},
+            choices: [
+              {
+                label: 'Card only',
+                icon: 'i-lucide-copy',
+                execute: () => picked.push('card'),
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    const [item] = registry.paletteGroups[0]!.items;
+    expect(item!.children?.map((c) => c.label)).toEqual(['Card only']);
+    item!.children![0]!.onSelect();
+    expect(picked).toEqual(['card']);
+  });
 });

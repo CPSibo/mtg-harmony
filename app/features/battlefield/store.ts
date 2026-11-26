@@ -331,6 +331,13 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     return removeCardFromStack(card);
   }
 
+  /** Removes each card, logged as one group (#221). */
+  function removeCards(cards: readonly BoardCard[]) {
+    log.group(() => {
+      for (const card of cards) removeCard(card);
+    });
+  }
+
   /** Empties the board and logs it. */
   function clearBoard() {
     log.record('boardCleared', {});
@@ -378,6 +385,11 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     zOrder.value.push(copy.id);
     log.record('copied', { card: primary, source: card, mode });
     return stacks.value.at(-1)!;
+  }
+
+  /** Copies each card, logged as one group (#221). */
+  function copyCards(cards: readonly BoardCard[], mode: CopyMode) {
+    return log.group(() => cards.map((card) => copyCard(card, mode)));
   }
 
   /** Every card on the board: primaries, attachments and unders. */
@@ -583,6 +595,12 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     card.tapped = !card.tapped;
   }
 
+  /** Taps every card if any is untapped, else untaps them all (#221). */
+  function tapOrUntap(cards: readonly BoardCard[]) {
+    const tap = cards.some((c) => !c.tapped);
+    for (const card of cards) card.tapped = tap;
+  }
+
   /**
    * The Room just cast, waiting for the player to say which door opens
    * (#145). The board shows the choice while it's set.
@@ -650,6 +668,23 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
   /** Removes every counter and granted keyword from a card. */
   function clearModifiers(card: BoardCard) {
     card.modifiers = new Map();
+  }
+
+  /**
+   * Changes each card's count of `key` by `delta` (#221): adds to what's
+   * there rather than setting it, and stops at zero.
+   */
+  function changeModifier(
+    cards: readonly BoardCard[],
+    key: ModifierKey,
+    delta: number,
+  ) {
+    for (const card of cards)
+      setModifierCount(card, key, (card.modifiers.get(key) ?? 0) + delta);
+  }
+
+  function clearModifiersOf(cards: readonly BoardCard[]) {
+    for (const card of cards) clearModifiers(card);
   }
 
   const cardToAttach = ref<BoardCard | null>(null);
@@ -844,12 +879,15 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
 
     untapAll,
     toggleTapped,
+    tapOrUntap,
     toggleFlipped,
     toggleShownAs,
     toggleTurned,
     setFaceNumber,
     setModifierCount,
     clearModifiers,
+    changeModifier,
+    clearModifiersOf,
 
     stacks,
     bringToFront,
@@ -867,8 +905,10 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     forgetStackSize,
     stackSize,
     removeCard,
+    removeCards,
     clearBoard,
     copyCard,
+    copyCards,
     swapPrinting,
     meldPartner,
     meld,

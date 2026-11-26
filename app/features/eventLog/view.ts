@@ -81,6 +81,44 @@ export function filterEntries(
     .reverse();
 }
 
+/** A row of the log window: one entry, or a group recorded together. */
+export type LogRow =
+  | { kind: 'entry'; entry: EventEntry }
+  | { kind: 'group'; id: string; entries: EventEntry[] };
+
+/**
+ * Folds runs of entries with the same `groupId` into one row each (#221).
+ * A group of one is just an entry. Keeps the order it's given.
+ */
+export function groupRows(entries: readonly EventEntry[]): LogRow[] {
+  const rows: LogRow[] = [];
+  for (const entry of entries) {
+    const last = rows.at(-1);
+    const lastGroup = last?.kind === 'group' ? last.id : last?.entry.groupId;
+    if (entry.groupId && entry.groupId === lastGroup) {
+      if (last!.kind === 'entry')
+        rows[rows.length - 1] = {
+          kind: 'group',
+          id: entry.groupId,
+          entries: [last!.entry, entry],
+        };
+      else last!.entries.push(entry);
+    } else rows.push({ kind: 'entry', entry });
+  }
+  return rows;
+}
+
+/** One line saying what a group of entries did, such as "Removed 5 cards". */
+export function describeGroup(entries: readonly EventEntry[]): string {
+  const [first] = entries;
+  const cards = `${entries.length} cards`;
+  if (!first || entries.some((e) => e.type !== first.type))
+    return `${entries.length} events`;
+  if (first.type === 'copied')
+    return `Copied ${cards} (${COPY_MODE_LABELS[first.mode]})`;
+  return `${EVENT_LABELS[first.type].label} ${cards}`;
+}
+
 /** One line saying what happened. */
 export function describeEntry(entry: EventEntry): string {
   switch (entry.type) {

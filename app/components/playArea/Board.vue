@@ -69,6 +69,17 @@
     @after:leave="badgesHeld = null"
   />
 
+  <PlayAreaGroupModifiersMenu
+    v-model:open="groupModifiersIsOpen"
+    :cards="targetCards"
+  />
+
+  <PlayAreaRemoveCardsModal
+    v-model:open="removeIsOpen"
+    :cards="targetCards"
+    @removed="selection.clear()"
+  />
+
   <PlayAreaRoomDoorsModal v-if="battlefield.doorChoice" />
 </template>
 
@@ -94,6 +105,7 @@ import {
   useTemplateRef,
   watch,
   watchEffect,
+  type Ref,
 } from 'vue';
 import {
   BOARD_SIZE,
@@ -104,6 +116,7 @@ import {
   useSelectByType,
   useSelectionStore,
 } from '~/features/battlefield';
+import { useCopyAllAnimation } from '~/features/castAnimation';
 import { useWidget } from '~/features/widgets';
 import { useSettingsStore } from '~/stores/settings';
 import { gridLevels } from '~/utils/gridLevels';
@@ -118,6 +131,13 @@ const loadModifiersMenu = () =>
 const PlayAreaCardDetails = defineAsyncComponent(loadCardDetails);
 const PlayAreaModifiersMenu = defineAsyncComponent(loadModifiersMenu);
 // Only a Room cast to the board opens it (#145).
+// The selection's windows (#221) load on first use.
+const PlayAreaGroupModifiersMenu = defineAsyncComponent(
+  () => import('~/components/playArea/GroupModifiersMenu.vue'),
+);
+const PlayAreaRemoveCardsModal = defineAsyncComponent(
+  () => import('~/components/playArea/RemoveCardsModal.vue'),
+);
 const PlayAreaRoomDoorsModal = defineAsyncComponent(
   () => import('~/components/playArea/RoomDoorsModal.vue'),
 );
@@ -588,6 +608,18 @@ const cardModifiersIsOpen = ref(false);
 const badgesHeld = shallowRef<BoardCard | null>(null);
 provide(BADGES_HELD, badgesHeld);
 
+// The selection's cards, fixed when a selection window opens (#221), so the
+// window keeps them even if the selection changes behind it.
+const targetCards = shallowRef<BoardCard[]>([]);
+const groupModifiersIsOpen = ref(false);
+const removeIsOpen = ref(false);
+const copyAll = useCopyAllAnimation();
+
+function openForSelection(window: Ref<boolean>) {
+  targetCards.value = selection.stacks().map((s) => s.primary);
+  window.value = true;
+}
+
 // Selection commands of the board's own (#216). Others come from the features
 // that own them.
 useWidget({
@@ -605,6 +637,62 @@ useWidget({
         const stack = selection.stacks()[0];
         if (stack) showCardDetails(stack.primary);
       },
+    },
+    {
+      id: 'selection.tap',
+      label: 'Tap or untap',
+      description: 'Taps them all if any is untapped, else untaps them',
+      icon: 'i-lucide-rotate-cw-square',
+      kbds: 't-t',
+      scope: 'selection',
+      bar: 'button',
+      enabled: () => selection.size > 0,
+      execute: () =>
+        battlefield.tapOrUntap(selection.stacks().map((s) => s.primary)),
+    },
+    {
+      id: 'selection.counters',
+      label: 'Counters and keywords…',
+      icon: 'i-lucide-wrench',
+      kbds: 'c-c',
+      scope: 'selection',
+      bar: 'button',
+      enabled: () => selection.size > 0,
+      execute: () => openForSelection(groupModifiersIsOpen),
+    },
+    {
+      id: 'selection.copy',
+      label: 'Copy',
+      icon: 'i-lucide-copy',
+      scope: 'selection',
+      bar: 'button',
+      enabled: () => selection.size > 0,
+      choices: (
+        [
+          ['card', 'Copy: card only', 'i-lucide-copy'],
+          ['counters', 'Copy: with counters', 'i-lucide-copy-plus'],
+          ['stack', 'Copy: everything', 'i-lucide-layers'],
+        ] as const
+      ).map(([mode, label, icon]) => ({
+        label,
+        icon,
+        execute: () =>
+          copyAll(
+            selection.stacks().map((s) => s.primary),
+            mode,
+          ),
+      })),
+      execute: () => {},
+    },
+    {
+      id: 'selection.remove',
+      label: 'Remove…',
+      icon: 'i-lucide-trash',
+      kbds: 'r-r',
+      scope: 'selection',
+      bar: 'button',
+      enabled: () => selection.size > 0,
+      execute: () => openForSelection(removeIsOpen),
     },
     {
       id: 'selection.sameName',

@@ -51,6 +51,12 @@ export const useWidgetRegistry = defineStore('widgetRegistry', () => {
     // Shortcuts are chords like 'b-a'; the palette shows one key per entry.
     kbds: cmd.kbds?.split('-'),
     onSelect: cmd.execute,
+    // The palette opens these as a page of their own.
+    children: cmd.choices?.map((c) => ({
+      label: c.label,
+      icon: c.icon,
+      onSelect: c.execute,
+    })),
   });
 
   const paletteGroups = computed(() =>

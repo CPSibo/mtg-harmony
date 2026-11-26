@@ -10,18 +10,38 @@
         class="size-4 text-primary"
       />
       <span class="text-sm whitespace-nowrap">{{ label }}</span>
-      <UButton
+      <template
         v-for="cmd in buttons"
         :key="cmd.id"
-        :icon="cmd.icon"
-        color="neutral"
-        variant="ghost"
-        size="sm"
-        class="rounded-full"
-        :title="cmd.label"
-        :aria-label="cmd.label"
-        @click="cmd.execute()"
-      />
+      >
+        <!-- A command with choices (Copy's modes) opens them as a menu. -->
+        <UDropdownMenu
+          v-if="cmd.choices"
+          :items="choiceItems(cmd)"
+          :content="{ side: 'top' }"
+        >
+          <UButton
+            :icon="cmd.icon"
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            class="rounded-full"
+            :title="cmd.label"
+            :aria-label="cmd.label"
+          />
+        </UDropdownMenu>
+        <UButton
+          v-else
+          :icon="cmd.icon"
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          class="rounded-full"
+          :title="cmd.label"
+          :aria-label="cmd.label"
+          @click="cmd.execute()"
+        />
+      </template>
       <UDropdownMenu
         v-if="menu.length"
         :items="menu"
@@ -57,7 +77,7 @@ import UDropdownMenu from '@nuxt/ui/components/DropdownMenu.vue';
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
 import { computed } from 'vue';
 import { useSelectionStore } from '~/features/battlefield';
-import { useWidgetRegistry } from '~/features/widgets';
+import { useWidgetRegistry, type WidgetCommand } from '~/features/widgets';
 import { useInputModeStore } from '~/stores/inputMode';
 
 const selection = useSelectionStore();
@@ -76,10 +96,20 @@ const shown = computed(() => selection.mode || selection.size > 1);
 const buttons = computed(() =>
   registry.selectionCommands.filter((c) => c.bar === 'button'),
 );
+const choiceItems = (cmd: WidgetCommand) =>
+  (cmd.choices ?? []).map((c) => ({
+    label: c.label,
+    icon: c.icon,
+    onSelect: c.execute,
+  }));
 const menu = computed(() =>
   registry.selectionCommands
     .filter((c) => c.bar === 'menu')
-    .map((c) => ({ label: c.label, icon: c.icon, onSelect: c.execute })),
+    .map((c) =>
+      c.choices
+        ? { label: c.label, icon: c.icon, children: choiceItems(c) }
+        : { label: c.label, icon: c.icon, onSelect: c.execute },
+    ),
 );
 
 const label = computed(() => {
