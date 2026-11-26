@@ -1,5 +1,4 @@
 import type { BoardColor } from './colors';
-import { fmt } from './geometry';
 import { mod } from './shuffle';
 
 /** Spotlight spacing, in board px. */
@@ -34,14 +33,24 @@ export const LIGHT_SPOTLIGHTS: SpotlightPalette = Object.freeze({
   strength: 0.1,
 });
 
+/** Board px per pixel of the spotlight bitmap. They're soft enough to scale up. */
+export const SPOTLIGHT_PIXEL = 16;
+
+/**
+ * One block of spotlights as straight (not premultiplied) RGBA pixels, row by
+ * row, `pixelWidth` × `pixelHeight` of them standing for `width` × `height`
+ * board px.
+ */
 export interface SpotlightTile {
-  svg: string;
   width: number;
   height: number;
+  pixelWidth: number;
+  pixelHeight: number;
+  pixels: Uint8ClampedArray<ArrayBuffer>;
 }
 
 /**
- * The spotlights for a colour selection as one SVG that repeats to the
+ * The spotlights for a colour selection as one bitmap that repeats to the
  * board's edges (#246), or null with no colours. Spotlights sit in staggered
  * rows, colours running diagonally; the block that repeats is m × m
  * spotlights, m the smallest multiple of the colour count that's at least 3,
@@ -51,6 +60,9 @@ export interface SpotlightTile {
  *
  * One image, not a CSS gradient layer per spotlight: the browser can keep it
  * rasterised while panning, where 9 to 36 gradient layers repaint every frame.
+ * Computed here, not drawn as SVG or canvas gradients: the browser dithers
+ * those, and once the image is scaled the noise smears into faint stripes.
+ * Plain pixels at low resolution scale up smoothly instead.
  */
 export function spotlightTile(
   colors: readonly BoardColor[],
@@ -66,18 +78,42 @@ export function spotlightTile(
   const r = Math.min(SPOTLIGHT_RADIUS * d, width / 2);
   const p = palette.strength;
 
-  let defs = '';
-  for (const c of colors)
-    defs +=
-      `<radialGradient id='s${c}'>` +
-      `<stop offset='0' stop-color='${palette.colors[c]}' stop-opacity='${p}'/>` +
-      `<stop offset='.5' stop-color='${palette.colors[c]}' stop-opacity='${+(p * 0.4).toFixed(4)}'/>` +
-      `<stop offset='1' stop-color='${palette.colors[c]}' stop-opacity='0'/></radialGradient>`;
+  const pixelWidth = Math.round(width / SPOTLIGHT_PIXEL);
+  const pixelHeight = Math.round(height / SPOTLIGHT_PIXEL);
+  // Board px per pixel, a little off SPOTLIGHT_PIXEL so whole pixels fill the block.
+  const sx = width / pixelWidth;
+  const sy = height / pixelHeight;
+  // Premultiplied colour and alpha, composited source-over as SVG would.
+  const rgb = new Float64Array(pixelWidth * pixelHeight * 3);
+  const alpha = new Float64Array(pixelWidth * pixelHeight);
 
-  let body = '';
+  const paint = (cx: number, cy: number, color: readonly number[]) => {
+    const x0 = Math.max(0, Math.floor((cx - r) / sx));
+    const x1 = Math.min(pixelWidth - 1, Math.ceil((cx + r) / sx));
+    const y0 = Math.max(0, Math.floor((cy - r) / sy));
+    const y1 = Math.min(pixelHeight - 1, Math.ceil((cy + r) / sy));
+    for (let y = y0; y <= y1; y++) {
+      const dy = (y + 0.5) * sy - cy;
+      for (let x = x0; x <= x1; x++) {
+        const dx = (x + 0.5) * sx - cx;
+        const t = Math.sqrt(dx * dx + dy * dy) / r;
+        if (t >= 1) continue;
+        // Full strength at the centre, 40 % halfway, none at the rim.
+        const a = t < 0.5 ? p * (1 - 1.2 * t) : p * 0.8 * (1 - t);
+        const i = y * pixelWidth + x;
+        alpha[i] = a + alpha[i]! * (1 - a);
+        for (let c = 0; c < 3; c++)
+          rgb[i * 3 + c] = color[c]! * a + rgb[i * 3 + c]! * (1 - a);
+      }
+    }
+  };
+
+  const rgbOf = Object.fromEntries(
+    colors.map((c) => [c, hexRgb(palette.colors[c])]),
+  );
   for (let i = 0; i < m; i++)
     for (let j = 0; j < m; j++) {
-      const fill = `url(#s${colors[mod(i + j, n)]})`;
+      const color = rgbOf[colors[mod(i + j, n)]!]!;
       const x = (i + 0.5 * (j % 2)) * d;
       const y = j * d * ROW;
       for (const ox of [-width, 0, width])
@@ -86,12 +122,20 @@ export function spotlightTile(
           const cy = y + oy;
           if (cx + r <= 0 || cx - r >= width || cy + r <= 0 || cy - r >= height)
             continue;
-          body += `<circle cx='${fmt(cx)}' cy='${fmt(cy)}' r='${fmt(r)}' fill='${fill}'/>`;
+          paint(cx, cy, color);
         }
     }
 
-  const svg =
-    `<svg xmlns='http://www.w3.org/2000/svg' width='${fmt(width)}' height='${fmt(height)}'` +
-    ` viewBox='0 0 ${fmt(width)} ${fmt(height)}'><defs>${defs}</defs>${body}</svg>`;
-  return { svg, width, height };
+  const pixels = new Uint8ClampedArray(pixelWidth * pixelHeight * 4);
+  for (let i = 0; i < alpha.length; i++) {
+    const a = alpha[i]!;
+    if (!a) continue;
+    for (let c = 0; c < 3; c++) pixels[i * 4 + c] = rgb[i * 3 + c]! / a;
+    pixels[i * 4 + 3] = a * 255;
+  }
+  return { width, height, pixelWidth, pixelHeight, pixels };
+}
+
+function hexRgb(color: string): number[] {
+  return [1, 3, 5].map((i) => parseInt(color.slice(i, i + 2), 16));
 }

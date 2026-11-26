@@ -22,7 +22,10 @@
     >
       <div
         class="board-backdrop"
-        :class="{ 'board-backdrop--themed': settings.boardBackgroundEnabled }"
+        :class="{
+          'board-backdrop--themed': background.themed.value,
+          'board-backdrop--hidden': !background.shown.value,
+        }"
         aria-hidden="true"
         :style="backdropStyle"
       />
@@ -683,9 +686,10 @@ const backdropStyle = computed(() => {
 });
 
 // The themed background's tiles and spotlights (#246), rebuilt only when its
-// settings change; it reads the pan and zoom from the variables above.
+// settings change; it reads the pan and zoom from the variables above. The
+// backdrop fades out while they're built and back in once they're set.
 const backgroundVarsEl = useTemplateRef('backgroundVars');
-useBoardBackground(
+const background = useBoardBackground(
   () => backgroundVarsEl.value,
   () => settings.boardBackgroundEnabled,
   () => settings.boardColors,
@@ -1087,6 +1091,8 @@ const showCardModifiers = (card: BoardCard) => {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  /* Fading back in once the background is ready; see useBoardBackground. */
+  transition: opacity 0.4s ease-out;
   background-image:
     /* Vignette over the whole board, darkest at its edges. */
     radial-gradient(
@@ -1130,6 +1136,20 @@ const showCardModifiers = (card: BoardCard) => {
     calc(var(--spots-width) * var(--s)) calc(var(--spots-height) * var(--s));
   background-repeat: no-repeat, repeat, repeat;
   background-position: var(--x) var(--y);
+}
+
+/* Faded out while the background is built or swapped. The duration matches
+   FADE_OUT_MS. */
+.board-backdrop--hidden {
+  opacity: 0;
+  transition-duration: 0.15s;
+  transition-timing-function: ease-in;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-backdrop {
+    transition: none;
+  }
 }
 
 /* Scoped CSS only scopes the last part, so `.dark` matches <html>. */

@@ -257,13 +257,19 @@ The themed background (#246, on by default) replaces the grid lines in the same 
   drawn once in `<defs>` and placed with `<use>`; the motifs are brushed outlines computed from centre-line paths
   (`geometry.ts`, `motifs.ts`) and kept per motif. With 3 or more colours, `shuffleLayout` lays them over an
   8 × 8-cell block so no neighbours match, from a fixed seed; 2 make a checkerboard.
-- **Spotlights**: a second SVG tile of soft radial gradients, one colour each, repeating to the board's edges.
+- **Spotlights**: soft radial glows, one colour each, repeating to the board's edges. They're computed as pixels
+  into a small PNG (one pixel per 16 board px) that the browser scales up, not drawn as SVG or canvas gradients:
+  the browser dithers those, and once the image is scaled the noise smears into faint stripes.
 - **Themes**: each tile is built in a light and a dark version (`colors.ts`, `spotlights.ts`) and CSS picks one
   under `.dark`.
 
 `useBoardBackground` sets the tiles as CSS variables on a wrapper around the backdrop, not through `:style`: Vue
 re-sets every property of a bound style each render, and the board renders on every frame of a pan. Pan and zoom
 only change `--x`, `--y` and `--s`; the tiles are rebuilt only when the selection changes.
+
+The backdrop fades out while a new background is built and its images decoded, then fades back in once they're
+set (`shown`), so a build never shows half-done; that covers the first load too. Spotlight images are blob URLs,
+revoked once replaced. With reduced motion there's no fade, only the wait.
 
 ### Pan and zoom (`usePanAndZoom`)
 

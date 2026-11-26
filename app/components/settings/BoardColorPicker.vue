@@ -17,7 +17,7 @@
       @click="settings.toggleBoardColor(color)"
     >
       <span
-        class="ms ms-cost ms-shadow"
+        class="ms ms-cost"
         :class="`ms-${color.toLowerCase()}`"
         aria-hidden="true"
       />
@@ -50,6 +50,12 @@ const settings = useSettingsStore();
     filter 0.15s,
     box-shadow 0.15s;
   cursor: pointer;
+}
+
+/* mana-overrides.css pads a button holding only a mana symbol, which pushes
+   the symbol off the ring. This outranks that rule. */
+button.board-color:has(.ms) {
+  padding: 0;
 }
 
 .board-color--on {
