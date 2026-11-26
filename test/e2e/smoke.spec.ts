@@ -69,6 +69,51 @@ test('/ opens the command palette', async ({ page }) => {
   await expect(page.getByRole('option', { name: /Add card/i })).toBeVisible();
 });
 
+// #218: the app's actions are in the palette, with shortcuts for the frequent ones.
+test('the palette fetches, casts and runs board commands', async ({ page }) => {
+  const run = async (name: string) => {
+    await page.keyboard.press('/');
+    await page.getByRole('option', { name }).click();
+  };
+
+  await run('Next card');
+  await run('Cast On-deck card to board');
+  const boardCard = page.locator('.board-card').getByRole('img', {
+    name: card.name,
+  });
+  await expect(boardCard).toBeVisible();
+
+  await run('Turn selection mode on or off');
+  await expect(page.getByRole('status')).toContainText('Click stacks');
+
+  await run('Clear board');
+  await expect(page.getByRole('dialog')).toBeVisible();
+});
+
+test('shortcuts fetch, cast and zoom to fit', async ({ page }) => {
+  const chord = async (a: string, b: string) => {
+    await page.keyboard.press(a);
+    await page.keyboard.press(b);
+  };
+  await chord('o', 'n');
+  await chord('o', 'o');
+  await expect(page.getByRole('img', { name: card.name })).toBeVisible();
+  await chord('o', 'c');
+  const boardCard = page.locator('.board-card').getByRole('img', {
+    name: card.name,
+  });
+  await expect(boardCard).toBeVisible();
+
+  // Pan the card off-screen, then zoom to fit brings it back.
+  await page.mouse.move(640, 360);
+  await page.mouse.down();
+  await page.mouse.move(-600, -400, { steps: 5 });
+  await page.mouse.up();
+  await expect(boardCard).not.toBeInViewport();
+  await chord('z', 'f');
+  await expect(boardCard).toBeInViewport();
+});
+
 // The board cancels touchstart to pan, which stops the click Reka waits for
 // before dismissing on touch (#135).
 test.describe('on a touch screen', () => {

@@ -202,6 +202,7 @@ import {
 import { useDragToCast } from '~/composables/useDragToCast';
 import { cardImage, useBattlefieldStore } from '~/features/battlefield';
 import { OFFLINE_MESSAGE, useDiscordFetcherStore } from '..';
+import { useWidget } from '~/features/widgets';
 
 const toast = useToast();
 
@@ -274,6 +275,63 @@ const castToGraveyard = () => {
   void animateGraveyard(source);
   drawerIsOpen.value = false;
 };
+
+// The panel's actions in the palette (#218). Each works with the panel
+// closed; a cast then has no flight from the panel.
+useWidget({
+  id: 'onDeck',
+  label: 'On-deck',
+  icon: 'i-lucide-scan-search',
+  commands: [
+    {
+      id: 'onDeck.toggle',
+      label: 'Show or hide On-deck',
+      icon: 'i-lucide-scan-search',
+      kbds: 'o-o',
+      execute: () => (drawerIsOpen.value = !drawerIsOpen.value),
+    },
+    {
+      id: 'onDeck.next',
+      label: 'Next card',
+      icon: 'i-lucide-arrow-right',
+      kbds: 'o-n',
+      execute: () => {
+        if (!cantFetch.value && !loading.value) void goNext();
+      },
+    },
+    {
+      id: 'onDeck.previous',
+      label: 'Previous card',
+      icon: 'i-lucide-arrow-left',
+      kbds: 'o-p',
+      execute: () => {
+        if (canGoPrevious.value) discordFetchStore.prev();
+      },
+    },
+    {
+      id: 'onDeck.cast',
+      label: 'Cast On-deck card to board',
+      icon: 'i-lucide-user-plus',
+      kbds: 'o-c',
+      execute: () => cast(),
+    },
+    {
+      id: 'onDeck.castToGraveyard',
+      label: 'Cast On-deck card to graveyard',
+      icon: 'i-lucide-skull',
+      kbds: 'o-g',
+      execute: castToGraveyard,
+    },
+    {
+      id: 'onDeck.clear',
+      label: 'Clear On-deck card',
+      icon: 'i-lucide-x',
+      execute: () => {
+        if (card.value) discordFetchStore.clearCard();
+      },
+    },
+  ],
+});
 
 // Drag to the board (#79).
 const {
