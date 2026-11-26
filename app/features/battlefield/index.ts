@@ -15,5 +15,6 @@ export {
   type DragMenuHit,
 } from './dragMenu';
 export { BOARD_SIZE, findFreeSpot, overlaps, type Rect } from './placement';
+export { cardMatches, useBoardFind } from './find';
 export { useSelectionStore } from './selection';
 export { useBattlefieldStore, type AttachMode, type CopyMode } from './store';

@@ -179,6 +179,21 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     isDragging.value = false;
   }
 
+  /**
+   * Puts board point (x, y) mid-screen, zoomed in to at least `minScale`, as
+   * one finished move (#219).
+   */
+  function centreOn(x: number, y: number, minScale = 1) {
+    panFollower.finish();
+    scale.value = clampScale(Math.max(scale.value, minScale));
+    position.value = clampPosition(
+      windowWidth.value / 2 - x * scale.value,
+      windowHeight.value / 2 - y * scale.value,
+    );
+    panFollower.jump(position.value);
+    if (settings.onEnd) settings.onEnd(position.value);
+  }
+
   function onMouseUp(_e: MouseEvent) {
     if (!isEnabled.value) return;
 
@@ -318,6 +333,7 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     style,
     isDragging,
     panBy,
+    centreOn,
     onWheel,
     onMouseDown,
     onMouseMove,

@@ -150,6 +150,42 @@ test('the same card cast twice gives two separate cards', async ({ page }) => {
   await expect(boardCards).toHaveCount(2);
 });
 
+// #219: find a card on the board by its text and bring it into view.
+test('Find on board pans to a match and selects it', async ({ page }) => {
+  await page.getByRole('button', { name: 'On-deck' }).click();
+  await page.getByRole('button', { name: 'Next card' }).click();
+  await page.getByRole('button', { name: 'Cast to board' }).click();
+  const boardCard = page.locator('.board-card').getByRole('img', {
+    name: card.name,
+  });
+  await expect(boardCard).toBeVisible();
+  await expect(page.getByRole('button', { name: 'On-deck' })).toBeFocused();
+
+  // Pan the card off-screen.
+  await page.mouse.move(640, 360);
+  await page.mouse.down();
+  await page.mouse.move(-600, -400, { steps: 5 });
+  await page.mouse.up();
+  await expect(boardCard).not.toBeInViewport();
+
+  await page.keyboard.press('/');
+  await page.getByRole('option', { name: /Find on board/ }).click();
+  const findBox = page.getByRole('search').getByRole('textbox');
+  await expect(findBox).toBeFocused();
+
+  await findBox.fill('zzz');
+  await expect(page.getByRole('search')).toContainText('No matches');
+
+  // The type line matches too.
+  await findBox.fill('creature ooze');
+  await expect(page.getByRole('search')).toContainText('1 of 1');
+  await expect(boardCard).toBeInViewport();
+  await expect(page.locator('.board-card-stack.selected')).toHaveCount(1);
+
+  await findBox.press('Escape');
+  await expect(page.getByRole('search')).toBeHidden();
+});
+
 // #78: every cast card used to land on the same spot.
 test('cards cast in a row sit side by side in view', async ({ page }) => {
   for (let i = 0; i < 3; i++) {

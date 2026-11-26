@@ -54,6 +54,7 @@
   </div>
 
   <PlayAreaSelectionBar />
+  <PlayAreaFindBar v-if="find.isOpen" />
 
   <PlayAreaCardDetails
     v-model:open="cardDetailsIsOpen"
@@ -74,6 +75,7 @@
 import PlayAreaBoardCardStack from '~/components/playArea/BoardCardStack.vue';
 import PlayAreaDragRadialMenu from '~/components/playArea/DragRadialMenu.vue';
 import PlayAreaSelectionBar from '~/components/playArea/SelectionBar.vue';
+import PlayAreaFindBar from '~/components/playArea/FindBar.vue';
 import { useBlockBrowserZoom } from '~/composables/useBlockBrowserZoom';
 import { BADGES_HELD } from '~/components/playArea/badgesHeld';
 import { usePanAndZoom } from '~/composables/usePanAndZoom';
@@ -88,14 +90,17 @@ import {
   ref,
   shallowRef,
   useTemplateRef,
+  watch,
   watchEffect,
 } from 'vue';
 import {
   BOARD_SIZE,
   dragMenu,
   useBattlefieldStore,
+  useBoardFind,
   useSelectionStore,
 } from '~/features/battlefield';
+import { useWidget } from '~/features/widgets';
 import { useSettingsStore } from '~/stores/settings';
 import { gridLevels } from '~/utils/gridLevels';
 import { whenIdle } from '~/utils/whenIdle';
@@ -132,6 +137,7 @@ const {
   style,
   isDragging,
   panBy,
+  centreOn,
   onWheel,
   onMouseDown,
   onMouseMove,
@@ -151,6 +157,36 @@ const {
   },
   disabled: () => battlefield.isAttaching,
   smoothing: () => settings.pointerSmoothing,
+});
+
+// ─── Find on board (#219) ─────────────────────────────────────────────────────
+
+const find = useBoardFind();
+
+// Bring the current match into view as the query or the step changes.
+watch(
+  () => find.current,
+  (stack) => {
+    if (!stack || !find.isOpen) return;
+    const { width, height } = battlefield.stackSize(stack);
+    centreOn(stack.position.x + width / 2, stack.position.y + height / 2);
+  },
+);
+
+useWidget({
+  id: 'find',
+  label: 'Find',
+  icon: 'i-lucide-search',
+  commands: [
+    {
+      id: 'find.open',
+      label: 'Find on board',
+      description: 'By name, type or text',
+      icon: 'i-lucide-search',
+      kbds: 'f-b',
+      execute: () => find.open(),
+    },
+  ],
 });
 
 const anyCardIsDragging = ref(false);
