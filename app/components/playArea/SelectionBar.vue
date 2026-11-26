@@ -107,11 +107,10 @@ const menuUi = computed(() => (bigMenus.value ? { item: 'py-3' } : {}));
 const registry = useWidgetRegistry();
 
 /**
- * Hidden for a lone selected stack outside selection mode (#216): a plain
- * tap selects one, and that's used through the palette and shortcuts, not
- * a bar popping up at every tap.
+ * Open in selection mode, or with anything selected, a lone tapped stack
+ * included (#237): its actions are there whether or not the mode is on.
  */
-const shown = computed(() => selection.mode || selection.size > 1);
+const shown = computed(() => selection.mode || selection.size > 0);
 
 // Selection commands that apply now, as the bar shows them.
 const buttons = computed(() =>

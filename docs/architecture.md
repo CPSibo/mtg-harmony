@@ -163,8 +163,8 @@ search button, so it opens as a tray under the row.
 
 There's no separate "active card": a plain tap or click on a stack, or Tab onto its card, selects just that stack,
 and selection commands act on it. A drag, a double tap (which opens the card), and mouse focus left over from a click
-don't select. The selection bar stays hidden for a single selected stack outside selection mode, so a tap doesn't
-bring it up. Board selection commands (Show card details, Clear selection) register from `Board.vue`.
+don't select. The selection bar opens for any selection, a single tapped stack included, whether or not selection
+mode is on (#237). Board selection commands (Show card details, Clear selection) register from `Board.vue`.
 
 ## Stores and persistence
 

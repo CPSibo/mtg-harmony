@@ -377,12 +377,18 @@ test.describe('selecting by tap', () => {
   const selected = (page: Page) => page.locator('.board-card-stack.selected');
   const cardIn = (stack: Locator) => stack.locator('.primary-card [role=img]');
 
-  test('a click selects one stack, without the selection bar', async ({
+  test('a click selects one stack, and the selection bar opens', async ({
     page,
   }) => {
+    const bar = page.locator('.selection-bar[role="status"]');
+    await expect(bar).toBeHidden();
     await cardIn(stacks(page).first()).click();
     await expect(selected(page)).toHaveCount(1);
-    await expect(page.locator('.selection-bar[role="status"]')).toBeHidden();
+    // Its actions, outside selection mode too (#237).
+    await expect(bar).toContainText('(1)');
+    await expect(
+      bar.getByRole('button', { name: 'Tap', exact: true }),
+    ).toBeVisible();
 
     // Another click moves the selection; a modified click adds to it.
     await cardIn(stacks(page).nth(1)).click();
@@ -394,6 +400,7 @@ test.describe('selecting by tap', () => {
     // A click on the empty board clears it.
     await page.mouse.click(40, 700);
     await expect(selected(page)).toHaveCount(0);
+    await expect(bar).toBeHidden();
   });
 
   test('dragging a stack does not select it', async ({ page }) => {

@@ -28,20 +28,25 @@ const bar = () => document.querySelector('.selection-bar[role="status"]');
 describe('SelectionBar (#216)', () => {
   afterEach(unmountAll);
 
-  it('stays hidden for one stack selected outside selection mode', async () => {
+  it('is only the selection mode button with nothing selected', async () => {
+    twoStacks();
+    mountInApp(SelectionBar);
+    await flushPromises();
+    expect(bar()).toBeNull();
+    expect(
+      document.querySelector('.selection-bar [aria-label="Select stacks"]'),
+    ).not.toBeNull();
+  });
+
+  it('opens for any selection, outside selection mode too (#237)', async () => {
     const [a, b] = twoStacks();
     const selection = useSelectionStore();
     mountInApp(SelectionBar);
 
     selection.selectOnly(a!);
     await flushPromises();
-    expect(bar()).toBeNull();
-    // Only the selection mode button (#237).
-    expect(
-      document.querySelector(
-        '.selection-bar [aria-label="Select stacks, 1 selected"]',
-      ),
-    ).not.toBeNull();
+    expect(selection.mode).toBe(false);
+    expect(bar()?.textContent).toContain('(1)');
 
     selection.toggle(b!);
     await flushPromises();
