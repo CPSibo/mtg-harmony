@@ -36,6 +36,10 @@ symbols via `utils/manaSymbols.ts`, type line, P/T) on the board, in On-deck and
 and the event log drop their thumbnails, and the fetcher preloads no images. Cards cast again from the log have no
 mana cost or P/T to show: the log keeps only the name, image and links.
 
+**Show card images** and **Preload card image** start off when the browser asks to save data (`utils/saveData.ts`,
+#242): the `prefers-reduced-data: reduce` media feature, which no browser ships unflagged yet, or Chromium's
+`navigator.connection.saveData`. They follow the browser until settings are first saved, and **Reset app** asks again.
+
 ## Folder layout
 
 ```text

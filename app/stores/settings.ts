@@ -16,11 +16,12 @@ import {
   type CastFlight,
   type CastLanding,
 } from '~/features/castAnimation/options';
+import { prefersReducedData } from '~/utils/saveData';
 export interface AppSettings {
   /** Whether the Screen Wake Lock API is requested. */
   wakeLockEnabled: boolean;
 
-  /** Whether to show card images. */
+  /** Whether to show card images. Starts off when the browser asks to save data (#242). */
   imagesEnabled: boolean;
 
   /** Whether board cards have an outline (and its hover colour). */
@@ -50,7 +51,7 @@ export interface AppSettings {
   /** On-deck tops up in the background below this many queued cards. */
   minQueuedCardCount: number;
 
-  /** Whether On-deck preloads the next queued card's image. */
+  /** Whether On-deck preloads the next queued card's image. Starts off like `imagesEnabled`. */
   preloadImagesEnabled: boolean;
 
   /** Whether new cards go in their row of the view (#223). */
@@ -87,13 +88,28 @@ const defaults: AppSettings = {
   arrangeShortcutEnabled: true,
 };
 
+/**
+ * The defaults on this device: images and preloading start off when the browser
+ * asks to save data (#242). They follow the browser until settings are first
+ * saved (any change saves them all); from then on the saved values win.
+ */
+function deviceDefaults(): AppSettings {
+  const saveData = prefersReducedData();
+  return {
+    ...defaults,
+    imagesEnabled: defaults.imagesEnabled && !saveData,
+    preloadImagesEnabled: defaults.preloadImagesEnabled && !saveData,
+  };
+}
+
 export const useSettingsStore = defineStore('settings', () => {
+  const start = deviceDefaults();
   const wakeLockEnabled = ref<boolean>(defaults.wakeLockEnabled);
   function setWakeLockEnabled(value: boolean) {
     wakeLockEnabled.value = value;
   }
 
-  const imagesEnabled = ref<boolean>(defaults.imagesEnabled);
+  const imagesEnabled = ref<boolean>(start.imagesEnabled);
   function setImagesEnabled(value: boolean) {
     imagesEnabled.value = value;
   }
@@ -121,11 +137,13 @@ export const useSettingsStore = defineStore('settings', () => {
   // On-deck's, here so Reset app restores them with the rest (#159).
   const fetchCardCount = ref<number>(defaults.fetchCardCount);
   const minQueuedCardCount = ref<number>(defaults.minQueuedCardCount);
-  const preloadImagesEnabled = ref<boolean>(defaults.preloadImagesEnabled);
+  const preloadImagesEnabled = ref<boolean>(start.preloadImagesEnabled);
   const arrangeNewCards = ref<boolean>(defaults.arrangeNewCards);
   const arrangeShortcutEnabled = ref<boolean>(defaults.arrangeShortcutEnabled);
 
   function reset() {
+    // Ask again: the preference may have changed since the store started.
+    const defaults = deviceDefaults();
     wakeLockEnabled.value = defaults.wakeLockEnabled;
     imagesEnabled.value = defaults.imagesEnabled;
     cardOutlineEnabled.value = defaults.cardOutlineEnabled;
