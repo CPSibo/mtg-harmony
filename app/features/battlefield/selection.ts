@@ -3,6 +3,7 @@ import { computed, ref, shallowRef, triggerRef } from 'vue';
 import type { Position } from '@vueuse/core';
 import { BOARD_SIZE, overlaps, type Rect } from './placement';
 import { useBattlefieldStore } from './store';
+import type { BoardCardStack } from '~/types/PlayArea';
 
 /**
  * Which stacks are selected (#138), whether selection mode is on, and the
@@ -54,6 +55,33 @@ export const useSelectionStore = defineStore('selection', () => {
 
   function clear() {
     if (selected.value.size) replace(new Set());
+  }
+
+  // ─── Building a selection (#220) ──────────────────────────────────────────
+
+  /** Selects just the stacks `pick` accepts. */
+  function selectWhere(pick: (stack: BoardCardStack) => boolean) {
+    replace(new Set(battlefield.stacks.filter(pick).map((s) => s.id)));
+  }
+
+  function selectAll() {
+    selectWhere(() => true);
+  }
+
+  function invert() {
+    const was = new Set(idList.value);
+    selectWhere((s) => !was.has(s.id));
+  }
+
+  /** Selects the stacks whose card is tapped, or untapped. */
+  function selectTapped(tapped: boolean) {
+    selectWhere((s) => !!s.primary.tapped === tapped);
+  }
+
+  /** Adds every stack whose card is named like a selected stack's card. */
+  function selectSameName() {
+    const names = new Set(stacks().map((s) => s.primary.scryfallInfo.name));
+    selectWhere((s) => names.has(s.primary.scryfallInfo.name));
   }
 
   function setMode(value: boolean) {
@@ -130,6 +158,12 @@ export const useSelectionStore = defineStore('selection', () => {
     toggle,
     add,
     clear,
+    replace,
+    selectWhere,
+    selectAll,
+    invert,
+    selectTapped,
+    selectSameName,
     setMode,
     escape,
     selectInRect,

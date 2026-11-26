@@ -21,7 +21,8 @@ export {
   overlaps,
   type Rect,
 } from './placement';
-export { cardMatches, useBoardFind } from './find';
+export { cardMatches, typeLineMatches, useBoardFind } from './find';
+export { useSelectByType } from './selectByType';
 export {
   ARRANGE_ROWS,
   arrangeInRows,
