@@ -11,6 +11,7 @@ const touch = (over: Partial<MenuPress> = {}): MenuPress => ({
   pointerId: 1,
   pointerType: 'touch',
   button: 0,
+  ctrlKey: false,
   clientX: 100,
   clientY: 100,
   ...over,
@@ -22,6 +23,7 @@ describe('board menu gesture (#244)', () => {
   let open: ReturnType<typeof vi.fn<(at: { x: number; y: number }) => void>>;
   let canOpen: boolean;
   let canHold: boolean;
+  let ctrlClickOpens: boolean;
   let gesture: ReturnType<typeof createMenuGesture>;
 
   beforeEach(() => {
@@ -29,10 +31,12 @@ describe('board menu gesture (#244)', () => {
     open = vi.fn<(at: { x: number; y: number }) => void>();
     canOpen = true;
     canHold = true;
+    ctrlClickOpens = false;
     gesture = createMenuGesture({
       open,
       canOpen: () => canOpen,
       canHold: () => canHold,
+      ctrlClickOpens: () => ctrlClickOpens,
     });
   });
 
@@ -124,6 +128,27 @@ describe('board menu gesture (#244)', () => {
       gesture.up(mouse({ button: 0 }));
       gesture.down(mouse(), false);
       gesture.up(mouse());
+      expect(open).not.toHaveBeenCalled();
+    });
+
+    it('opens on a Ctrl+click where that is the right-click, on macOS', () => {
+      const ctrlClick = mouse({ button: 0, ctrlKey: true });
+      gesture.down(ctrlClick, true);
+      gesture.up(ctrlClick);
+      expect(open).not.toHaveBeenCalled();
+
+      ctrlClickOpens = true;
+      gesture.down(ctrlClick, true);
+      gesture.up(mouse({ button: 0, ctrlKey: true, clientX: 102 }));
+      expect(open).toHaveBeenCalledWith({ x: 102, y: 100 });
+    });
+
+    it('leaves a Ctrl+drag on macOS to pan', () => {
+      ctrlClickOpens = true;
+      const ctrlClick = mouse({ button: 0, ctrlKey: true });
+      gesture.down(ctrlClick, true);
+      gesture.move(mouse({ clientX: 101 + PRESS_SLOP, button: -1 }));
+      gesture.up(ctrlClick);
       expect(open).not.toHaveBeenCalled();
     });
 

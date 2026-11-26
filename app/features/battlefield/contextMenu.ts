@@ -8,7 +8,7 @@ import type { Position } from '@vueuse/core';
 /** The parts of a pointer event the gesture reads. */
 export type MenuPress = Pick<
   PointerEvent,
-  'pointerId' | 'pointerType' | 'button' | 'clientX' | 'clientY'
+  'pointerId' | 'pointerType' | 'button' | 'ctrlKey' | 'clientX' | 'clientY'
 >;
 
 export interface MenuGestureOptions {
@@ -18,6 +18,11 @@ export interface MenuGestureOptions {
   canOpen: () => boolean;
   /** Whether a touch hold opens it: not in selection mode, where it draws a box. */
   canHold: () => boolean;
+  /**
+   * Whether Ctrl+click is the right-click, as on macOS, for one-button mice
+   * and trackpads. Elsewhere Ctrl+click is a plain click.
+   */
+  ctrlClickOpens: () => boolean;
 }
 
 /**
@@ -29,12 +34,20 @@ export function createMenuGesture({
   open,
   canOpen,
   canHold,
+  ctrlClickOpens,
 }: MenuGestureOptions) {
   // Fingers and pens down now, to cancel a hold when a second one lands.
   const touching = new Set<number>();
   let hold: { id: number; x: number; y: number } | null = null;
   let holdTimer: ReturnType<typeof setTimeout> | undefined;
-  let right: { id: number; x: number; y: number; moved: boolean } | null = null;
+  // The right-click (or macOS Ctrl+click) in progress, and its button.
+  let right: {
+    id: number;
+    button: number;
+    x: number;
+    y: number;
+    moved: boolean;
+  } | null = null;
   let held = false;
 
   const farFrom = (e: MenuPress, start: { x: number; y: number }) =>
@@ -49,9 +62,17 @@ export function createMenuGesture({
   function down(e: MenuPress, onEmptyBoard: boolean) {
     held = false;
     if (e.pointerType === 'mouse') {
+      const secondary =
+        e.button === 2 || (e.button === 0 && e.ctrlKey && ctrlClickOpens());
       right =
-        e.button === 2 && onEmptyBoard
-          ? { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false }
+        secondary && onEmptyBoard
+          ? {
+              id: e.pointerId,
+              button: e.button,
+              x: e.clientX,
+              y: e.clientY,
+              moved: false,
+            }
           : null;
       return;
     }
@@ -83,7 +104,7 @@ export function createMenuGesture({
   function up(e: MenuPress) {
     end(e);
     const press = right;
-    if (!press || e.pointerId !== press.id || e.button !== 2) return;
+    if (!press || e.pointerId !== press.id || e.button !== press.button) return;
     right = null;
     if (!press.moved && !farFrom(e, press) && canOpen())
       open({ x: e.clientX, y: e.clientY });
@@ -118,7 +139,7 @@ export interface BoardMenuItem {
 const MENU: { id: string; label?: string }[][][] = [
   [
     [{ id: 'onDeck.cast', label: 'Cast On-deck card here' }],
-    [{ id: 'addCard.open', label: 'Add card…' }],
+    [{ id: 'addCard.open', label: 'Add card here…' }],
   ],
   [
     [{ id: 'arrange.smart' }],

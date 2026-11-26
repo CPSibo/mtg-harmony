@@ -574,6 +574,12 @@ function selectBox(end: { x: number; y: number }) {
 
 const boardMenuEl = useTemplateRef('boardMenu');
 
+/** macOS, where Ctrl+click is the right-click. */
+const isMac = /mac/i.test(
+  (navigator as Navigator & { userAgentData?: { platform: string } })
+    .userAgentData?.platform ?? navigator.platform,
+);
+
 /**
  * Opens the board menu at a screen point. The browser's own `contextmenu`
  * may follow: after a right-click's button comes up and on a Menu keyup
@@ -605,6 +611,7 @@ const menuGesture = createMenuGesture({
   open: openBoardMenu,
   canOpen: () => !battlefield.isAttaching,
   canHold: () => !selection.mode,
+  ctrlClickOpens: () => isMac,
 });
 onUnmounted(menuGesture.dispose);
 useEventListener(window, 'pointermove', menuGesture.move, { passive: true });

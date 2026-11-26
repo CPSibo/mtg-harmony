@@ -22,11 +22,13 @@ const PIXEL = Buffer.from(
 );
 
 test.beforeEach(async ({ page }) => {
-  await page.route('https://api.scryfall.com/**', (route) =>
-    new URL(route.request().url()).pathname === '/cards/random'
-      ? route.fulfill({ json: card })
-      : route.fulfill({ status: 404, json: { object: 'error' } }),
-  );
+  await page.route('https://api.scryfall.com/**', (route) => {
+    const { pathname } = new URL(route.request().url());
+    if (pathname === '/cards/random') return route.fulfill({ json: card });
+    if (pathname === '/cards/search')
+      return route.fulfill({ json: { object: 'list', data: [card] } });
+    return route.fulfill({ status: 404, json: { object: 'error' } });
+  });
   await page.route('https://cards.scryfall.io/**', (route) =>
     route.fulfill({ contentType: 'image/png', body: PIXEL }),
   );
@@ -69,7 +71,7 @@ test('a right-click on empty board opens the menu, and casts On-deck there', asy
   await expect(menu(page)).toBeVisible();
   await expect(page.getByRole('menuitem')).toHaveText([
     /Cast On-deck card here/,
-    /Add card…/,
+    /Add card here…/,
     // Arrange and Zoom to fit need a card on the board.
     /Reset view/,
   ]);
@@ -120,10 +122,22 @@ test('Select all turns into Deselect all', async ({ page }) => {
   await expect(page.locator('.board-card-stack.selected')).toHaveCount(0);
 });
 
-test('Add card opens the Add Card window', async ({ page }) => {
-  await page.mouse.click(900, 420, { button: 'right' });
-  await item(page, 'Add card…').click();
-  await expect(page.getByRole('dialog', { name: /Add card/i })).toBeVisible();
+test('Add card here puts the card found where the menu opened', async ({
+  page,
+}) => {
+  const at = { x: 950, y: 500 };
+  await page.mouse.click(at.x, at.y, { button: 'right' });
+  await item(page, 'Add card here…').click();
+  const addCard = page.getByRole('dialog', { name: 'Add card' });
+  await addCard.getByRole('textbox').fill('ooze');
+  await addCard.getByRole('option').first().click();
+  await expect(addCard).toBeHidden();
+
+  const placed = page.locator('.board-card-stack .primary-card');
+  await expect(placed).toHaveCount(1);
+  const box = (await placed.boundingBox())!;
+  expect(Math.abs(box.x + box.width / 2 - at.x)).toBeLessThan(15);
+  expect(Math.abs(box.y + box.height / 2 - at.y)).toBeLessThan(15);
 });
 
 test('a right-drag pans and opens nothing', async ({ page }) => {
