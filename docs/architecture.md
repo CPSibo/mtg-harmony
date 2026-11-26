@@ -260,6 +260,7 @@ The themed background (#246, on by default) replaces the grid lines in the same 
 - **Spotlights**: soft radial glows, one colour each, repeating to the board's edges. They're computed as pixels
   into a small PNG (one pixel per 16 board px) that the browser scales up, not drawn as SVG or canvas gradients:
   the browser dithers those, and once the image is scaled the noise smears into faint stripes.
+  The **Colour wash** setting (`boardSpotlightsEnabled`, on by default) leaves them out.
 - **Themes**: each tile is built in a light and a dark version (`colors.ts`, `spotlights.ts`) and CSS picks one
   under `.dark`.
 

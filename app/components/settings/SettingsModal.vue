@@ -84,6 +84,16 @@
         </UFormField>
 
         <UFormField
+          label="Colour wash"
+          description="Soft glows of your colours across the board"
+        >
+          <USwitch
+            v-model="boardSpotlightsEnabled"
+            :disabled="!boardBackgroundEnabled || !boardColors.length"
+          />
+        </UFormField>
+
+        <UFormField
           label="Grid snapping"
           description="Snap cards to a grid of the given size. 0 to disable"
         >
@@ -300,6 +310,8 @@ const {
   arrangeNewCards,
   arrangeShortcutEnabled,
   boardBackgroundEnabled,
+  boardColors,
+  boardSpotlightsEnabled,
 } = storeToRefs(settingsStore);
 
 const flightItems = [

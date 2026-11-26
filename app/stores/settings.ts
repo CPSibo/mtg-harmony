@@ -69,6 +69,9 @@ export interface AppSettings {
 
   /** The colours the board background shows, in WUBRGC order; none is a neutral board (#246). */
   boardColors: BoardColor[];
+
+  /** Whether the board background washes soft glows of its colours over the board. */
+  boardSpotlightsEnabled: boolean;
 }
 
 /** The most On-deck may fetch or keep queued, as the settings dialog allows. */
@@ -98,6 +101,7 @@ const defaults: AppSettings = {
   arrangeShortcutEnabled: true,
   boardBackgroundEnabled: true,
   boardColors: [],
+  boardSpotlightsEnabled: true,
 };
 
 /**
@@ -162,6 +166,11 @@ export const useSettingsStore = defineStore('settings', () => {
   function setBoardColors(value: readonly BoardColor[]) {
     boardColors.value = normalizeBoardColors(value);
   }
+  const boardSpotlightsEnabled = ref<boolean>(defaults.boardSpotlightsEnabled);
+  function setBoardSpotlightsEnabled(value: boolean) {
+    boardSpotlightsEnabled.value = value;
+  }
+
   function toggleBoardColor(color: BoardColor) {
     setBoardColors(
       boardColors.value.includes(color)
@@ -189,6 +198,7 @@ export const useSettingsStore = defineStore('settings', () => {
     arrangeShortcutEnabled.value = defaults.arrangeShortcutEnabled;
     boardBackgroundEnabled.value = defaults.boardBackgroundEnabled;
     boardColors.value = [...defaults.boardColors];
+    boardSpotlightsEnabled.value = defaults.boardSpotlightsEnabled;
   }
 
   function save() {
@@ -212,6 +222,7 @@ export const useSettingsStore = defineStore('settings', () => {
         arrangeShortcutEnabled: arrangeShortcutEnabled.value,
         boardBackgroundEnabled: boardBackgroundEnabled.value,
         boardColors: boardColors.value,
+        boardSpotlightsEnabled: boardSpotlightsEnabled.value,
       },
       SAVE_VERSION,
     );
@@ -269,6 +280,9 @@ export const useSettingsStore = defineStore('settings', () => {
     if (Array.isArray(data.boardColors))
       boardColors.value = normalizeBoardColors(data.boardColors);
 
+    if (typeof data.boardSpotlightsEnabled === 'boolean')
+      boardSpotlightsEnabled.value = data.boardSpotlightsEnabled;
+
     return true;
   }
 
@@ -292,6 +306,7 @@ export const useSettingsStore = defineStore('settings', () => {
       arrangeShortcutEnabled,
       boardBackgroundEnabled,
       boardColors,
+      boardSpotlightsEnabled,
     ],
     save,
   );
@@ -333,5 +348,8 @@ export const useSettingsStore = defineStore('settings', () => {
     boardColors,
     setBoardColors,
     toggleBoardColor,
+
+    boardSpotlightsEnabled,
+    setBoardSpotlightsEnabled,
   };
 });

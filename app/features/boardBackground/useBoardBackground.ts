@@ -26,7 +26,7 @@ export interface BoardBackground {
 
 /**
  * Sets the board background's CSS variables on `target` (#246): a lattice
- * tile and a spotlight bitmap for each theme. Sizes are in board px: the CSS
+ * tile and, unless `spotlights` is off, a spotlight bitmap for each theme. Sizes are in board px: the CSS
  * scales them by `--s` and moves them by `--x` and `--y`, which the backdrop
  * sets, so make `target` an element around it (these don't resolve `--s`
  * themselves). None while off.
@@ -45,6 +45,7 @@ export function useBoardBackground(
   target: () => HTMLElement | null | undefined,
   enabled: () => boolean,
   colors: () => readonly BoardColor[],
+  spotlights: () => boolean,
   { fadeOutMs = defaultFadeOut }: BoardBackgroundOptions = {},
 ): BoardBackground {
   const themed = ref(false);
@@ -55,7 +56,9 @@ export function useBoardBackground(
   let run = 0;
 
   // The selection as a string, so an equal one doesn't rebuild; null while off.
-  const key = computed(() => (enabled() ? colors().join('') : null));
+  const key = computed(() =>
+    enabled() ? `${colors().join('')}${spotlights() ? '+' : ''}` : null,
+  );
 
   watch(
     key,
@@ -103,12 +106,14 @@ async function empty(): Promise<Built> {
   return { vars: {}, blobs: [] };
 }
 
+/** Builds `selection`'s colours, and their spotlights if it ends in `+`. */
 async function build(selection: string): Promise<Built> {
-  const picked = [...selection] as BoardColor[];
+  const washed = selection.endsWith('+');
+  const picked = [...selection.replace('+', '')] as BoardColor[];
   const tile = buildTile(picked, DARK_PALETTE);
   const blobs: string[] = [];
   const spots = async (palette: SpotlightPalette) => {
-    const s = spotlightTile(picked, palette);
+    const s = washed ? spotlightTile(picked, palette) : null;
     const url = s && (await bitmapUrl(s.pixels, s.pixelWidth, s.pixelHeight));
     if (url) blobs.push(url);
     return { url: url ? `url("${url}")` : 'none', s };

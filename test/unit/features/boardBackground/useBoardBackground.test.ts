@@ -16,20 +16,27 @@ beforeEach(() => {
 });
 afterEach(() => revoke.mockRestore());
 
-function setup({ on = true, picked = [] as BoardColor[], fadeOutMs = 0 } = {}) {
+function setup({
+  on = true,
+  picked = [] as BoardColor[],
+  wash = true,
+  fadeOutMs = 0,
+} = {}) {
   const el = document.createElement('div');
   const enabled = ref(on);
   const colors = ref<BoardColor[]>(picked);
+  const spotlights = ref(wash);
   const scope = effectScope();
   const bg = scope.run(() =>
     useBoardBackground(
       () => el,
       () => enabled.value,
       () => colors.value,
+      () => spotlights.value,
       { fadeOutMs: () => fadeOutMs },
     ),
   )!;
-  return { el, enabled, colors, scope, bg };
+  return { el, enabled, colors, spotlights, scope, bg };
 }
 
 const spots = (el: HTMLElement) => el.style.getPropertyValue('--spots-dark');
@@ -53,6 +60,16 @@ describe('useBoardBackground', () => {
     expect(spots(el)).toBe('');
     await vi.waitFor(() => expect(bg.shown.value).toBe(true));
     expect(spots(el)).toMatch(/^url\("blob:spots-\d+"\)$/);
+    scope.stop();
+  });
+
+  it('leaves out the spotlights while the colour wash is off', async () => {
+    const { el, spotlights, bg, scope } = setup({ picked: ['W'], wash: false });
+    await vi.waitFor(() => expect(bg.shown.value).toBe(true));
+    expect(spots(el)).toBe('none');
+    expect(el.style.getPropertyValue('--tile-size')).not.toBe('');
+    spotlights.value = true;
+    await vi.waitFor(() => expect(spots(el)).toMatch(/^url\("blob:/));
     scope.stop();
   });
 

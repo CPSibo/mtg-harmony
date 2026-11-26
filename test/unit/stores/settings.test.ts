@@ -103,18 +103,22 @@ describe('settings store', () => {
     const store = useSettingsStore();
     expect(store.boardBackgroundEnabled).toBe(true);
     expect(store.boardColors).toEqual([]);
+    expect(store.boardSpotlightsEnabled).toBe(true);
 
     store.setBoardBackgroundEnabled(false);
     store.setBoardColors(['G', 'W', 'G', 'C']);
+    store.setBoardSpotlightsEnabled(false);
     expect(store.boardColors).toEqual(['W', 'G', 'C']);
 
     const reloaded = await reload();
     expect(reloaded.boardBackgroundEnabled).toBe(false);
     expect(reloaded.boardColors).toEqual(['W', 'G', 'C']);
+    expect(reloaded.boardSpotlightsEnabled).toBe(false);
 
     reloaded.reset();
     expect(reloaded.boardBackgroundEnabled).toBe(true);
     expect(reloaded.boardColors).toEqual([]);
+    expect(reloaded.boardSpotlightsEnabled).toBe(true);
   });
 
   it('toggles one board colour at a time', () => {
@@ -130,11 +134,19 @@ describe('settings store', () => {
     for (const bad of ['WUB', 3]) {
       localStorage.setItem(
         'mtg-harmony_settings',
-        JSON.stringify([{ boardColors: 1, boardBackgroundEnabled: 1 }, bad]),
+        JSON.stringify([
+          {
+            boardColors: 1,
+            boardBackgroundEnabled: 1,
+            boardSpotlightsEnabled: 1,
+          },
+          bad,
+        ]),
       );
       setActivePinia(createPinia());
       expect(useSettingsStore().boardColors, String(bad)).toEqual([]);
       expect(useSettingsStore().boardBackgroundEnabled, String(bad)).toBe(true);
+      expect(useSettingsStore().boardSpotlightsEnabled, String(bad)).toBe(true);
     }
   });
 

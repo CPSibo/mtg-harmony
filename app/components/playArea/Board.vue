@@ -693,6 +693,7 @@ const background = useBoardBackground(
   () => backgroundVarsEl.value,
   () => settings.boardBackgroundEnabled,
   () => settings.boardColors,
+  () => settings.boardSpotlightsEnabled,
 );
 
 // Screen pixels at the view's edges that don't count as in view when placing
