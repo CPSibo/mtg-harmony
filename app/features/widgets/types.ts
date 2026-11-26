@@ -37,12 +37,21 @@ export interface WidgetCommand {
    * that mean something else where focus is, like Space on a button.
    */
   shortcutGuard?: () => boolean;
+  /**
+   * An info toast saying what the command did (#237), read just before it
+   * runs, so it can count or name what it acts on. Commands that ask for
+   * more (Add card, Find) or open something (On-deck, the event log) have
+   * none: what opens says enough.
+   */
+  toast?: () => string;
   execute: () => void;
 }
 
 export interface WidgetCommandChoice {
   label: string;
   icon: string;
+  /** As the command's `toast`, for this choice. */
+  toast?: () => string;
   execute: () => void;
 }
 

@@ -5,7 +5,8 @@
     size="xl"
     icon="i-lucide-square-dashed-mouse-pointer"
     :class="{
-      'ring-4 ring-warning/40 shadow-lg shadow-warning/30 px-5': selection.mode,
+      'ring-4 ring-warning/40 shadow-lg shadow-warning/30 sm:px-5':
+        selection.mode,
     }"
     :title="title"
     :aria-label="title"
@@ -13,7 +14,12 @@
     @click="selection.setMode(!selection.mode)"
   >
     <!-- Hard to miss while on (#235): another colour, and a word. -->
-    <span v-if="selection.mode">Selecting</span>
+    <span
+      v-if="selection.mode"
+      class="max-sm:sr-only"
+    >
+      Selecting
+    </span>
   </UButton>
 </template>
 

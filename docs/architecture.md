@@ -133,6 +133,11 @@ A command may have:
   button or field, which Space presses. The board blurs a focused element outside it on a press, so a click on the
   board is enough to use it.
 - `label` may be a function, for a label that follows the state (Tap or Untap).
+- `toast()`: an info toast saying what it did ("Tapped 3 cards"), read just before it runs so it can count or name
+  what it acts on. A choice can have its own. Commands that ask for more (Add card, Find, Select by type, Attach
+  all to…) or open something (On-deck, the event log, a window or a confirm) have none. The toast's id is the
+  command's, so running it again bumps the one showing rather than stacking another. All runs go through the
+  registry's `run`, from the palette, a shortcut or the selection bar.
 
 A widget may have:
 
@@ -143,7 +148,11 @@ A widget may have:
 
 Selection mode also turns off when On-deck opens, when a stack's own actions are used, and when a stack outside the
 selection is dragged. The top bar's tap button taps or untaps the selection while there is one, and untaps every
-card otherwise.
+card otherwise. On-deck's Next and Previous open the panel to show the card; its other commands work with it shut.
+
+The selection bar (`SelectionBar.vue`) sits in the top row of buttons, at their size, and holds the selection mode
+button. Off with nothing selected, it's only that button. Below 1400px the row has no room for it beside the
+search button, so it opens as a tray under the row.
 
 There's no separate "active card": a plain tap or click on a stack, or Tab onto its card, selects just that stack,
 and selection commands act on it. A drag, a double tap (which opens the card), and mouse focus left over from a click

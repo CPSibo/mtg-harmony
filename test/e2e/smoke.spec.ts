@@ -82,11 +82,17 @@ test('the palette fetches, casts and runs board commands', async ({ page }) => {
   };
 
   await run('Next card');
+  // Next card opens On-deck to show it (#237).
+  await expect(
+    page.getByRole('button', { name: 'Cast to board' }),
+  ).toBeVisible();
   await run('Cast On-deck card to board');
   const boardCard = page.locator('.board-card').getByRole('img', {
     name: card.name,
   });
   await expect(boardCard).toBeVisible();
+  // It says what it did (#237).
+  await expect(page.getByText(`Cast ${card.name} to the board`)).toBeVisible();
 
   await run('Turn selection mode on or off');
   await expect(page.getByRole('status')).toContainText('Click stacks');
@@ -100,8 +106,8 @@ test('shortcuts fetch, cast and zoom to fit', async ({ page }) => {
     await page.keyboard.press(a);
     await page.keyboard.press(b);
   };
+  // Next card opens On-deck to show it (#237).
   await chord('o', 'n');
-  await chord('o', 'o');
   await expect(page.getByRole('img', { name: card.name })).toBeVisible();
   await chord('o', 'c');
   const boardCard = page.locator('.board-card').getByRole('img', {
@@ -338,7 +344,7 @@ test.describe('selecting by tap', () => {
   }) => {
     await cardIn(stacks(page).first()).click();
     await expect(selected(page)).toHaveCount(1);
-    await expect(page.locator('.selection-bar')).toBeHidden();
+    await expect(page.locator('.selection-bar[role="status"]')).toBeHidden();
 
     // Another click moves the selection; a modified click adds to it.
     await cardIn(stacks(page).nth(1)).click();

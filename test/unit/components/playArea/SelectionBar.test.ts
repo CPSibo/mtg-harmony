@@ -22,7 +22,8 @@ function twoStacks() {
   );
 }
 
-const bar = () => document.querySelector('.selection-bar');
+/** The bar while it's open; closed, it's only the selection mode button. */
+const bar = () => document.querySelector('.selection-bar[role="status"]');
 
 describe('SelectionBar (#216)', () => {
   afterEach(unmountAll);
@@ -35,6 +36,10 @@ describe('SelectionBar (#216)', () => {
     selection.selectOnly(a!);
     await flushPromises();
     expect(bar()).toBeNull();
+    // Only the selection mode button (#237).
+    expect(
+      document.querySelector('.selection-bar [aria-label="Select stacks"]'),
+    ).not.toBeNull();
 
     selection.toggle(b!);
     await flushPromises();

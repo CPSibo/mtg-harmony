@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ScryfallCardResponse } from '~/composables/useScryfall';
 import { useBattlefieldStore } from '~/features/battlefield';
 import { useDiscordFetcherStore } from '~/features/discordFetcher';
+import { useWidgetRegistry } from '~/features/widgets';
 import SidePanel from '~/features/discordFetcher/components/SidePanel.vue';
 import { makeScryfallCard } from '../../fixtures/cards';
 import { buttonNamed, mountInApp, unmountAll } from '../../fixtures/mount';
@@ -122,5 +123,19 @@ describe('SidePanel (#171)', () => {
     await flushPromises();
 
     expect(useDiscordFetcherStore().card?.scryfallInfo.name).toBe('Bear 1');
+  });
+
+  it('opens itself for Next card from the palette (#237)', async () => {
+    mountInApp(SidePanel);
+    await flushPromises();
+    expect(document.body.textContent).not.toContain('Cast to board');
+
+    useWidgetRegistry()
+      .allCommands.find((c) => c.id === 'onDeck.next')!
+      .execute();
+    await flushPromises();
+
+    expect(useDiscordFetcherStore().card?.scryfallInfo.name).toBe('Bear 1');
+    expect(buttonNamed('Cast to board').disabled).toBe(false);
   });
 });

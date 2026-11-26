@@ -28,6 +28,7 @@ export {
   arrangeInGrid,
   arrangeInRows,
   arrangeRow,
+  stackReach,
   rowBand,
   type ArrangeRow,
 } from './arrange';

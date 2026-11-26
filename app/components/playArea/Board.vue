@@ -53,7 +53,6 @@
     />
   </div>
 
-  <PlayAreaSelectionBar />
   <PlayAreaFindBar v-if="find.isOpen" />
   <PlayAreaSelectTypeBar v-if="selectByType.isOpen" />
 
@@ -86,7 +85,6 @@
 <script setup lang="ts">
 import PlayAreaBoardCardStack from '~/components/playArea/BoardCardStack.vue';
 import PlayAreaDragRadialMenu from '~/components/playArea/DragRadialMenu.vue';
-import PlayAreaSelectionBar from '~/components/playArea/SelectionBar.vue';
 import PlayAreaFindBar from '~/components/playArea/FindBar.vue';
 import PlayAreaSelectTypeBar from '~/components/playArea/SelectTypeBar.vue';
 import { useBlockBrowserZoom } from '~/composables/useBlockBrowserZoom';
@@ -195,6 +193,7 @@ useWidget({
   commands: [
     {
       id: 'arrange.smart',
+      toast: () => `Arranged ${count(arrangeTargets().length)}`,
       label: 'Smart arrange',
       description:
         'Creatures in front, lands at the back. The selection, or all cards',
@@ -205,6 +204,8 @@ useWidget({
     },
     {
       id: 'arrange.smartAndFit',
+      toast: () =>
+        `Arranged ${count(arrangeTargets().length)} and zoomed to fit`,
       label: 'Smart arrange and zoom to fit',
       description: 'Then shows every card',
       icon: 'i-lucide-scan',
@@ -220,12 +221,16 @@ useWidget({
   ],
 });
 
-/** Smart arrange (#223): the selection, or every stack with none selected. */
+/** What Smart arrange moves (#223): the selection, or every stack. */
+const arrangeTargets = () =>
+  selection.size ? selection.stacks() : battlefield.stacks;
+
 function smartArrange() {
-  battlefield.arrangeStacks(
-    selection.size ? selection.stacks() : battlefield.stacks,
-  );
+  battlefield.arrangeStacks(arrangeTargets());
 }
+
+/** "1 card", "3 cards": for the commands' toasts (#237). */
+const count = (n: number) => (n === 1 ? '1 card' : `${n} cards`);
 
 /** Whether Space does something of its own on `el`, like pressing a button. */
 function takesSpace(el: Element | null) {
@@ -282,6 +287,7 @@ useWidget({
   commands: [
     {
       id: 'select.all',
+      toast: () => `Selected all ${count(battlefield.stacks.length)}`,
       label: 'Select all',
       icon: 'i-lucide-square-check-big',
       kbds: 's-a',
@@ -291,6 +297,8 @@ useWidget({
     },
     {
       id: 'select.invert',
+      toast: () =>
+        `Selected the other ${count(battlefield.stacks.length - selection.size)}`,
       label: 'Invert selection',
       icon: 'i-lucide-flip-horizontal-2',
       kbds: 's-i',
@@ -300,6 +308,8 @@ useWidget({
     },
     {
       id: 'select.tapped',
+      toast: () =>
+        `Selected ${count(battlefield.stacks.filter((s) => s.primary.tapped).length)}, tapped`,
       label: 'Select tapped',
       icon: 'i-lucide-rotate-cw-square',
       kbds: 's-t',
@@ -309,6 +319,8 @@ useWidget({
     },
     {
       id: 'select.untapped',
+      toast: () =>
+        `Selected ${count(battlefield.stacks.filter((s) => !s.primary.tapped).length)}, untapped`,
       label: 'Select untapped',
       icon: 'i-lucide-square',
       kbds: 's-u',
@@ -354,6 +366,7 @@ useWidget({
   commands: [
     {
       id: 'board.untapAll',
+      toast: () => 'Untapped every card',
       label: 'Untap all',
       icon: 'i-lucide-rotate-ccw',
       kbds: 'u-u',
@@ -362,6 +375,7 @@ useWidget({
     },
     {
       id: 'board.zoomToFit',
+      toast: () => 'Zoomed to fit every card',
       label: 'Zoom to fit all cards',
       icon: 'i-lucide-scan',
       kbds: 'z-f',
@@ -370,6 +384,7 @@ useWidget({
     },
     {
       id: 'board.zoomToSelection',
+      toast: () => 'Zoomed to the selection',
       label: 'Zoom to selection',
       icon: 'i-lucide-zoom-in',
       kbds: 'z-s',
@@ -378,6 +393,7 @@ useWidget({
     },
     {
       id: 'board.resetView',
+      toast: () => 'Reset the view',
       label: 'Reset view',
       icon: 'i-lucide-locate-fixed',
       kbds: 'z-r',
@@ -385,6 +401,7 @@ useWidget({
     },
     {
       id: 'board.selectionMode',
+      toast: () => `Selection mode ${selection.mode ? 'off' : 'on'}`,
       label: 'Turn selection mode on or off',
       icon: 'i-lucide-square-dashed-mouse-pointer',
       kbds: 's-m',
@@ -392,12 +409,15 @@ useWidget({
     },
     {
       id: 'board.gridSnapping',
+      toast: () => `Grid snapping ${battlefield.snapScale ? 'off' : 'on'}`,
       label: 'Turn grid snapping on or off',
       icon: 'i-lucide-grid-3x3',
       execute: () => battlefield.toggleSnapping(),
     },
     {
       id: 'board.artOrText',
+      toast: () =>
+        `Showing every card as ${settings.imagesEnabled ? 'text' : 'art'}`,
       label: 'Show all cards as art or text',
       description: 'Changes the setting, for every card',
       icon: 'i-lucide-image',
@@ -696,6 +716,8 @@ useWidget({
     },
     {
       id: 'selection.tap',
+      toast: () =>
+        `${selectedCards().some((c) => !c.tapped) ? 'Tapped' : 'Untapped'} ${count(selection.size)}`,
       // Tap if any is untapped, else Untap (#235).
       label: () => (selectedCards().some((c) => !c.tapped) ? 'Tap' : 'Untap'),
       icon: 'i-lucide-rotate-cw-square',
@@ -732,6 +754,7 @@ useWidget({
       ).map(([mode, label, icon]) => ({
         label,
         icon,
+        toast: () => `Copied ${count(selection.size)}`,
         execute: () =>
           copyAll(
             selection.stacks().map((s) => s.primary),
@@ -753,6 +776,8 @@ useWidget({
     // The less frequent ones, in the bar's "More…" menu (#222).
     {
       id: 'selection.proliferate',
+      toast: () =>
+        `Proliferated ${count(selectedCards().filter((c) => c.modifiers.size > 0).length)}`,
       label: 'Proliferate',
       description: 'One more of each counter already on each card',
       icon: 'i-lucide-chevrons-up',
@@ -764,6 +789,7 @@ useWidget({
     },
     {
       id: 'selection.arrangeRow',
+      toast: () => `Arranged ${count(selection.size)} in a row`,
       label: 'Arrange in a row',
       icon: 'i-lucide-columns-3',
       scope: 'selection',
@@ -773,6 +799,7 @@ useWidget({
     },
     {
       id: 'selection.arrangeGrid',
+      toast: () => `Arranged ${count(selection.size)} in a grid`,
       label: 'Arrange in a grid',
       icon: 'i-lucide-grid-2x2',
       scope: 'selection',
@@ -782,6 +809,7 @@ useWidget({
     },
     {
       id: 'selection.front',
+      toast: () => `Brought ${count(selection.size)} to the front`,
       label: 'Bring to front',
       icon: 'i-lucide-bring-to-front',
       scope: 'selection',
@@ -791,6 +819,7 @@ useWidget({
     },
     {
       id: 'selection.flip',
+      toast: () => `Flipped ${count(selection.size)}`,
       label: 'Flip over',
       icon: 'i-lucide-flip-vertical-2',
       scope: 'selection',
@@ -800,6 +829,7 @@ useWidget({
     },
     {
       id: 'selection.explode',
+      toast: () => 'Split the stacks into a card each',
       label: 'Explode stacks',
       description: 'Each card becomes a stack of its own',
       icon: 'i-lucide-expand',
@@ -831,6 +861,8 @@ useWidget({
     },
     {
       id: 'selection.artOrText',
+      toast: () =>
+        `Showing ${count(selection.size)} as ${settings.imagesEnabled ? 'text' : 'art'}`,
       label: 'Show as art or text',
       description: 'Every card selected changes the setting',
       icon: 'i-lucide-image',
@@ -844,6 +876,7 @@ useWidget({
     },
     {
       id: 'selection.sameName',
+      toast: () => 'Selected every card with the same name',
       label: 'Select all with the same name',
       icon: 'i-lucide-copy-check',
       kbds: 's-n',
@@ -854,6 +887,7 @@ useWidget({
     },
     {
       id: 'selection.clear',
+      toast: () => 'Cleared the selection',
       label: 'Clear selection',
       icon: 'i-lucide-x',
       scope: 'selection',

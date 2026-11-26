@@ -15,7 +15,13 @@ import {
   readSavedCard,
 } from './boardCard';
 import { findMeldPartner } from './meld';
-import { arrangeInGrid, arrangeInRows, arrangeRow, rowBand } from './arrange';
+import {
+  arrangeInGrid,
+  arrangeInRows,
+  arrangeRow,
+  rowBand,
+  stackReach,
+} from './arrange';
 import { BOARD_SIZE, findFreeSpot, type Rect } from './placement';
 import { useSettingsStore } from '~/stores/settings';
 
@@ -233,6 +239,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
         row: arrangeRow(s.primary),
         size: stackSize(s),
         position: s.position,
+        reach: stackReach(s),
       })),
       {
         x: shown.x + ARRANGE_GAP,
@@ -265,6 +272,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
       id: s.id,
       size: stackSize(s),
       position: s.position,
+      reach: stackReach(s),
     }));
     const origin = {
       x: Math.min(...items.map((i) => i.position.x)),
