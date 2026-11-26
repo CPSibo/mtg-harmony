@@ -24,8 +24,6 @@
       <EventLogWidgetComponent />
       <EventLogWindow v-if="eventLogLoaded" />
       <NewGamePrompt />
-
-      <FloatingBar />
     </UMain>
   </UApp>
 </template>
@@ -50,7 +48,6 @@ import {
   NewGamePrompt,
   useEventLogStore,
 } from '~/features/eventLog';
-import { FloatingBar } from '~/features/palette';
 import { useBattlefieldStore } from '~/features/battlefield';
 import { useWidget } from '~/features/widgets';
 import { useInputModeStore } from '~/stores/inputMode';

@@ -18,7 +18,9 @@
   >
     <UButton
       icon="i-lucide-search"
-      class="fixed top-[calc(0.5rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2"
+      aria-label="Search commands"
+      title="Search commands"
+      class="sm:fixed sm:top-[calc(0.5rem+env(safe-area-inset-top))] sm:left-1/2 sm:-translate-x-1/2 max-sm:px-3"
       color="neutral"
       variant="subtle"
       @click="
@@ -27,8 +29,13 @@
         }
       "
     >
+      <!-- In the middle of the top row; on phones, in the row after On-deck,
+           without the key hint (#240). -->
       <template #trailing>
-        <UKbd value="/" />
+        <UKbd
+          value="/"
+          class="max-sm:hidden"
+        />
       </template>
     </UButton>
 

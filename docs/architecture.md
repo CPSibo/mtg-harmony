@@ -165,6 +165,11 @@ button, which shows the count: "Selecting (3)". Off with nothing selected, it's 
 bigger entries on touch and small screens. Below 1400px the row has no room for it beside the
 search button, so it opens as a tray under the row.
 
+The top row (`GlobalButtons.vue`) holds On-deck, the palette's search button (`FloatingBar.vue`), the selection
+bar, Undo, Tap and the menu. From 640px up, the search button sits in the middle of the screen. Below that it
+joins the row after On-deck, without its `/` hint, On-deck shows only its icon and the gaps shrink, so the row
+fits a 360px phone with a selection count showing (#240).
+
 There's no separate "active card": a plain tap or click on a stack, or Tab onto its card, selects just that stack,
 and selection commands act on it. A drag, a double tap (which opens the card), and mouse focus left over from a click
 don't select. The selection bar opens for any selection, a single tapped stack included, whether or not selection
