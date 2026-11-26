@@ -86,6 +86,7 @@ import {
   useSelectionStore,
 } from '~/features/battlefield';
 import { useSettingsStore } from '~/stores/settings';
+import { LONG_PRESS_MS, PRESS_SLOP } from '~/utils/press';
 import { isLandscape } from '~/features/battlefield/cardFaces';
 import type { BoardCard, BoardCardStack } from '~/types/PlayArea';
 
@@ -118,11 +119,6 @@ const animateMove = useMoveAnimation();
 const { snapScale } = storeToRefs(battlefield);
 
 const stackEl = useTemplateRef('stack');
-
-/** Screen pixels a press may move and still count as a tap. */
-const TAP_SLOP = 6;
-/** How long a finger holds a stack to start selecting (#138). */
-const LONG_PRESS_MS = 500;
 
 // The press's state; only the handlers read it.
 let pressStart: Position = { x: 0, y: 0 };
@@ -184,7 +180,8 @@ const {
   onMove: (e) => {
     if (
       !movedTooFar &&
-      Math.hypot(e.clientX - pressStart.x, e.clientY - pressStart.y) > TAP_SLOP
+      Math.hypot(e.clientX - pressStart.x, e.clientY - pressStart.y) >
+        PRESS_SLOP
     ) {
       movedTooFar = true;
       cancelLongPress();

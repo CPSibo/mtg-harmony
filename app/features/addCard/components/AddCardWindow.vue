@@ -202,7 +202,8 @@ function onSelect(item: CommandPaletteItem) {
     pressed ??
     document.querySelector('[data-highlighted] .add-card-image') ??
     null;
-  cast(card, undefined, castSource(from));
+  // Where the board menu opened, if it opened the window (#244).
+  cast(card, addCardStore.target ?? undefined, castSource(from));
 }
 
 /** Casts a result: to a free spot in view, or centred on a board point. */
