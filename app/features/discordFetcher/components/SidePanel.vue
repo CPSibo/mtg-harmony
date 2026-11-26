@@ -20,7 +20,8 @@
       title="Show on-deck card"
       icon="i-lucide-scan-search"
     >
-      On-deck
+      <!-- An icon only on phones, where the top row is short of room (#240). -->
+      <span class="max-sm:sr-only">On-deck</span>
     </UButton>
 
     <template #body>
