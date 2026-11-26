@@ -107,6 +107,28 @@ describe('usePanAndZoom', () => {
   });
 });
 
+describe('usePanAndZoom centreOn (#219)', () => {
+  it('puts a board point mid-screen, zooming in to at least the minimum', () => {
+    const pz = setup();
+    pz.scale.value = 0.5;
+    pz.centreOn(1200, 3000, 1);
+    expect(pz.scale.value).toBe(1);
+    const centre = boardPoint(
+      pz,
+      window.innerWidth / 2,
+      window.innerHeight / 2,
+    );
+    expect(centre.x).toBeCloseTo(1200);
+    expect(centre.y).toBeCloseTo(3000);
+  });
+
+  it('keeps a closer zoom', () => {
+    const pz = setup();
+    pz.centreOn(2500, 2500, 1);
+    expect(pz.scale.value).toBe(1.5);
+  });
+});
+
 describe('usePanAndZoom views (#218)', () => {
   const screenCentre = () => ({
     x: window.innerWidth / 2,
