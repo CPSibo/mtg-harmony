@@ -751,6 +751,48 @@ test('the stack remove button confirms before removing', async ({ page }) => {
   await expect(boardCard).toBeHidden();
 });
 
+// #215: structural changes can be taken back and done again.
+test('a removed card comes back with Undo, its toast or Ctrl+Z', async ({
+  page,
+}) => {
+  await page.getByRole('button', { name: 'On-deck' }).click();
+  await page.getByRole('button', { name: 'Next card' }).click();
+  await page.getByRole('button', { name: 'Cast to board' }).click();
+  const boardCard = page.locator('.board-card').getByRole('img', {
+    name: card.name,
+  });
+  const confirm = page.getByRole('dialog', { name: 'Confirm' });
+  // The top row's, not a toast's.
+  const undo = page.locator('button[title="Undo"]');
+  async function remove() {
+    await boardCard.hover();
+    await page.getByRole('button', { name: 'Remove card' }).click();
+    await confirm.getByRole('button', { name: 'Remove' }).click();
+    await expect(boardCard).toBeHidden();
+  }
+
+  // The top row's button.
+  await remove();
+  await undo.click();
+  await expect(boardCard).toBeVisible();
+
+  // The removal's toast.
+  await remove();
+  await page
+    .getByRole('region', { name: /notifications/i })
+    .getByRole('button', { name: 'Undo' })
+    .first()
+    .click();
+  await expect(boardCard).toBeVisible();
+
+  // The keyboard, both ways.
+  await remove();
+  await page.keyboard.press('Control+z');
+  await expect(boardCard).toBeVisible();
+  await page.keyboard.press('Control+Shift+z');
+  await expect(boardCard).toBeHidden();
+});
+
 // #58: iOS Safari's own gestures. Chromium can't reproduce them, but it does
 // report the CSS that blocks them.
 test('the page opts out of browser zoom, bounce and selection', async ({

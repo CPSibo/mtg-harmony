@@ -246,6 +246,47 @@ export const useEventLogStore = defineStore('eventLog', () => {
     }
   }
 
+  /** Where entries recorded now also go, inside `capture()`. */
+  let captured: EventEntry[] | null = null;
+
+  /**
+   * Runs `action` and returns what it returned along with every entry it
+   * recorded (#215), so undo can take them back out. Nested captures also
+   * pass their entries to the outer one.
+   */
+  function capture<R>(action: () => R): { result: R; entries: EventEntry[] } {
+    const outer = captured;
+    const mine: EventEntry[] = [];
+    captured = mine;
+    try {
+      return { result: action(), entries: mine };
+    } finally {
+      captured = outer;
+      outer?.push(...mine);
+    }
+  }
+
+  /** Takes entries back out of the current game, for undo (#215). */
+  function drop(gone: readonly EventEntry[]) {
+    if (!gone.length) return;
+    const set = new Set(gone);
+    entries.value = entries.value.filter((e) => !set.has(e));
+    reindexSnapshots();
+  }
+
+  /**
+   * Puts dropped entries back, for redo (#215), in time order among any
+   * recorded since. Entries from another game stay out.
+   */
+  function restore(back: readonly EventEntry[]) {
+    const mine = back.filter((e) => e.gameId === gameId.value);
+    if (!mine.length) return;
+    // Stable, so entries recorded in the same millisecond keep their order.
+    entries.value = [...entries.value, ...mine].sort((a, b) => a.at - b.at);
+    reindexSnapshots();
+    trim();
+  }
+
   /** Adds an entry for the current game and returns it. */
   function record<T extends EventType>(
     type: T,
@@ -267,6 +308,7 @@ export const useEventLogStore = defineStore('eventLog', () => {
     } as EventEntryOf<T>;
 
     entries.value.push(entry as EventEntry);
+    captured?.push(entry as EventEntry);
     changed();
     trim(entry.at);
     return entry;
@@ -338,6 +380,9 @@ export const useEventLogStore = defineStore('eventLog', () => {
     gameId,
     record,
     group,
+    capture,
+    drop,
+    restore,
     startNewGame,
     reset,
     nearlyFull,

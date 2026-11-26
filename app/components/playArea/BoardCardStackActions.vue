@@ -130,6 +130,7 @@ function copy(mode: CopyMode) {
     'selection.copy',
     `Copied ${cardsLabel([props.stack.primary])}`,
     'i-lucide-copy',
+    true,
   );
 }
 

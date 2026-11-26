@@ -87,6 +87,7 @@ function remove() {
     'selection.remove',
     `Removed ${cardsLabel(props.cards)}`,
     'i-lucide-trash',
+    true,
   );
   void removeAll(props.cards);
 }

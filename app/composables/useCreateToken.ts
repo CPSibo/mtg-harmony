@@ -30,7 +30,12 @@ export function useCreateToken() {
       // Measured once the fetch is done, so the slide starts where the
       // source is then.
       createToken(source, card);
-      actionToast('card.token', `Created ${card.name}`, 'i-lucide-circle-plus');
+      actionToast(
+        'card.token',
+        `Created ${card.name}`,
+        'i-lucide-circle-plus',
+        true,
+      );
       return true;
     } catch {
       toast.add({

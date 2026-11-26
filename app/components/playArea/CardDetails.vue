@@ -463,7 +463,12 @@ const toggleShownAs = () => {
 const copy = (mode: CopyMode) => {
   if (!props.card) return;
   copyCard(props.card, mode);
-  actionToast('selection.copy', `Copied ${name(props.card)}`, 'i-lucide-copy');
+  actionToast(
+    'selection.copy',
+    `Copied ${name(props.card)}`,
+    'i-lucide-copy',
+    true,
+  );
 };
 
 // Like tapping, locking a door is done with the card, so the window closes
@@ -512,7 +517,12 @@ const meld = async () => {
   try {
     const data = await fetchCardById(result.id);
     if (melder.meld(card, data)) {
-      actionToast('card.meld', `Melded into ${result.name}`, 'i-lucide-merge');
+      actionToast(
+        'card.meld',
+        `Melded into ${result.name}`,
+        'i-lucide-merge',
+        true,
+      );
       open.value = false;
     }
   } catch {
@@ -529,7 +539,12 @@ const meld = async () => {
 
 const unmeld = () => {
   if (!props.card) return;
-  actionToast('card.meld', `Unmelded ${name(props.card)}`, 'i-lucide-split');
+  actionToast(
+    'card.meld',
+    `Unmelded ${name(props.card)}`,
+    'i-lucide-split',
+    true,
+  );
   melder.unmeld(props.card);
   open.value = false;
 };
@@ -590,6 +605,7 @@ const tryDetach = () => {
     'card.detach',
     under ? `Took ${name(card)} out` : `Detached ${name(card)}`,
     under ? 'i-lucide-arrow-up-from-line' : 'i-lucide-unlink',
+    true,
   );
   open.value = false;
 };
@@ -605,6 +621,7 @@ const explodeStack = () => {
     'selection.explode',
     'Split the stack into a card each',
     'i-lucide-unlink',
+    true,
   );
   open.value = false;
 };

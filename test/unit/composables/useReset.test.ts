@@ -86,4 +86,29 @@ describe('useReset', () => {
 
     expect(markers()).toEqual(['idlePrompt']);
   });
+
+  // #215: undo never reaches back into another game.
+  it('new game and reset app forget what could be undone', () => {
+    const board = useBattlefieldStore();
+    board.castCard(makeScryfallCard());
+    useReset().newGame();
+    expect(board.canUndo).toBe(false);
+
+    board.castCard(makeScryfallCard());
+    useReset().resetAppData();
+    expect(board.canUndo).toBe(false);
+  });
+
+  // #215: Clear board is a step of its own, offered back on its toast.
+  it('clear board can be undone, from its toast', () => {
+    const board = useBattlefieldStore();
+    board.castCard(makeScryfallCard());
+    toastAdd.mockClear();
+
+    useReset().clearBoard();
+    const { actions } = toastAdd.mock.calls[0]![0];
+    actions[0].onClick();
+
+    expect(board.stacks).toHaveLength(1);
+  });
 });

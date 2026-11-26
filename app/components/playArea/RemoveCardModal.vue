@@ -102,6 +102,7 @@ const removeCard = () => {
     'selection.remove',
     `Removed ${cardsLabel([props.card])}`,
     'i-lucide-trash',
+    true,
   );
 
   void removeWithAnimation(props.card);

@@ -52,6 +52,11 @@ export interface WidgetCommand {
    * none: what opens says enough.
    */
   toast?: () => string;
+  /**
+   * A structural board change undo can take back (#215): its toast gets an
+   * Undo button.
+   */
+  undoable?: boolean;
   execute: () => void;
 }
 

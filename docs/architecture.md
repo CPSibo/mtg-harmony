@@ -98,6 +98,8 @@ settings dialog binds to the stores directly.
 | `/`                   | Open the palette                                           |
 | `b-a`                 | Add card                                                   |
 | `e-l`                 | Event log                                                  |
+| `Ctrl+Z` / `Cmd+Z`    | Undo the last structural change (#215)                     |
+| `Ctrl+Shift+Z`        | Redo it (`Cmd+Shift+Z` on a Mac)                           |
 | `u-u`                 | Untap all                                                  |
 | `z-f` / `z-s` / `z-r` | Zoom to fit all cards / to the selection / reset the view  |
 | `s-m`                 | Selection mode on or off                                   |
@@ -141,6 +143,8 @@ A command may have:
   own buttons, card details, the remove confirms, the top bar's tap button, creating a token) shows the same toast
   under the same id, through `useActionToast`. `cardsLabel` names one card and counts more. Tapping or untapping
   toasts only for several cards: one card turning says enough.
+- `undoable`: a structural board change undo can take back (#215), such as Copy and Explode. Its toast gets an
+  Undo button. `useActionToast`'s fourth argument does the same for the same actions done another way.
 - `icon` is an Iconify name or a component. `manaIcon('ms-tap')` makes a mana-font symbol one, so Tap and Counters
   show the symbols card details uses; it takes a getter for one that follows the state.
 
@@ -381,6 +385,29 @@ Rules the battlefield store enforces:
   Cards saved before #203 kept no tokens, so they show no button until cast again.
 - Card and stack IDs come from `randomUUID` (`utils/randomUUID.ts`). It falls back to `crypto.getRandomValues`
   where `crypto.randomUUID` is missing, as on a plain-HTTP dev server opened from a phone.
+
+## Undo
+
+Undo (#215) takes back **structural** changes only: cards arriving, leaving or changing stacks. Cast and added
+cards, tokens, copies, removals, attaching and putting under, detaching, exploding, melding and unmelding, and
+Clear board. Taps, counters, flips, moves and arranging aren't steps.
+
+- Each public battlefield action that makes one is wrapped in `step` (`undoable(…)` in the store's return), so
+  one user action is one step, bulk actions included; actions it calls aren't steps of their own. An action that
+  changed no stack leaves no step.
+- A step keeps the board's layout from before it (`captureLayout`, `undo.ts`): each stack's ID, position and
+  cards, the z-order, and each melded card's halves. It holds the card objects themselves, not copies, so
+  restoring a layout (`restoreLayout`) keeps whatever happened to those cards since: a card tapped or given
+  counters after a removal stays so after the removal is undone. Stacks still on the board keep their current
+  position and z-order; stacks that left come back where they were. Undo cancels placing cards and drops a
+  Room's door choice whose card left.
+- A step also keeps the log entries its action recorded (`log.capture`). Undo takes them out of the log
+  (`log.drop`), so an undone cast isn't counted as cast; redo puts them back in time order (`log.restore`).
+- Redo goes until a new step is taken. Undo keeps the newest 50 steps (`UNDO_LIMIT`), in memory only: a reload
+  forgets them, and so do New game and Reset app (`clearHistory()`), so undo stays within a game.
+- Undo and Redo are in the palette (Board group) with `Ctrl+Z` and `Ctrl+Shift+Z` (`Cmd` on a Mac), on the top
+  row's Undo button (`UndoButton.vue`), and as an Undo button on the toast of each undoable action and of Clear
+  board. Each undoes the newest step, whichever action it was. The remove and clear confirms stay.
 
 ## Event log
 
