@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick } from 'vue';
 import { useSettingsStore } from '~/stores/settings';
 
@@ -114,5 +114,43 @@ describe('settings store', () => {
       setActivePinia(createPinia());
       expect(useSettingsStore().dragMenuDelay, String(bad)).toBe(500);
     }
+  });
+
+  // #242
+  describe('when the browser asks to save data', () => {
+    beforeEach(() => {
+      vi.stubGlobal('matchMedia', (query: string) => ({
+        matches: query === '(prefers-reduced-data: reduce)',
+      }));
+    });
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('starts with images and preloading off', () => {
+      const store = useSettingsStore();
+      expect(store.imagesEnabled).toBe(false);
+      expect(store.preloadImagesEnabled).toBe(false);
+    });
+
+    it('keeps a saved choice', async () => {
+      vi.useFakeTimers();
+      const store = useSettingsStore();
+      store.setImagesEnabled(true);
+      store.preloadImagesEnabled = true;
+
+      const reloaded = await reload();
+      expect(reloaded.imagesEnabled).toBe(true);
+      expect(reloaded.preloadImagesEnabled).toBe(true);
+    });
+
+    it('reset goes back to the preference', () => {
+      const store = useSettingsStore();
+      store.setImagesEnabled(true);
+      store.preloadImagesEnabled = true;
+
+      store.reset();
+
+      expect(store.imagesEnabled).toBe(false);
+      expect(store.preloadImagesEnabled).toBe(false);
+    });
   });
 });
