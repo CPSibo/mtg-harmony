@@ -83,6 +83,29 @@ test('a right-click on empty board opens the menu, and casts On-deck there', asy
   expect(Math.abs(box.y + box.height / 2 - at.y)).toBeLessThan(15);
 });
 
+// The browser's own menu would open over ours. On Windows its `contextmenu`
+// comes after the button is up, when ours is open and the board under the
+// pointer no longer takes pointer events.
+test("a right-click opens no browser menu over the board's", async ({
+  page,
+}) => {
+  // A string: the tests' types have no DOM. Added last of all, so it sees
+  // whether anything cancelled the browser's event.
+  await page.evaluate(`
+    window.seen = [];
+    window.addEventListener('contextmenu', (e) => {
+      if (e.isTrusted) window.seen.push(e.defaultPrevented);
+    });
+  `);
+
+  await page.mouse.click(900, 420, { button: 'right' });
+  await expect(menu(page)).toBeVisible();
+
+  const seen = await page.evaluate<boolean[]>('window.seen');
+  expect(seen.length).toBeGreaterThan(0);
+  expect(seen.every(Boolean)).toBe(true);
+});
+
 test('Select all turns into Deselect all', async ({ page }) => {
   await castOne(page);
 

@@ -12,6 +12,7 @@
       :items="items"
       :size="menuSize"
       :ui="menuUi"
+      @update:open="setOpened"
     >
       <span class="board-menu-trigger" />
     </UContextMenu>
@@ -86,7 +87,11 @@ function open(screen: Position) {
   );
 }
 
-defineExpose({ open });
+// Only read on demand, by the board's `contextmenu` guard: not reactive.
+let opened = false;
+const setOpened = (value: boolean) => (opened = value);
+
+defineExpose({ open, isOpen: () => opened });
 </script>
 
 <style scoped>

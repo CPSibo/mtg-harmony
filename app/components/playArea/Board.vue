@@ -574,8 +574,35 @@ function selectBox(end: { x: number; y: number }) {
 
 const boardMenuEl = useTemplateRef('boardMenu');
 
+/**
+ * Opens the board menu at a screen point. The browser's own `contextmenu`
+ * may follow: after a right-click's button comes up and on a Menu keyup
+ * (Windows), or for a long press (Android). By then the open menu has taken
+ * pointer events from the page, so it lands outside the board, which
+ * cancels its own. It's cancelled here instead, wherever it lands.
+ */
+let swallowContextMenu: ReturnType<typeof setTimeout> | undefined;
+function openBoardMenu(at: { x: number; y: number }) {
+  boardMenuEl.value?.open(at);
+  clearTimeout(swallowContextMenu);
+  swallowContextMenu = setTimeout(() => (swallowContextMenu = undefined), 1000);
+}
+useEventListener(
+  window,
+  'contextmenu',
+  (e: MouseEvent) => {
+    if (!e.isTrusted) return;
+    // Also any right-click while the menu is open, which closes it.
+    if (!swallowContextMenu && !boardMenuEl.value?.isOpen()) return;
+    e.preventDefault();
+    clearTimeout(swallowContextMenu);
+    swallowContextMenu = undefined;
+  },
+  { capture: true },
+);
+
 const menuGesture = createMenuGesture({
-  open: (at) => boardMenuEl.value?.open(at),
+  open: openBoardMenu,
   canOpen: () => !battlefield.isAttaching,
   canHold: () => !selection.mode,
 });
@@ -588,7 +615,6 @@ useEventListener(window, 'pointercancel', menuGesture.cancel, {
 
 // The Menu key or Shift+F10 opens it in the middle of the view, while focus
 // is on nothing or on the empty board, not a card, control or dialog.
-let swallowContextMenu: ReturnType<typeof setTimeout> | undefined;
 useEventListener(window, 'keydown', (e: KeyboardEvent) => {
   if (e.defaultPrevented || battlefield.isAttaching) return;
   if (e.key !== 'ContextMenu' && !(e.shiftKey && e.key === 'F10')) return;
@@ -600,26 +626,11 @@ useEventListener(window, 'keydown', (e: KeyboardEvent) => {
       !focused.closest('[data-stack-id]'));
   if (!onBoard) return;
   e.preventDefault();
-  boardMenuEl.value?.open({
+  openBoardMenu({
     x: windowWidth.value / 2,
     y: (windowHeight.value + VIEW_INSET.top) / 2,
   });
-  // The key's own `contextmenu` event may follow (on keyup, on Windows):
-  // not the browser's menu as well.
-  clearTimeout(swallowContextMenu);
-  swallowContextMenu = setTimeout(() => (swallowContextMenu = undefined), 1000);
 });
-useEventListener(
-  window,
-  'contextmenu',
-  (e: MouseEvent) => {
-    if (!swallowContextMenu || !e.isTrusted) return;
-    e.preventDefault();
-    clearTimeout(swallowContextMenu);
-    swallowContextMenu = undefined;
-  },
-  { capture: true },
-);
 
 // Tab to a card off screen makes the browser scroll the wrapper to it, which
 // the pan and the pointer maths know nothing about. Undo the scroll and pan
