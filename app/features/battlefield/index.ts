@@ -24,6 +24,7 @@ export {
 export { cardMatches, useBoardFind } from './find';
 export {
   ARRANGE_ROWS,
+  arrangeInGrid,
   arrangeInRows,
   arrangeRow,
   rowBand,

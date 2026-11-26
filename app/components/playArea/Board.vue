@@ -299,9 +299,9 @@ useWidget({
     {
       id: 'board.artOrText',
       label: 'Show all cards as art or text',
-      description: 'Changes the setting; cards set on their own keep it',
+      description: 'Changes the setting, for every card',
       icon: 'i-lucide-image',
-      execute: () => settings.setImagesEnabled(!settings.imagesEnabled),
+      execute: toggleArtOrText,
     },
   ],
 });
@@ -545,6 +545,17 @@ const cardModifiersIsOpen = ref(false);
 const badgesHeld = shallowRef<BoardCard | null>(null);
 provide(BADGES_HELD, badgesHeld);
 
+/**
+ * Changes the art-or-text setting and lets every card follow it again
+ * (#222): a card's own choice would otherwise ignore the change.
+ */
+function toggleArtOrText() {
+  settings.setImagesEnabled(!settings.imagesEnabled);
+  battlefield.clearShownAs();
+}
+
+const selectedCards = () => selection.stacks().map((s) => s.primary);
+
 // The selection's cards, fixed when a selection window opens (#221), so the
 // window keeps them even if the selection changes behind it.
 const targetCards = shallowRef<BoardCard[]>([]);
@@ -630,6 +641,98 @@ useWidget({
       bar: 'button',
       enabled: () => selection.size > 0,
       execute: () => openForSelection(removeIsOpen),
+    },
+    // The less frequent ones, in the bar's "More…" menu (#222).
+    {
+      id: 'selection.proliferate',
+      label: 'Proliferate',
+      description: 'One more of each counter already on each card',
+      icon: 'i-lucide-chevrons-up',
+      kbds: 'p-p',
+      scope: 'selection',
+      bar: 'menu',
+      enabled: () => selectedCards().some((c) => c.modifiers.size > 0),
+      execute: () => battlefield.proliferate(selectedCards()),
+    },
+    {
+      id: 'selection.arrangeRow',
+      label: 'Arrange in a row',
+      icon: 'i-lucide-columns-3',
+      scope: 'selection',
+      bar: 'menu',
+      enabled: () => selection.size > 1,
+      execute: () => battlefield.arrangeInLine(selection.stacks(), 'row'),
+    },
+    {
+      id: 'selection.arrangeGrid',
+      label: 'Arrange in a grid',
+      icon: 'i-lucide-grid-2x2',
+      scope: 'selection',
+      bar: 'menu',
+      enabled: () => selection.size > 1,
+      execute: () => battlefield.arrangeInLine(selection.stacks(), 'grid'),
+    },
+    {
+      id: 'selection.front',
+      label: 'Bring to front',
+      icon: 'i-lucide-bring-to-front',
+      scope: 'selection',
+      bar: 'menu',
+      enabled: () => selection.size > 0,
+      execute: () => battlefield.bringAllToFront(selection.stacks()),
+    },
+    {
+      id: 'selection.flip',
+      label: 'Flip over',
+      icon: 'i-lucide-flip-vertical-2',
+      scope: 'selection',
+      bar: 'menu',
+      enabled: () => selection.size > 0,
+      execute: () => battlefield.flipAll(selectedCards()),
+    },
+    {
+      id: 'selection.explode',
+      label: 'Explode stacks',
+      description: 'Each card becomes a stack of its own',
+      icon: 'i-lucide-expand',
+      scope: 'selection',
+      bar: 'menu',
+      enabled: () =>
+        selection.stacks().some((s) => s.attachments.size || s.unders.size),
+      execute: () => battlefield.explodeAll(selection.stacks()),
+    },
+    {
+      id: 'selection.attach',
+      label: 'Attach all to…',
+      description: 'Then pick the card to attach them to',
+      icon: 'i-lucide-link',
+      scope: 'selection',
+      bar: 'menu',
+      enabled: () => selection.size > 0,
+      execute: () => battlefield.startAttachingAll(selectedCards(), 'attach'),
+    },
+    {
+      id: 'selection.under',
+      label: 'Put all under…',
+      description: 'Then pick the card to put them under',
+      icon: 'i-lucide-layers',
+      scope: 'selection',
+      bar: 'menu',
+      enabled: () => selection.size > 0,
+      execute: () => battlefield.startAttachingAll(selectedCards(), 'under'),
+    },
+    {
+      id: 'selection.artOrText',
+      label: 'Show as art or text',
+      description: 'Every card selected changes the setting',
+      icon: 'i-lucide-image',
+      scope: 'selection',
+      bar: 'menu',
+      enabled: () => selection.size > 0,
+      execute: () =>
+        selection.size === battlefield.stacks.length
+          ? toggleArtOrText()
+          : battlefield.showAllAs(selectedCards(), settings.imagesEnabled),
     },
     {
       id: 'selection.clear',

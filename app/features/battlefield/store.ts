@@ -2,7 +2,7 @@ import { showsImage } from '~/features/battlefield/cardFaces';
 import { useLocalStorage } from '~/composables/useLocalStorage';
 import { defineStore } from 'pinia';
 import { computed, ref, shallowRef, toRaw, toValue, watch } from 'vue';
-import type { ModifierKey } from '~/types/MtgConcepts';
+import { isCounter, type ModifierKey } from '~/types/MtgConcepts';
 import type { Battlefield, BoardCard, BoardCardStack } from '~/types/PlayArea';
 import type { ScryfallCard } from '~/types/Scryfall';
 import { randomUUID } from '~/utils/randomUUID';
@@ -15,7 +15,7 @@ import {
   readSavedCard,
 } from './boardCard';
 import { findMeldPartner } from './meld';
-import { arrangeInRows, arrangeRow, rowBand } from './arrange';
+import { arrangeInGrid, arrangeInRows, arrangeRow, rowBand } from './arrange';
 import { BOARD_SIZE, findFreeSpot, type Rect } from './placement';
 import { useSettingsStore } from '~/stores/settings';
 
@@ -252,6 +252,51 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     }
   }
 
+  /**
+   * Tidies stacks into a row or a roughly square grid from their top-left
+   * corner (#222), moved as a whole to stay on the board.
+   */
+  function arrangeInLine(
+    targets: readonly BoardCardStack[],
+    shape: 'row' | 'grid',
+  ) {
+    if (!targets.length) return;
+    const items = targets.map((s) => ({
+      id: s.id,
+      size: stackSize(s),
+      position: s.position,
+    }));
+    const origin = {
+      x: Math.min(...items.map((i) => i.position.x)),
+      y: Math.min(...items.map((i) => i.position.y)),
+    };
+    const columns =
+      shape === 'row' ? items.length : Math.ceil(Math.sqrt(items.length));
+    const at = arrangeInGrid(items, origin, columns, ARRANGE_GAP);
+    // How far the layout runs past the board's right and bottom edges.
+    let overX = 0;
+    let overY = 0;
+    for (const { id, size } of items) {
+      const p = at.get(id)!;
+      overX = Math.max(overX, p.x + size.width - BOARD_SIZE.width);
+      overY = Math.max(overY, p.y + size.height - BOARD_SIZE.height);
+    }
+    for (const stack of targets) {
+      const p = at.get(stack.id)!;
+      setStackPosition(stack, {
+        x: Math.max(p.x - overX, 0),
+        y: Math.max(p.y - overY, 0),
+      });
+    }
+  }
+
+  /** Brings stacks to the front, keeping their order among themselves. */
+  function bringAllToFront(targets: readonly BoardCardStack[]) {
+    const chosen = new Set(targets.map((s) => s.id));
+    for (const stack of orderedStacks.value)
+      if (chosen.has(stack.id)) bringToFront(stack);
+  }
+
   const snapScale = ref<number>(defaults.snapScale);
   // The size to go back to when snapping is turned on again. Only read by
   // the toggle, and not saved: after a reload it's the default.
@@ -385,6 +430,11 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     zOrder.value.push(copy.id);
     log.record('copied', { card: primary, source: card, mode });
     return stacks.value.at(-1)!;
+  }
+
+  /** Splits every stack so each card is a stack of its own (#222). */
+  function explodeAll(targets: readonly BoardCardStack[]) {
+    for (const stack of targets) explodeStack(stack);
   }
 
   /** Copies each card, logged as one group (#221). */
@@ -639,6 +689,28 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     card.shownAs = showsImage(card, imagesEnabled) ? 'text' : 'art';
   }
 
+  /** Flips every card over if any is face up, else flips them all back. */
+  function flipAll(cards: readonly BoardCard[]) {
+    const flip = cards.some((c) => !c.flipped);
+    for (const card of cards) card.flipped = flip;
+  }
+
+  /**
+   * Pins each card to text if any shows art, else to art (#222): the
+   * selection's own art-or-text, as one choice.
+   */
+  function showAllAs(cards: readonly BoardCard[], imagesEnabled: boolean) {
+    const shownAs = cards.some((c) => showsImage(c, imagesEnabled))
+      ? 'text'
+      : 'art';
+    for (const card of cards) card.shownAs = shownAs;
+  }
+
+  /** Lets every card on the board follow the art-or-text setting again. */
+  function clearShownAs() {
+    for (const card of allCards()) card.shownAs = undefined;
+  }
+
   /** Turns a card 180° and back (Kamigawa flip cards). */
   function toggleTurned(card: BoardCard) {
     card.turned = !card.turned;
@@ -687,19 +759,46 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     for (const card of cards) clearModifiers(card);
   }
 
+  /** One more of every counter each card already has (#222). */
+  function proliferate(cards: readonly BoardCard[]) {
+    for (const card of cards)
+      for (const [key, count] of card.modifiers)
+        if (isCounter(key)) card.modifiers.set(key, count + 1);
+  }
+
   const cardToAttach = ref<BoardCard | null>(null);
+  /** More cards placed with `cardToAttach`, from the selection (#222). */
+  const moreToAttach = shallowRef<readonly BoardCard[]>([]);
   /** Whether the card being placed goes on as an attachment or under. */
   const attachMode = ref<AttachMode>('attach');
 
   /** Starts placing `card` on a stack: attached to it, or under it. */
   function startAttaching(card: BoardCard, mode: AttachMode = 'attach') {
     cardToAttach.value = card;
+    moreToAttach.value = [];
     attachMode.value = mode;
+  }
+
+  /** Starts placing several cards on one stack at once (#222). */
+  function startAttachingAll(
+    cards: readonly BoardCard[],
+    mode: AttachMode = 'attach',
+  ) {
+    const [first, ...rest] = cards;
+    if (!first) return;
+    startAttaching(first, mode);
+    moreToAttach.value = rest;
   }
 
   function cancelAttaching() {
     cardToAttach.value = null;
+    moreToAttach.value = [];
   }
+
+  /** Every card being placed. */
+  const cardsToAttach = computed(() =>
+    cardToAttach.value ? [cardToAttach.value, ...moreToAttach.value] : [],
+  );
 
   /** The set the card being placed would join on `stack`. */
   function targetSet(stack: BoardCardStack) {
@@ -721,16 +820,27 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
         }.`,
       );
 
-    removeCardFromStack(sourceCard);
-
-    targetSet(stack).add(sourceCard);
-    sourceCard.stack = stack;
-
-    if (attachMode.value === 'under')
-      log.record('putUnder', { card: sourceCard, target: stack.primary });
-    else log.record('attached', { card: sourceCard, target: stack.primary });
+    // More cards from the selection skip any that can't go on this stack.
+    const more = moreToAttach.value.filter(
+      (c) => c !== stack.primary && !targetSet(stack).has(c),
+    );
+    log.group(() => {
+      for (const card of [sourceCard, ...more]) placeOn(card, stack);
+    });
 
     cardToAttach.value = null;
+    moreToAttach.value = [];
+  }
+
+  function placeOn(card: BoardCard, stack: BoardCardStack) {
+    removeCardFromStack(card);
+
+    targetSet(stack).add(card);
+    card.stack = stack;
+
+    if (attachMode.value === 'under')
+      log.record('putUnder', { card, target: stack.primary });
+    else log.record('attached', { card, target: stack.primary });
   }
 
   /**
@@ -758,6 +868,8 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
   const isAttaching = computed(() => !!cardToAttach.value);
   /** The ID of the card being attached or put under, if any. */
   const cardToAttachId = computed(() => cardToAttach.value?.id ?? null);
+  /** The IDs of every card being placed, for the move animation. */
+  const cardsToAttachIds = computed(() => cardsToAttach.value.map((c) => c.id));
 
   function isValidAttachmentTarget(targetCard: BoardCard) {
     if (!isAttaching.value) return false;
@@ -765,7 +877,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     const stack = targetCard.stack;
     if (!stack || stack.primary !== targetCard) return false;
 
-    if (cardToAttach.value === targetCard) return false;
+    if (cardsToAttach.value.includes(targetCard)) return false;
 
     // Moving between attachments and unders of the same stack is fine.
     if (targetSet(stack).has(cardToAttach.value!)) return false;
@@ -875,12 +987,17 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
 
     snapScale,
     arrangeStacks,
+    arrangeInLine,
+    bringAllToFront,
     toggleSnapping,
 
     untapAll,
     toggleTapped,
     tapOrUntap,
     toggleFlipped,
+    flipAll,
+    showAllAs,
+    clearShownAs,
     toggleShownAs,
     toggleTurned,
     setFaceNumber,
@@ -888,6 +1005,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     clearModifiers,
     changeModifier,
     clearModifiersOf,
+    proliferate,
 
     stacks,
     bringToFront,
@@ -914,6 +1032,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     meld,
     unmeld,
     explodeStack,
+    explodeAll,
 
     center,
     setCenter,
@@ -923,10 +1042,12 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     setDoorLocked,
 
     startAttaching,
+    startAttachingAll,
     cancelAttaching,
     finishAttaching,
     isAttaching,
     cardToAttachId,
+    cardsToAttachIds,
     attachMode,
     isValidAttachmentTarget,
     canOfferDragMenu,
