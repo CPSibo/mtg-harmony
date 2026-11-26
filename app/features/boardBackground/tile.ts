@@ -4,7 +4,7 @@ import { motifBody } from './motifs';
 import { mod, shuffleLayout } from './shuffle';
 
 /** Half a lattice cell's diagonal, in board px. */
-export const CELL = 150;
+export const CELL = 100;
 /** The shuffled block is 2 × PERIOD cells square. */
 export const PERIOD = 4;
 /** Fixed so the board looks the same on every load. */

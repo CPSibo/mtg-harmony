@@ -107,7 +107,11 @@ import { manaIcon } from '~/components/shared/manaIcon';
 import { BADGES_HELD } from '~/components/playArea/badgesHeld';
 import { usePanAndZoom } from '~/composables/usePanAndZoom';
 import { storeToRefs } from 'pinia';
-import { useEventListener, useWindowSize } from '@vueuse/core';
+import {
+  useDevicePixelRatio,
+  useEventListener,
+  useWindowSize,
+} from '@vueuse/core';
 import {
   computed,
   defineAsyncComponent,
@@ -687,13 +691,16 @@ const backdropStyle = computed(() => {
 
 // The themed background's tiles and spotlights (#246), rebuilt only when its
 // settings change; it reads the pan and zoom from the variables above. The
-// backdrop fades out while they're built and back in once they're set.
+// backdrop fades out while they're built and back in once they're set. The
+// lattice is rendered for the zoom and pixel ratio once the zoom rests.
 const backgroundVarsEl = useTemplateRef('backgroundVars');
+const { pixelRatio } = useDevicePixelRatio();
 const background = useBoardBackground(
   () => backgroundVarsEl.value,
   () => settings.boardBackgroundEnabled,
   () => settings.boardColors,
   () => settings.boardSpotlightsEnabled,
+  { resolution: () => scale.value * pixelRatio.value },
 );
 
 // Screen pixels at the view's edges that don't count as in view when placing

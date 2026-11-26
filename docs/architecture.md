@@ -256,7 +256,11 @@ The themed background (#246, on by default) replaces the grid lines in the same 
 - **Lattice tile**: one SVG, a diagonal lattice with a medallion per cell holding the colour's motif. Each motif is
   drawn once in `<defs>` and placed with `<use>`; the motifs are brushed outlines computed from centre-line paths
   (`geometry.ts`, `motifs.ts`) and kept per motif. With 3 or more colours, `shuffleLayout` lays them over an
-  8 × 8-cell block so no neighbours match, from a fixed seed; 2 make a checkerboard.
+  8 × 8-cell block so no neighbours match, from a fixed seed; 2 make a checkerboard. The SVG is rendered into a
+  PNG (`rasterUrl`) and that's what's set: panning moves the background every frame, and a browser may draw a large
+  SVG with clips and masks from scratch each time, where a bitmap is only a texture. It's rendered for the zoom
+  times the pixel ratio, rounded up to a power of √2 and capped at 4096 px, and rendered again without a fade
+  once the zoom rests (300 ms) at a value that needs another step. Where rendering fails, the SVG is set.
 - **Spotlights**: soft radial glows, one colour each, repeating to the board's edges. They're computed as pixels
   into a small PNG (one pixel per 16 board px) that the browser scales up, not drawn as SVG or canvas gradients:
   the browser dithers those, and once the image is scaled the noise smears into faint stripes.
