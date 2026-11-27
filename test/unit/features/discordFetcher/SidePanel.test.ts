@@ -1,5 +1,6 @@
 import { flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { nextTick } from 'vue';
 import type { ScryfallCardResponse } from '~/composables/useScryfall';
 import { useBattlefieldStore } from '~/features/battlefield';
 import { useDiscordFetcherStore } from '~/features/discordFetcher';
@@ -137,5 +138,104 @@ describe('SidePanel (#171)', () => {
 
     expect(useDiscordFetcherStore().card?.scryfallInfo.name).toBe('Bear 1');
     expect(buttonNamed('Cast to board').disabled).toBe(false);
+  });
+
+  describe('hides while a card is dragged out of it (#256)', () => {
+    const pointer = { pointerId: 1, isPrimary: true, button: 0, buttons: 1 };
+    const isOpen = () => document.body.textContent!.includes('Cast to board');
+
+    /** Opens the panel with a card, as a pane `width` px wide. */
+    async function openWithCard(width: number) {
+      await openPanel();
+      buttonNamed('Next card').click();
+      await flushPromises();
+      const panel = document.querySelector<HTMLElement>('[role="dialog"]')!;
+      vi.spyOn(panel, 'getBoundingClientRect').mockReturnValue(
+        new DOMRect(0, 0, width, window.innerHeight),
+      );
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    }
+
+    /** Presses the card and drags it to `x`, in screen px. */
+    async function dragTo(x: number) {
+      const card = document.querySelector<HTMLElement>(
+        '[title="Drag onto the board to cast"], [title^="Tap to enlarge"]',
+      )!;
+      card.dispatchEvent(
+        new PointerEvent('pointerdown', {
+          ...pointer,
+          clientX: 10,
+          clientY: 10,
+        }),
+      );
+      await moveTo(x);
+    }
+
+    async function moveTo(x: number) {
+      window.dispatchEvent(
+        new PointerEvent('pointermove', {
+          ...pointer,
+          clientX: x,
+          clientY: 10,
+        }),
+      );
+      await nextTick();
+    }
+
+    async function wait(ms: number) {
+      vi.advanceTimersByTime(ms);
+      await nextTick();
+    }
+
+    afterEach(() => vi.useRealTimers());
+
+    it('after 800 ms outside the pane', async () => {
+      await openWithCard(300);
+
+      await dragTo(500);
+      await wait(799);
+      expect(isOpen()).toBe(true);
+
+      await wait(1);
+      await vi.runAllTimersAsync();
+      expect(isOpen()).toBe(false);
+    });
+
+    it('not when the card comes back over the pane in time', async () => {
+      await openWithCard(300);
+
+      await dragTo(500);
+      await wait(700);
+      await moveTo(100);
+      await wait(700);
+      await vi.runAllTimersAsync();
+
+      expect(isOpen()).toBe(true);
+    });
+
+    it('starting over each time the card leaves', async () => {
+      await openWithCard(300);
+
+      await dragTo(500);
+      await wait(700);
+      await moveTo(100);
+      await moveTo(500);
+      await wait(700);
+      expect(isOpen()).toBe(true);
+
+      await wait(100);
+      await vi.runAllTimersAsync();
+      expect(isOpen()).toBe(false);
+    });
+
+    it('not when the panel fills the screen', async () => {
+      await openWithCard(window.innerWidth);
+
+      await dragTo(window.innerWidth + 50);
+      await wait(2000);
+      await vi.runAllTimersAsync();
+
+      expect(isOpen()).toBe(true);
+    });
   });
 });
