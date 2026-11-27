@@ -167,7 +167,7 @@ import {
 import { useCopyAllAnimation } from '~/features/castAnimation';
 import { createMenuGesture } from '~/features/battlefield/contextMenu';
 import { useWidget } from '~/features/widgets';
-import { useBoardBackground } from '~/features/boardBackground';
+import { useBoardBackground, useBoardColors } from '~/features/boardBackground';
 import { useSettingsStore } from '~/stores/settings';
 import { gridLevels } from '~/utils/gridLevels';
 import { PRESS_SLOP } from '~/utils/press';
@@ -739,10 +739,11 @@ useMutationObserver(
   () => (dark.value = root.classList.contains('dark')),
   { attributeFilter: ['class'] },
 );
+const boardColors = useBoardColors();
 const background = useBoardBackground(
   () => backgroundVarsEl.value,
   () => settings.boardBackgroundEnabled,
-  () => settings.boardColors,
+  () => boardColors.value,
   () => settings.boardSpotlightsEnabled,
   {
     resolution: () => scale.value * pixelRatio.value,

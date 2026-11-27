@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { nextTick } from 'vue';
 import BoardColorPicker from '~/components/settings/BoardColorPicker.vue';
+import { useBattlefieldStore } from '~/features/battlefield';
+import { cardData } from '~/features/battlefield/boardCard';
 import { useSettingsStore } from '~/stores/settings';
+import { putOnBoard } from '../../fixtures/board';
+import { makeCard, makeScryfallCard } from '../../fixtures/cards';
 import { mountInApp, unmountAll } from '../../fixtures/mount';
 
 const toggle = (name: string) =>
@@ -48,5 +52,22 @@ describe('BoardColorPicker', () => {
     mountInApp(BoardColorPicker);
     await nextTick();
     expect(toggle('Red').disabled).toBe(true);
+  });
+
+  it('shows the board’s colours, and can’t be changed, while auto colours are on', async () => {
+    const settings = useSettingsStore();
+    settings.setBoardColors(['W']);
+    settings.setBoardColorsAuto(true);
+    putOnBoard(
+      useBattlefieldStore(),
+      makeCard({
+        scryfallInfo: cardData(makeScryfallCard({ color_identity: ['U'] })),
+      }),
+    );
+    mountInApp(BoardColorPicker);
+    await nextTick();
+    expect(toggle('Blue').getAttribute('aria-pressed')).toBe('true');
+    expect(toggle('White').getAttribute('aria-pressed')).toBe('false');
+    expect(toggle('Blue').disabled).toBe(true);
   });
 });

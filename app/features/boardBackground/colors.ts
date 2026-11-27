@@ -32,6 +32,23 @@ export function normalizeBoardColors(list: readonly unknown[]): BoardColor[] {
   return BOARD_COLORS.filter((c) => list.includes(c));
 }
 
+/**
+ * The sum of the cards' colour identities, in board order: a colourless card
+ * adds colourless. Cards saved before identities were kept add nothing.
+ */
+export function colorsOfCards(
+  cards: Iterable<{ scryfallInfo: { color_identity?: readonly string[] } }>,
+): BoardColor[] {
+  const found = new Set<string>();
+  for (const { scryfallInfo } of cards) {
+    const identity = scryfallInfo.color_identity;
+    if (!identity) continue;
+    if (!identity.length) found.add('C');
+    for (const c of identity) found.add(c);
+  }
+  return normalizeBoardColors([...found]);
+}
+
 /** The colours and strengths of one theme's background. */
 export interface BoardPalette {
   /** The lattice lines and where each motif's ink fades to. */

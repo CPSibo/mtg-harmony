@@ -9,11 +9,11 @@
       :key="color"
       type="button"
       class="board-color"
-      :class="{ 'board-color--on': settings.boardColors.includes(color) }"
+      :class="{ 'board-color--on': shown.includes(color) }"
       :aria-label="BOARD_COLOR_NAMES[color]"
-      :aria-pressed="settings.boardColors.includes(color)"
+      :aria-pressed="shown.includes(color)"
       :title="BOARD_COLOR_NAMES[color]"
-      :disabled="!settings.boardBackgroundEnabled"
+      :disabled="!settings.boardBackgroundEnabled || settings.boardColorsAuto"
       @click="settings.toggleBoardColor(color)"
     >
       <span
@@ -30,9 +30,12 @@ import {
   BOARD_COLOR_NAMES,
   BOARD_COLORS,
 } from '~/features/boardBackground/colors';
+import { useBoardColors } from '~/features/boardBackground/useBoardColors';
 import { useSettingsStore } from '~/stores/settings';
 
 const settings = useSettingsStore();
+// With auto colours on, the board's colours, which can't be picked.
+const shown = useBoardColors();
 </script>
 
 <style scoped>

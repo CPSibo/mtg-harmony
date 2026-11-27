@@ -121,6 +121,19 @@ describe('settings store', () => {
     expect(reloaded.boardSpotlightsEnabled).toBe(false);
   });
 
+  it('saves auto board colours, off by default', async () => {
+    vi.useFakeTimers();
+    const store = useSettingsStore();
+    expect(store.boardColorsAuto).toBe(false);
+
+    store.setBoardColorsAuto(true);
+    const reloaded = await reload();
+    expect(reloaded.boardColorsAuto).toBe(true);
+
+    reloaded.reset();
+    expect(reloaded.boardColorsAuto).toBe(false);
+  });
+
   // #250
   it('saves the emblem style, art deco by default', async () => {
     vi.useFakeTimers();

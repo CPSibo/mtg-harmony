@@ -43,6 +43,8 @@ export function cardData(card: ScryfallCard): ScryfallCard {
     keywords: card.keywords?.length
       ? Object.freeze([...card.keywords])
       : undefined,
+    color_identity:
+      card.color_identity && Object.freeze([...card.color_identity]),
     card_faces: card.card_faces && Object.freeze(card.card_faces.map(front)),
     image_status: card.image_status,
     image_uris: images(card.image_uris),

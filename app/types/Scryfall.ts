@@ -47,6 +47,8 @@ export interface ScryfallCard {
   /** How the card is printed: normal, split, flip, transform, modal_dfc, planar… */
   layout?: string;
   keywords?: string[];
+  /** WUBRG letters; empty for colourless. Missing on cards saved before it was kept. */
+  color_identity?: string[];
   /** Each face of a double-faced, split or adventure card. */
   card_faces?: ScryfallCardFace[];
   image_status: ImageStatus;
