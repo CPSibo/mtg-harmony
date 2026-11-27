@@ -70,47 +70,6 @@
 
       <DefineField>
         <UFormField
-          label="Board background"
-          description="A lattice of medallions in your colours, in place of the grid lines. Snapping still works"
-        >
-          <USwitch v-model="boardBackgroundEnabled" />
-        </UFormField>
-
-        <UFormField
-          label="Background colours"
-          description="Pick any colours, or none for a neutral board"
-        >
-          <SettingsBoardColorPicker />
-        </UFormField>
-
-        <UFormField
-          label="Match the board"
-          description="Show the colours of the cards on the board, changing as cards enter and leave"
-        >
-          <USwitch
-            v-model="boardColorsAuto"
-            :disabled="!boardBackgroundEnabled"
-          />
-        </UFormField>
-
-        <UFormField
-          label="Emblem style"
-          description="How each colour's emblem is drawn"
-        >
-          <SettingsEmblemStylePicker />
-        </UFormField>
-
-        <UFormField
-          label="Colour wash"
-          description="Soft glows of your colours across the board"
-        >
-          <USwitch
-            v-model="boardSpotlightsEnabled"
-            :disabled="!boardBackgroundEnabled || !shownBoardColors.length"
-          />
-        </UFormField>
-
-        <UFormField
           label="Grid snapping"
           description="Snap cards to a grid of the given size. 0 to disable"
         >
@@ -132,13 +91,6 @@
           description="Press Space twice to Smart arrange every card and zoom to fit"
         >
           <USwitch v-model="arrangeShortcutEnabled" />
-        </UFormField>
-
-        <UFormField
-          label="Card outline"
-          description="Show an outline around cards on the board, which lights up on hover"
-        >
-          <USwitch v-model="cardOutlineEnabled" />
         </UFormField>
 
         <UFormField
@@ -178,59 +130,118 @@
         </UFormField>
       </DefineField>
 
-      <DefineAnimation>
-        <UFormField
-          label="Cast flight"
-          description="How a cast card flies from On-deck or Add Card onto the board"
+      <DefineStyle>
+        <SettingsSection
+          title="Board"
+          :level="sectionLevel"
         >
-          <USelect
-            v-model="castFlight"
-            :items="flightItems"
-            class="w-48"
-          />
-        </UFormField>
+          <UFormField
+            label="Board background"
+            description="A lattice of medallions in your colours, in place of the grid lines. Snapping still works"
+          >
+            <USwitch v-model="boardBackgroundEnabled" />
+          </UFormField>
 
-        <UFormField
-          label="Landing effect"
-          description="Marks where a cast card lands"
-        >
-          <USelect
-            v-model="castLanding"
-            :items="landingItems"
-            class="w-48"
-          />
-        </UFormField>
+          <UFormField
+            label="Background colours"
+            description="Pick any colours, or none for a neutral board"
+          >
+            <SettingsBoardColorPicker />
+          </UFormField>
 
-        <UFormField
-          label="Flight time"
-          description="How long the flight takes"
-        >
-          <div class="flex items-center gap-3">
-            <USlider
-              v-model="castDuration"
-              :min="MIN_CAST_DURATION_MS"
-              :max="MAX_CAST_DURATION_MS"
-              :step="50"
-              class="flex-1"
+          <UFormField
+            label="Match the board"
+            description="Show the colours of the cards on the board, changing as cards enter and leave"
+          >
+            <USwitch
+              v-model="boardColorsAuto"
+              :disabled="!boardBackgroundEnabled"
             />
-            <span class="w-14 text-right text-sm tabular-nums">
-              {{ castDuration }} ms
-            </span>
-          </div>
-        </UFormField>
+          </UFormField>
 
-        <UFormField
-          label="Card action flourish"
-          description="A small effect when you attach, copy, meld, remove or lock a card, add a counter or create a token"
+          <UFormField
+            label="Emblem style"
+            description="How each colour's emblem is drawn"
+          >
+            <SettingsEmblemStylePicker />
+          </UFormField>
+
+          <UFormField
+            label="Colour wash"
+            description="Soft glows of your colours across the board"
+          >
+            <USwitch
+              v-model="boardSpotlightsEnabled"
+              :disabled="!boardBackgroundEnabled || !shownBoardColors.length"
+            />
+          </UFormField>
+
+          <UFormField
+            label="Card outline"
+            description="Show an outline around cards on the board, which lights up on hover"
+          >
+            <USwitch v-model="cardOutlineEnabled" />
+          </UFormField>
+        </SettingsSection>
+
+        <SettingsSection
+          title="Animation"
+          :level="sectionLevel"
         >
-          <USwitch v-model="attachFlareEnabled" />
-        </UFormField>
-      </DefineAnimation>
+          <UFormField
+            label="Cast flight"
+            description="How a cast card flies from On-deck or Add Card onto the board"
+          >
+            <USelect
+              v-model="castFlight"
+              :items="flightItems"
+              class="w-48"
+            />
+          </UFormField>
 
-      <!-- Below md the tab labels get cut off, so every section is shown in one scrolling page. -->
+          <UFormField
+            label="Landing effect"
+            description="Marks where a cast card lands"
+          >
+            <USelect
+              v-model="castLanding"
+              :items="landingItems"
+              class="w-48"
+            />
+          </UFormField>
+
+          <UFormField
+            label="Flight time"
+            description="How long the flight takes"
+          >
+            <div class="flex items-center gap-3">
+              <USlider
+                v-model="castDuration"
+                :min="MIN_CAST_DURATION_MS"
+                :max="MAX_CAST_DURATION_MS"
+                :step="50"
+                class="flex-1"
+              />
+              <span class="w-14 text-right text-sm tabular-nums">
+                {{ castDuration }} ms
+              </span>
+            </div>
+          </UFormField>
+
+          <UFormField
+            label="Card action flourish"
+            description="A small effect when you attach, copy, meld, remove or lock a card, add a counter or create a token"
+          >
+            <USwitch v-model="attachFlareEnabled" />
+          </UFormField>
+        </SettingsSection>
+      </DefineStyle>
+
+      <!-- Below md the tab labels get cut off, so every tab is shown in one scrolling page. Each tab's heading is a
+           filled band, so it stands apart from the small section headings inside it. -->
       <div
         v-if="smallScreen"
-        class="flex w-full max-w-[25em] flex-col gap-8 self-center"
+        class="flex w-full max-w-[25em] flex-col gap-12 self-center"
       >
         <section
           v-for="item in items"
@@ -240,11 +251,11 @@
         >
           <h3
             :id="`settings-${item.slot}`"
-            class="flex items-center gap-2 border-b border-default pb-2 text-lg font-semibold"
+            class="flex items-center gap-2 rounded-lg bg-elevated px-3 py-2 text-lg font-semibold"
           >
             <UIcon
               :name="item.icon"
-              class="size-5"
+              class="size-5 text-primary"
             />
             {{ item.label }}
           </h3>
@@ -283,6 +294,7 @@ import UFormField from '@nuxt/ui/components/FormField.vue';
 import SettingsBoardColorPicker from '~/components/settings/BoardColorPicker.vue';
 import { useBoardColors } from '~/features/boardBackground/useBoardColors';
 import SettingsEmblemStylePicker from '~/components/settings/EmblemStylePicker.vue';
+import SettingsSection from '~/components/settings/SettingsSection.vue';
 // Nuxt UI's plain-Vue Icon; components/Icon.vue is the Nuxt-only variant.
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
 import UInputNumber from '@nuxt/ui/components/InputNumber.vue';
@@ -313,6 +325,8 @@ const emit = defineEmits<{ close: [boolean] }>();
 
 const settingsStore = useSettingsStore();
 const smallScreen = useSmallScreen();
+// In the one-page layout the tabs become h3s, so their sections sit a level below.
+const sectionLevel = computed(() => (smallScreen.value ? 'h4' : 'h3'));
 const {
   wakeLockEnabled,
   imagesEnabled,
@@ -366,7 +380,7 @@ const { snapScale } = storeToRefs(battlefieldStore);
 const [DefineGeneral, ReuseGeneral] = createReusableTemplate();
 const [DefineOnDeck, ReuseOnDeck] = createReusableTemplate();
 const [DefineField, ReuseField] = createReusableTemplate();
-const [DefineAnimation, ReuseAnimation] = createReusableTemplate();
+const [DefineStyle, ReuseStyle] = createReusableTemplate();
 
 const items = [
   {
@@ -388,10 +402,10 @@ const items = [
     reuse: ReuseField,
   },
   {
-    label: 'Animation',
-    icon: 'i-lucide-sparkles',
-    slot: 'animation',
-    reuse: ReuseAnimation,
+    label: 'Style',
+    icon: 'i-lucide-palette',
+    slot: 'style',
+    reuse: ReuseStyle,
   },
 ];
 </script>

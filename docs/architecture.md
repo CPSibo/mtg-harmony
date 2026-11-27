@@ -252,7 +252,7 @@ still be scrolled, and focusing a card partly off-screen scrolled it, shifting e
 
 The themed background (#246, on by default) replaces the grid lines in the same backdrop. It's built from the
 `boardColors` setting (W, U, B, R, G and C; none is a neutral board), or, with **Match the board**
-(`boardColorsAuto`) on, from the sum of the colour identities of every card on the board, a colourless card adding C
+(`boardColorsAuto`, on by default) on, from the sum of the colour identities of every card on the board, a colourless card adding C
 (`useBoardColors`). That follows cards entering and leaving, and only rebuilds the tiles when the colours change.
 `cardData()` keeps Scryfall's `color_identity` for it; cards saved before then add nothing.
 

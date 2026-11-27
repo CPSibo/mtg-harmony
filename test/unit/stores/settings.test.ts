@@ -121,17 +121,17 @@ describe('settings store', () => {
     expect(reloaded.boardSpotlightsEnabled).toBe(false);
   });
 
-  it('saves auto board colours, off by default', async () => {
+  it('saves auto board colours, on by default', async () => {
     vi.useFakeTimers();
     const store = useSettingsStore();
-    expect(store.boardColorsAuto).toBe(false);
+    expect(store.boardColorsAuto).toBe(true);
 
-    store.setBoardColorsAuto(true);
+    store.setBoardColorsAuto(false);
     const reloaded = await reload();
-    expect(reloaded.boardColorsAuto).toBe(true);
+    expect(reloaded.boardColorsAuto).toBe(false);
 
     reloaded.reset();
-    expect(reloaded.boardColorsAuto).toBe(false);
+    expect(reloaded.boardColorsAuto).toBe(true);
   });
 
   // #250

@@ -21,6 +21,7 @@ describe('useBoardColors', () => {
     const settings = useSettingsStore();
     const board = useBattlefieldStore();
     putOnBoard(board, withIdentity(['R']));
+    settings.setBoardColorsAuto(false);
     settings.setBoardColors(['W', 'U']);
     expect(colors().value).toEqual(['W', 'U']);
   });
