@@ -26,6 +26,19 @@ const EDGE = 1.9;
 const MARGIN = 2.6;
 /** How close an under strand's edge may come to the over strand's middle. */
 const REACH = BAND / 2 + EDGE / 2 + MARGIN;
+/**
+ * Crossings are found on points about 1.2 apart; the edges are drawn through
+ * every third one of them. Every vertex costs when the tile is rendered
+ * again for a zoom.
+ */
+const DRAW_EVERY = 3;
+
+/** Every `DRAW_EVERY`th point, an open line's ends kept. */
+function thin(ps: readonly Point[], closed: boolean): Point[] {
+  const out = ps.filter((_, i) => i % DRAW_EVERY === 0);
+  if (!closed && (ps.length - 1) % DRAW_EVERY) out.push(ps[ps.length - 1]!);
+  return out;
+}
 
 /** A closed polyline resampled to points about `ds` apart. */
 function densify(ps: readonly Point[], ds = 1.2): Point[] {
@@ -228,7 +241,7 @@ function weave(raw: readonly Point[][]): string {
       }
       const cut = dist.map((d) => d < REACH);
       if (!cut.includes(true)) {
-        out += path(outline(E, true, () => EDGE));
+        out += path(outline(thin(E, true), true, () => EDGE));
         continue;
       }
       // Where the edge crosses the cut line between two samples.
@@ -250,7 +263,8 @@ function weave(raw: readonly Point[][]): string {
           run.push(E[i]!);
         } else if (run.length) {
           run.push(between(prev, i));
-          if (run.length > 2) out += path(outline(run, false, () => EDGE));
+          if (run.length > 2)
+            out += path(outline(thin(run, false), false, () => EDGE));
           run = [];
         }
       }

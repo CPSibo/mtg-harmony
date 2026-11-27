@@ -13,6 +13,7 @@
     v-model:open="open"
     title="Emblem style"
     description="How the board background draws each colour's emblem"
+    :ui="{ content: 'sm:max-w-3xl' }"
   >
     <template #body>
       <div
@@ -37,13 +38,13 @@
               class="size-4 text-primary"
             />
           </span>
-          <span class="flex flex-wrap gap-1.5">
+          <span class="grid w-full grid-cols-6 gap-2 sm:gap-3">
             <img
               v-for="preview in style.previews"
               :key="preview.key"
               :src="preview.src"
               alt=""
-              class="size-10 sm:size-12"
+              class="aspect-square w-full"
             />
           </span>
         </button>

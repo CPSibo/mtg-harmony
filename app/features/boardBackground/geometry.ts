@@ -285,12 +285,67 @@ export function outline(
     : `${polyD(left)}${polyD(right.reverse()).replace(/^M/, 'L')}Z`;
 }
 
-/** A centre-line path as an even line `w` wide (#250). */
+/**
+ * A centre-line path as an even line `w` wide (#250). Straight lines keep
+ * only their corners, mitred; curves are sampled as sparsely as `brush`
+ * samples. Every vertex costs when the tile is rendered again for a zoom.
+ */
 export function mono(d: string, w: number): string {
   const { points, closed } = flatten(d);
   const length = pathLength(points);
   if (!length) return '';
-  const p = resample(points, Math.max(8, Math.ceil(length / 2)));
+  if (!/[QC]/i.test(d)) return mitred(points, closed, w);
+  const p = resample(points, Math.max(8, Math.ceil(length / BRUSH_SPACING)));
   if (closed) p.pop();
   return outline(p, closed, () => w);
+}
+
+/** The steepest a mitred corner may be, as how far its point sticks out per half width. */
+const MITRE_LIMIT = 4;
+
+/**
+ * A polyline as an outline `w` wide with mitred corners, so a corner keeps
+ * its full width without points either side of it.
+ */
+export function mitred(
+  points: readonly Point[],
+  closed: boolean,
+  w: number,
+): string {
+  // Repeated points, and a closed path's last point, have no direction.
+  const p = points.filter(
+    (q, i) =>
+      i === 0 || q[0] !== points[i - 1]![0] || q[1] !== points[i - 1]![1],
+  );
+  if (closed && p.length > 1) {
+    const [a, z] = [p[0]!, p[p.length - 1]!];
+    if (a[0] === z[0] && a[1] === z[1]) p.pop();
+  }
+  const m = p.length;
+  if (m < 2) return '';
+  const dir = (i: number, j: number): Point => {
+    const a = p[(i + m) % m]!;
+    const b = p[(j + m) % m]!;
+    const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+    return [(b[0] - a[0]) / l, (b[1] - a[1]) / l];
+  };
+  const left: Point[] = [];
+  const right: Point[] = [];
+  for (let i = 0; i < m; i++) {
+    const before = closed || i > 0 ? dir(i - 1, i) : dir(i, i + 1);
+    const after = closed || i < m - 1 ? dir(i, i + 1) : before;
+    // The corner's normal halves the turn; it reaches further the sharper it is.
+    let nx = -before[1] - after[1];
+    let ny = before[0] + after[0];
+    const l = Math.hypot(nx, ny) || 1;
+    nx /= l;
+    ny /= l;
+    const cos = nx * -after[1] + ny * after[0];
+    const reach = w / 2 / Math.max(cos, 1 / MITRE_LIMIT);
+    left.push([p[i]![0] + nx * reach, p[i]![1] + ny * reach]);
+    right.push([p[i]![0] - nx * reach, p[i]![1] - ny * reach]);
+  }
+  return closed
+    ? `${polyD(left)}Z${polyD(right)}Z`
+    : `${polyD(left)}${polyD(right.reverse()).replace(/^M/, 'L')}Z`;
 }
