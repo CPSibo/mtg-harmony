@@ -1,16 +1,18 @@
-import type { MotifKey } from './colors';
+import type { MotifKey } from '../colors';
 import {
   TAU,
   brush,
   circle,
+  dot,
   dotRing,
-  fmt,
   lens,
+  path,
   polar,
+  pt,
   rhombus,
   spiral,
   transform,
-} from './geometry';
+} from '../geometry';
 
 /** A centre-line path and its weight, relative to the base brush width. */
 type Stroke = readonly [d: string, weight: number];
@@ -22,15 +24,13 @@ interface MotifDrawing {
   dots: Dot[];
 }
 
-const pt = (p: readonly [number, number]) => `${fmt(p[0])} ${fmt(p[1])}`;
-
 const FLAME = 'M0 50C-32 30 -22 -4 -4 -30C-8 -8 6 -4 8 -18C24 6 32 34 0 50Z';
 const FLAME_IN = 'M0 42C-14 32 -10 14 -2 2C-2 14 6 16 8 8C14 20 14 34 0 42Z';
 
 /**
- * Each colour's motif in a 200 × 200 box, as worked out in the prototypes
- * (#246). Each ends in a ring of small details, since the medallion ring
- * already frames it. None are Wizards of the Coast symbols.
+ * Each colour's brushed emblem in a 200 × 200 box, as worked out in the
+ * prototypes (#246). Each ends in a ring of small details, since the medallion
+ * ring already frames it.
  */
 const DRAWINGS: Readonly<Record<MotifKey, () => MotifDrawing>> = {
   /** Sunburst of lens petals and thin rays round a double centre circle. */
@@ -188,30 +188,16 @@ const DRAWINGS: Readonly<Record<MotifKey, () => MotifDrawing>> = {
 /** The brush width at weight 1, in motif units. */
 const BRUSH = 2.7;
 
-const bodies = new Map<MotifKey, string>();
-
 /**
- * A motif's brushed SVG, as paths and circles without a fill, for a `<g>` to
- * colour. Brushing samples every path, so each motif is drawn once and kept.
+ * Tapering brush strokes and rounded forms: the first style (#246). Each path
+ * becomes a filled brush stroke, its swell varied by the colour and stroke.
  */
-export function motifBody(key: MotifKey): string {
-  let body = bodies.get(key);
-  if (body === undefined) {
-    const { strokes, dots } = DRAWINGS[key]();
-    const phase = key.charCodeAt(0);
-    body =
-      strokes
-        .map(
-          ([d, w], i) =>
-            `<path fill-rule='evenodd' d='${brush(d, BRUSH * w, i * 1.37 + phase)}'/>`,
-        )
-        .join('') +
-      dots
-        .map(
-          ([cx, cy, r]) => `<circle cx='${fmt(cx)}' cy='${fmt(cy)}' r='${r}'/>`,
-        )
-        .join('');
-    bodies.set(key, body);
-  }
-  return body;
+export function brushed(key: MotifKey): string {
+  const { strokes, dots } = DRAWINGS[key]();
+  const phase = key.charCodeAt(0);
+  return (
+    strokes
+      .map(([d, w], i) => path(brush(d, BRUSH * w, i * 1.37 + phase)))
+      .join('') + dots.map(([cx, cy, r]) => dot(cx, cy, r)).join('')
+  );
 }

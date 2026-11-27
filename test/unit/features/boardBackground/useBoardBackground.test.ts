@@ -9,6 +9,7 @@ import {
 } from 'vitest';
 import { effectScope, nextTick, ref } from 'vue';
 import type { BoardColor } from '~/features/boardBackground/colors';
+import type { EmblemStyle } from '~/features/boardBackground/emblems';
 import { bitmapUrl, rasterUrl } from '~/features/boardBackground/images';
 import { useBoardBackground } from '~/features/boardBackground/useBoardBackground';
 
@@ -54,6 +55,7 @@ function setup({
   settleMs = 0,
   detail = 1,
   night = false,
+  style = 'deco' as EmblemStyle,
 } = {}) {
   const el = document.createElement('div');
   const enabled = ref(on);
@@ -61,6 +63,7 @@ function setup({
   const spotlights = ref(wash);
   const resolution = ref(detail);
   const dark = ref(night);
+  const emblems = ref<EmblemStyle>(style);
   const scope = effectScope();
   const bg = scope.run(() =>
     useBoardBackground(
@@ -74,10 +77,21 @@ function setup({
         settleMs,
         lodFadeMs: () => lodFadeMs,
         dark: () => dark.value,
+        emblems: () => emblems.value,
       },
     ),
   )!;
-  return { el, enabled, colors, spotlights, resolution, dark, scope, bg };
+  return {
+    el,
+    enabled,
+    colors,
+    spotlights,
+    resolution,
+    dark,
+    emblems,
+    scope,
+    bg,
+  };
 }
 
 const spots = (el: HTMLElement) => el.style.getPropertyValue('--spots');
@@ -114,6 +128,18 @@ describe('useBoardBackground', () => {
     scope.stop();
     el.removeAttribute('style');
     expect(leaked(el)).toEqual([]);
+  });
+
+  // #250
+  it('rebuilds in the new style when the emblem style changes', async () => {
+    const { el, emblems, bg, scope } = setup({ picked: ['W', 'U'] });
+    await vi.waitFor(() => expect(bg.shown.value).toBe(true));
+    const deco = tile(el);
+    const decoSvg = vi.mocked(rasterUrl).mock.calls[0]![0];
+    emblems.value = 'manaSolid';
+    await vi.waitFor(() => expect(tile(el)).not.toBe(deco));
+    expect(vi.mocked(rasterUrl).mock.calls.at(-1)![0]).not.toBe(decoSvg);
+    scope.stop();
   });
 
   it('stays hidden until its images are ready', async () => {

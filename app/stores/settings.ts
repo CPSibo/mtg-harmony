@@ -20,6 +20,11 @@ import {
   normalizeBoardColors,
   type BoardColor,
 } from '~/features/boardBackground/colors';
+import {
+  DEFAULT_EMBLEM_STYLE,
+  isEmblemStyle,
+  type EmblemStyle,
+} from '~/features/boardBackground/emblems';
 import { prefersReducedData } from '~/utils/saveData';
 export interface AppSettings {
   /** Whether the Screen Wake Lock API is requested. */
@@ -72,6 +77,9 @@ export interface AppSettings {
 
   /** Whether the board background washes soft glows of its colours over the board. */
   boardSpotlightsEnabled: boolean;
+
+  /** How the board background's emblems are drawn (#250). */
+  boardEmblemStyle: EmblemStyle;
 }
 
 /** The most On-deck may fetch or keep queued, as the settings dialog allows. */
@@ -102,6 +110,7 @@ const defaults: AppSettings = {
   boardBackgroundEnabled: true,
   boardColors: [],
   boardSpotlightsEnabled: false,
+  boardEmblemStyle: DEFAULT_EMBLEM_STYLE,
 };
 
 /**
@@ -171,6 +180,11 @@ export const useSettingsStore = defineStore('settings', () => {
     boardSpotlightsEnabled.value = value;
   }
 
+  const boardEmblemStyle = ref<EmblemStyle>(defaults.boardEmblemStyle);
+  function setBoardEmblemStyle(value: EmblemStyle) {
+    boardEmblemStyle.value = value;
+  }
+
   function toggleBoardColor(color: BoardColor) {
     setBoardColors(
       boardColors.value.includes(color)
@@ -199,6 +213,7 @@ export const useSettingsStore = defineStore('settings', () => {
     boardBackgroundEnabled.value = defaults.boardBackgroundEnabled;
     boardColors.value = [...defaults.boardColors];
     boardSpotlightsEnabled.value = defaults.boardSpotlightsEnabled;
+    boardEmblemStyle.value = defaults.boardEmblemStyle;
   }
 
   function save() {
@@ -223,6 +238,7 @@ export const useSettingsStore = defineStore('settings', () => {
         boardBackgroundEnabled: boardBackgroundEnabled.value,
         boardColors: boardColors.value,
         boardSpotlightsEnabled: boardSpotlightsEnabled.value,
+        boardEmblemStyle: boardEmblemStyle.value,
       },
       SAVE_VERSION,
     );
@@ -283,6 +299,9 @@ export const useSettingsStore = defineStore('settings', () => {
     if (typeof data.boardSpotlightsEnabled === 'boolean')
       boardSpotlightsEnabled.value = data.boardSpotlightsEnabled;
 
+    if (isEmblemStyle(data.boardEmblemStyle))
+      boardEmblemStyle.value = data.boardEmblemStyle;
+
     return true;
   }
 
@@ -307,6 +326,7 @@ export const useSettingsStore = defineStore('settings', () => {
       boardBackgroundEnabled,
       boardColors,
       boardSpotlightsEnabled,
+      boardEmblemStyle,
     ],
     save,
   );
@@ -351,5 +371,8 @@ export const useSettingsStore = defineStore('settings', () => {
 
     boardSpotlightsEnabled,
     setBoardSpotlightsEnabled,
+
+    boardEmblemStyle,
+    setBoardEmblemStyle,
   };
 });

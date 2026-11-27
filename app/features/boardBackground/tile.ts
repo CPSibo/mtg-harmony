@@ -1,6 +1,6 @@
 import type { BoardColor, BoardPalette, MotifKey } from './colors';
 import { fmt, rhombus } from './geometry';
-import { motifBody } from './motifs';
+import { DEFAULT_EMBLEM_STYLE, emblemBody, type EmblemStyle } from './emblems';
 import { mod, shuffleLayout } from './shuffle';
 
 /** Half a lattice cell's diagonal, in board px. */
@@ -44,14 +44,15 @@ export interface Tile {
 }
 
 /**
- * The lattice tile for a colour selection and theme: one SVG that repeats
- * seamlessly (#246). Each motif is defined once and placed with `<use>`, and
- * each cell draws the knot at its top corner, so cells overlapping the edges
- * complete the ones beside them.
+ * The lattice tile for a colour selection, theme and emblem style: one SVG
+ * that repeats seamlessly (#246). Each motif is defined once and placed with
+ * `<use>`, and each cell draws the knot at its top corner, so cells
+ * overlapping the edges complete the ones beside them.
  */
 export function buildTile(
   colors: readonly BoardColor[],
   palette: BoardPalette,
+  style: EmblemStyle = DEFAULT_EMBLEM_STYLE,
 ): Tile {
   const { size: cells, at } = motifLayout(colors);
   const used = [...new Set<MotifKey>(colors.length ? colors : ['N'])];
@@ -72,11 +73,8 @@ export function buildTile(
   let defs = `<clipPath id='m'><circle cx='100' cy='100' r='100'/></clipPath>`;
   for (const key of used)
     defs +=
-      `<radialGradient id='f${key}' gradientUnits='userSpaceOnUse' cx='100' cy='100' r='100'>` +
-      `<stop offset='0' stop-color='${palette.ink[key]}'/>` +
-      `<stop offset='.45' stop-color='${palette.ink[key]}'/>` +
-      `<stop offset='1' stop-color='${neutral}'/></radialGradient>` +
-      `<g id='m${key}' fill='url(#f${key})'>${motifBody(key)}</g>`;
+      inkGradient(`f${key}`, palette.ink[key], neutral) +
+      `<g id='m${key}' ${inked(`f${key}`)}>${emblemBody(style, key)}</g>`;
 
   let outer = '';
   let inner = '';
@@ -123,6 +121,46 @@ export function buildTile(
   return { svg, size };
 }
 
-/** An SVG as a CSS `url()`, escaping only what a data URI needs. */
-export const svgUrl = (svg: string) =>
-  `url("data:image/svg+xml,${svg.replace(/[%#<>"\n]/g, encodeURIComponent)}")`;
+/** A motif's colour: its ink at the centre, fading to the neutral at its edge. */
+const inkGradient = (id: string, ink: string, neutral: string) =>
+  `<radialGradient id='${id}' gradientUnits='userSpaceOnUse' cx='100' cy='100' r='100'>` +
+  `<stop offset='0' stop-color='${ink}'/><stop offset='.45' stop-color='${ink}'/>` +
+  `<stop offset='1' stop-color='${neutral}'/></radialGradient>`;
+
+/**
+ * Fills a motif with gradient `id`. Strokes take it too, for the styles that
+ * outline a shape, though at no width unless a path sets one.
+ */
+const inked = (id: string) =>
+  `fill='url(#${id})' stroke='url(#${id})' stroke-width='0'`;
+
+/** How strongly an emblem shows in the style picker, where it's small. */
+const PREVIEW_STRENGTH = 0.85;
+
+/**
+ * One medallion on its own, for the emblem style picker (#250): the motif
+ * inside its ring, in the theme's colours but stronger than on the board.
+ */
+export function emblemPreview(
+  style: EmblemStyle,
+  key: MotifKey,
+  palette: BoardPalette,
+): string {
+  const { neutral } = palette;
+  return (
+    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='-10 -10 220 220'>` +
+    `<defs>${inkGradient('f', palette.ink[key], neutral)}` +
+    `<clipPath id='c'><circle cx='100' cy='100' r='100'/></clipPath></defs>` +
+    `<circle cx='100' cy='100' r='107' fill='none' stroke='${neutral}'` +
+    ` stroke-opacity='${Math.min(1, palette.lines * 3).toFixed(2)}' stroke-width='2'/>` +
+    `<g ${inked('f')} opacity='${PREVIEW_STRENGTH}' clip-path='url(#c)'>${emblemBody(style, key)}</g>` +
+    `</svg>`
+  );
+}
+
+/** An SVG as a data URI, escaping only what one needs. */
+export const svgDataUri = (svg: string) =>
+  `data:image/svg+xml,${svg.replace(/[%#<>"\n]/g, encodeURIComponent)}`;
+
+/** An SVG as a CSS `url()`. */
+export const svgUrl = (svg: string) => `url("${svgDataUri(svg)}")`;

@@ -84,6 +84,13 @@
         </UFormField>
 
         <UFormField
+          label="Emblem style"
+          description="How each colour's emblem is drawn"
+        >
+          <SettingsEmblemStylePicker />
+        </UFormField>
+
+        <UFormField
           label="Colour wash"
           description="Soft glows of your colours across the board"
         >
@@ -264,6 +271,7 @@
 <script setup lang="ts">
 import UFormField from '@nuxt/ui/components/FormField.vue';
 import SettingsBoardColorPicker from '~/components/settings/BoardColorPicker.vue';
+import SettingsEmblemStylePicker from '~/components/settings/EmblemStylePicker.vue';
 // Nuxt UI's plain-Vue Icon; components/Icon.vue is the Nuxt-only variant.
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
 import UInputNumber from '@nuxt/ui/components/InputNumber.vue';

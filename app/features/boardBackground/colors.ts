@@ -73,7 +73,7 @@ export const LIGHT_PALETTE: BoardPalette = Object.freeze({
     N: '#4a443a',
   }),
   lines: 0.14,
-  motifs: 0.3,
+  motifs: 0.35,
 });
 
 // The spotlight colours are CSS variables per theme, in Board.vue.

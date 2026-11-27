@@ -1,7 +1,7 @@
 /**
- * Path helpers for the background's motifs (#246). Motifs are drawn in a
- * 200 × 200 box centred on (100, 100), as centre-line paths that `brush` turns
- * into filled outlines of varying width. Everything here is plain maths:
+ * Path helpers for the background's emblems (#246, #250). Emblems are drawn in
+ * a 200 × 200 box centred on (100, 100), mostly as centre-line paths that
+ * `brush` or `mono` turn into filled outlines. Everything here is plain maths:
  * neither happy-dom nor Node can measure an SVG path.
  */
 
@@ -15,13 +15,43 @@ export const fmt = (n: number) => {
   return s === '-0.0' ? '0.0' : s;
 };
 
-const pt = (p: Point) => `${fmt(p[0])} ${fmt(p[1])}`;
+export const pt = (p: Point) => `${fmt(p[0])} ${fmt(p[1])}`;
+
+/** Points joined by straight lines, not closed. */
+export const polyD = (ps: readonly Point[]) =>
+  ps.map((q, i) => (i ? 'L' : 'M') + pt(q)).join('');
+
+/** A filled path; `evenodd`, so a closed outline's inner loop is a hole. */
+export const path = (d: string, attrs = '') =>
+  `<path fill-rule='evenodd' d='${d}'${attrs}/>`;
+
+/** A filled dot. */
+export const dot = (x: number, y: number, r: number) =>
+  `<circle cx='${fmt(x)}' cy='${fmt(y)}' r='${fmt(r)}'/>`;
 
 /** The point at radius `r` and angle `a` around (cx, cy). */
 export const polar = (r: number, a: number, cx = 100, cy = 100): Point => [
   cx + r * Math.cos(a),
   cy + r * Math.sin(a),
 ];
+
+/** `p` turned by `a` round (cx, cy). */
+export function rotate(p: Point, a: number, cx = 100, cy = 100): Point {
+  const dx = p[0] - cx;
+  const dy = p[1] - cy;
+  const c = Math.cos(a);
+  const s = Math.sin(a);
+  return [cx + dx * c - dy * s, cy + dx * s + dy * c];
+}
+
+/** The corners of a regular `n`-gon, the first at angle `a0`. */
+export const ngon = (
+  n: number,
+  r: number,
+  a0 = -Math.PI / 2,
+  cx = 100,
+  cy = 100,
+) => Array.from({ length: n }, (_, k) => polar(r, a0 + (k * TAU) / n, cx, cy));
 
 /** A circle as a closed polyline. */
 export function circle(cx: number, cy: number, r: number, steps = 48): string {
@@ -223,6 +253,19 @@ export function brush(d: string, base: number, phase: number): string {
       : base * (0.18 + 1.02 * Math.sin(Math.PI * t ** 0.85) ** 0.7);
   };
 
+  return outline(p, closed, width);
+}
+
+/**
+ * A polyline as a filled outline, `width(i)` wide at point `i`: closed, an
+ * outer and an inner loop for `fill-rule="evenodd"`; open, one loop round it.
+ */
+export function outline(
+  p: readonly Point[],
+  closed: boolean,
+  width: (i: number) => number,
+): string {
+  const m = p.length;
   const left: Point[] = [];
   const right: Point[] = [];
   for (let i = 0; i < m; i++) {
@@ -237,9 +280,17 @@ export function brush(d: string, base: number, phase: number): string {
     left.push([p[i]![0] + nx * w, p[i]![1] + ny * w]);
     right.push([p[i]![0] - nx * w, p[i]![1] - ny * w]);
   }
-  const line = (ps: readonly Point[]) =>
-    ps.map((q, i) => (i ? 'L' : 'M') + pt(q)).join('');
   return closed
-    ? `${line(left)}Z${line(right)}Z`
-    : `${line(left)}${line(right.reverse()).replace(/^M/, 'L')}Z`;
+    ? `${polyD(left)}Z${polyD(right)}Z`
+    : `${polyD(left)}${polyD(right.reverse()).replace(/^M/, 'L')}Z`;
+}
+
+/** A centre-line path as an even line `w` wide (#250). */
+export function mono(d: string, w: number): string {
+  const { points, closed } = flatten(d);
+  const length = pathLength(points);
+  if (!length) return '';
+  const p = resample(points, Math.max(8, Math.ceil(length / 2)));
+  if (closed) p.pop();
+  return outline(p, closed, () => w);
 }

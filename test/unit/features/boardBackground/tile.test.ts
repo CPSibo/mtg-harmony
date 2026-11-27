@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
   DARK_PALETTE,
+  LIGHT_PALETTE,
   type BoardColor,
 } from '~/features/boardBackground/colors';
+import { emblemBody } from '~/features/boardBackground/emblems';
 import {
   buildTile,
   CELL,
+  emblemPreview,
   motifLayout,
+  svgDataUri,
   svgUrl,
 } from '~/features/boardBackground/tile';
 
@@ -69,6 +73,45 @@ describe('buildTile', () => {
   it('repeats a block twice the shuffle period wide', () => {
     expect(buildTile(['W', 'U', 'B'], DARK_PALETTE).size).toBe(8 * CELL);
     expect(buildTile(['W'], DARK_PALETTE).size).toBe(2 * CELL);
+  });
+});
+
+describe('buildTile emblem styles (#250)', () => {
+  it('draws art deco unless told otherwise', () => {
+    expect(buildTile(['R'], DARK_PALETTE).svg).toBe(
+      buildTile(['R'], DARK_PALETTE, 'deco').svg,
+    );
+  });
+
+  it('draws each motif in the style asked for', () => {
+    const deco = buildTile(['R'], DARK_PALETTE, 'deco').svg;
+    const coin = buildTile(['R'], DARK_PALETTE, 'manaCoin').svg;
+    expect(deco).toContain(emblemBody('deco', 'R'));
+    expect(coin).toContain(emblemBody('manaCoin', 'R'));
+    expect(coin).not.toContain(emblemBody('deco', 'R'));
+  });
+
+  it('lets outlines take the motif colour', () => {
+    const { svg } = buildTile(['U'], DARK_PALETTE, 'manaOutline');
+    expect(svg).toContain(
+      `<g id='mU' fill='url(#fU)' stroke='url(#fU)' stroke-width='0'>`,
+    );
+  });
+});
+
+describe('emblemPreview', () => {
+  it('draws one medallion in the theme ink for the colour', () => {
+    const svg = emblemPreview('stars', 'G', LIGHT_PALETTE);
+    expect(svg).toContain(emblemBody('stars', 'G'));
+    expect(svg).toContain(`stop-color='${LIGHT_PALETTE.ink.G}'`);
+    expect(svg.match(/<svg /g)).toHaveLength(1);
+  });
+});
+
+describe('svgDataUri', () => {
+  it('is the data URI inside svgUrl', () => {
+    const svg = `<svg fill='url(#a)'>%</svg>`;
+    expect(svgUrl(svg)).toBe(`url("${svgDataUri(svg)}")`);
   });
 });
 
