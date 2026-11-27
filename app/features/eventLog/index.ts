@@ -4,7 +4,12 @@ export * from './types';
 export {
   EVENT_LABELS,
   describeEntry,
+  describeGroup,
+  groupRows,
+  type LogRow,
+  entryDetails,
   filterEntries,
+  takeNewest,
   scryfallCardFromSnapshot,
   type EntryFilter,
 } from './view';

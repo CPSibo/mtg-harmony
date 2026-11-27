@@ -12,6 +12,7 @@
       dragging: myIsDragging || following,
       selected: selection.has(stack.id),
     }"
+    @focusin="onFocusIn"
   >
     <!-- Cards under the primary peek out above it, newest on top. -->
     <div class="unders">
@@ -30,11 +31,8 @@
       class="primary-card-wrapper flex flex-row"
       :class="{ 'primary-sideways': primarySideways }"
     >
-      <PlayAreaBoardCardStackActions
-        :stack="stack"
-        @show-card-details="emits('showCardDetails', $event)"
-      />
-
+      <!-- The card comes first so Tab reaches it, then its actions; the
+           actions still sit to its left (order: -1). #170 -->
       <PlayAreaBoardCard
         class="primary-card"
         :card="stack.primary"
@@ -43,11 +41,19 @@
         @show-card-details="emits('showCardDetails', stack.primary)"
         @show-card-modifiers="emits('showCardModifiers', stack.primary)"
       />
+
+      <PlayAreaBoardCardStackActions
+        :stack="stack"
+        @show-card-details="emits('showCardDetails', $event)"
+      />
     </div>
 
     <div
       class="attachments"
-      :style="`--total: ${stack.attachments.size}`"
+      :style="{
+        '--total': stack.attachments.size,
+        '--sideways': sidewaysAttachments,
+      }"
     >
       <PlayAreaBoardCard
         v-for="(card, index) in stack.attachments"
@@ -80,6 +86,7 @@ import {
   useSelectionStore,
 } from '~/features/battlefield';
 import { useSettingsStore } from '~/stores/settings';
+import { LONG_PRESS_MS, PRESS_SLOP } from '~/utils/press';
 import { isLandscape } from '~/features/battlefield/cardFaces';
 import type { BoardCard, BoardCardStack } from '~/types/PlayArea';
 
@@ -99,17 +106,19 @@ const battlefield = useBattlefieldStore();
 const primarySideways = computed(
   () => isLandscape(props.stack.primary) !== props.stack.primary.tapped,
 );
+/** Attachments lying on their long side, which are only a card's width tall. */
+const sidewaysAttachments = computed(() => {
+  let count = 0;
+  for (const card of props.stack.attachments)
+    if (isLandscape(card) !== card.tapped) count++;
+  return count;
+});
 const settings = useSettingsStore();
 const selection = useSelectionStore();
 const animateMove = useMoveAnimation();
 const { snapScale } = storeToRefs(battlefield);
 
 const stackEl = useTemplateRef('stack');
-
-/** Screen pixels a press may move and still count as a tap. */
-const TAP_SLOP = 6;
-/** How long a finger holds a stack to start selecting (#138). */
-const LONG_PRESS_MS = 500;
 
 // The press's state; only the handlers read it.
 let pressStart: Position = { x: 0, y: 0 };
@@ -171,7 +180,8 @@ const {
   onMove: (e) => {
     if (
       !movedTooFar &&
-      Math.hypot(e.clientX - pressStart.x, e.clientY - pressStart.y) > TAP_SLOP
+      Math.hypot(e.clientX - pressStart.x, e.clientY - pressStart.y) >
+        PRESS_SLOP
     ) {
       movedTooFar = true;
       cancelLongPress();
@@ -186,8 +196,25 @@ const {
       battlefield.setStackPosition(props.stack, position);
       selection.moveGroup(offsetFromStart(position));
       selection.endGroupDrag();
-    } else onSingleDrop(position, e);
+    } else {
+      // Moving a stack that isn't selected is outside selection mode (#235).
+      if (movedTooFar && !selection.has(props.stack.id))
+        selection.setMode(false);
+      onSingleDrop(position, e);
+    }
     if (!movedTooFar && !longPressed && e.type === 'pointerup') onTap(e);
+  },
+  // This stack left the board mid-drag (#160). The watch on `myIsDragging`
+  // is already stopped, so tell the board directly, and let the group and
+  // the radial menu go.
+  onCancel: () => {
+    cancelLongPress();
+    dragMenu.end();
+    if (groupDrag) {
+      groupDrag = false;
+      selection.endGroupDrag();
+    }
+    isDragging.value = false;
   },
 });
 
@@ -195,13 +222,30 @@ function offsetFromStart(p: Position): Position {
   return { x: p.x - positionAtStart.x, y: p.y - positionAtStart.y };
 }
 
-/** Ctrl/Cmd/Shift-click, or a tap in selection mode, toggles the stack. */
+/**
+ * Ctrl/Cmd/Shift-click, or a tap in selection mode, toggles the stack. A
+ * plain tap selects just this stack (#216): it's the target for selection
+ * commands in the palette.
+ */
 function onTap(e: PointerEvent) {
   const modified = e.ctrlKey || e.metaKey || e.shiftKey;
-  if (!modified && !selection.mode) return;
-  // The stack's own buttons keep working in selection mode.
+  // The stack's own buttons keep working, and don't select it.
   if (!modified && (e.target as Element | null)?.closest('button')) return;
-  selection.toggle(props.stack.id);
+  if (modified || selection.mode) selection.toggle(props.stack.id);
+  else selection.selectOnly(props.stack.id);
+}
+
+/**
+ * Tab onto one of the stack's cards selects the stack, as a tap does. Mouse
+ * focus left by a click or a drag doesn't (`:focus-visible` is keyboard
+ * focus), and neither does Tab while several stacks are selected or in
+ * selection mode, so a selection being built isn't lost.
+ */
+function onFocusIn(e: FocusEvent) {
+  const target = e.target as Element | null;
+  if (!target?.matches('.card-image:focus-visible')) return;
+  if (selection.mode || selection.size > 1) return;
+  selection.selectOnly(props.stack.id);
 }
 
 // The leader's eased position drives the group, so the followers keep pace.
@@ -367,6 +411,7 @@ watch(myIsDragging, (value) => {
 
 /* The actions step left by the overhang so the tapped card doesn't cover them. */
 .primary-card-wrapper :deep(.stack-actions) {
+  order: -1;
   transition: translate 180ms ease-out;
 
   @media (prefers-reduced-motion: reduce) {
@@ -413,9 +458,13 @@ watch(myIsDragging, (value) => {
      evenly and stays centred on the primary (#127). */
   width: var(--w);
 
-  /* Need to cap the height, or else the `top` makes a big, invisible chin. */
-  /* TODO: This doesn't account for tapped attachments. */
-  height: calc((var(--total) * var(--h)) + var(--vertical-offset));
+  /* Cap the height at where the last card ends, or the offsets leave a big,
+     invisible chin (#186). Each card is a card's height tall, or its width
+     when it lies sideways, and each rides up by the offset. */
+  height: calc(
+    (var(--total) - var(--sideways)) * var(--h) + var(--sideways) * var(--w) +
+      var(--total) * var(--vertical-offset)
+  );
 
   > .board-card {
     top: calc(var(--vertical-offset) * var(--index));

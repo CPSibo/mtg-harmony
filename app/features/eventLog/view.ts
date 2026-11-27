@@ -16,6 +16,9 @@ export const EVENT_LABELS: Record<EventType, { label: string; icon: string }> =
     putUnder: { label: 'Put under', icon: 'i-lucide-layers' },
     copied: { label: 'Copied', icon: 'i-lucide-copy' },
     removed: { label: 'Removed', icon: 'i-lucide-trash' },
+    melded: { label: 'Melded', icon: 'i-lucide-merge' },
+    unmelded: { label: 'Unmelded', icon: 'i-lucide-split' },
+    tokenCreated: { label: 'Created token', icon: 'i-lucide-circle-plus' },
     boardCleared: { label: 'Board cleared', icon: 'i-lucide-brush-cleaning' },
     gameMarker: { label: 'New game', icon: 'i-lucide-flag' },
   };
@@ -46,6 +49,21 @@ function cardNames(entry: EventEntry): string[] {
   return names;
 }
 
+/**
+ * The first `max` of `newer` followed by `older`, both already newest first,
+ * without copying the rest (#173): the log window shows the newest 200 of
+ * the current game and past games.
+ */
+export function takeNewest<T>(
+  newer: readonly T[],
+  older: readonly T[],
+  max: number,
+): T[] {
+  return newer.length >= max
+    ? newer.slice(0, max)
+    : [...newer, ...older.slice(0, max - newer.length)];
+}
+
 /** The entries that match `filter`, newest first. */
 export function filterEntries(
   entries: readonly EventEntry[],
@@ -63,11 +81,52 @@ export function filterEntries(
     .reverse();
 }
 
+/** A row of the log window: one entry, or a group recorded together. */
+export type LogRow =
+  | { kind: 'entry'; entry: EventEntry }
+  | { kind: 'group'; id: string; entries: EventEntry[] };
+
+/**
+ * Folds runs of entries with the same `groupId` into one row each (#221).
+ * A group of one is just an entry. Keeps the order it's given.
+ */
+export function groupRows(entries: readonly EventEntry[]): LogRow[] {
+  const rows: LogRow[] = [];
+  for (const entry of entries) {
+    const last = rows.at(-1);
+    const lastGroup = last?.kind === 'group' ? last.id : last?.entry.groupId;
+    if (entry.groupId && entry.groupId === lastGroup) {
+      if (last!.kind === 'entry')
+        rows[rows.length - 1] = {
+          kind: 'group',
+          id: entry.groupId,
+          entries: [last!.entry, entry],
+        };
+      else last!.entries.push(entry);
+    } else rows.push({ kind: 'entry', entry });
+  }
+  return rows;
+}
+
+/** One line saying what a group of entries did, such as "Removed 5 cards". */
+export function describeGroup(entries: readonly EventEntry[]): string {
+  const [first] = entries;
+  const cards = `${entries.length} cards`;
+  if (!first || entries.some((e) => e.type !== first.type))
+    return `${entries.length} events`;
+  if (first.type === 'copied')
+    return `Copied ${cards} (${COPY_MODE_LABELS[first.mode]})`;
+  return `${EVENT_LABELS[first.type].label} ${cards}`;
+}
+
 /** One line saying what happened. */
 export function describeEntry(entry: EventEntry): string {
   switch (entry.type) {
-    case 'fetched':
     case 'cast':
+      return entry.toGraveyard
+        ? `Cast ${entry.card.name} to the graveyard`
+        : `Cast ${entry.card.name}`;
+    case 'fetched':
     case 'added':
     case 'removed':
       return `${EVENT_LABELS[entry.type].label} ${entry.card.name}`;
@@ -77,6 +136,11 @@ export function describeEntry(entry: EventEntry): string {
       return `Put ${entry.card.name} under ${entry.target.name}`;
     case 'copied':
       return `Copied ${entry.source.name} (${COPY_MODE_LABELS[entry.mode]})`;
+    case 'melded':
+    case 'unmelded':
+      return `${EVENT_LABELS[entry.type].label} ${entryDetails(entry)}`;
+    case 'tokenCreated':
+      return `Created ${entryDetails(entry)}`;
     case 'boardCleared':
       return 'Cleared the board';
     case 'gameMarker':
@@ -96,8 +160,16 @@ export function entryDetails(entry: EventEntry): string {
       return `${entry.card.name} under ${entry.target.name}`;
     case 'copied':
       return `${entry.source.name} (${COPY_MODE_LABELS[entry.mode]})`;
+    case 'melded':
+      return `${entry.source.name} and ${entry.target.name} into ${entry.card.name}`;
+    case 'unmelded':
+      return `${entry.card.name} into ${entry.source.name} and ${entry.target.name}`;
+    case 'tokenCreated':
+      return `${entry.card.name} from ${entry.source.name}`;
     case 'gameMarker':
       return REASON_LABELS[entry.reason];
+    case 'cast':
+      return entry.toGraveyard ? `${entry.card.name} to the graveyard` : '';
     default:
       return '';
   }

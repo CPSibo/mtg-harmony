@@ -1,4 +1,6 @@
 import { useToast } from '@nuxt/ui/composables';
+import { undoAction } from '~/composables/useActionToast';
+import { useInputModeStore } from '~/stores/inputMode';
 import { useSettingsStore } from '~/stores/settings';
 import { useBattlefieldStore } from '~/features/battlefield';
 import { useDiscordFetcherStore } from '~/features/discordFetcher';
@@ -8,19 +10,25 @@ import { useEventLogStore, type GameMarkerReason } from '~/features/eventLog';
  * The menu's three levels of reset, each with one toast. Clear board only
  * clears the board (for board wipes), in the same game. New game also clears
  * On-deck and starts a new game in the event log (one marker). Reset app
- * empties the log too, back to a fresh install.
+ * empties the log too, back to a fresh install. Clear board can be undone
+ * (#215); the other two forget what could be.
  */
 export function useReset() {
   const toast = useToast();
 
   const battlefield = useBattlefieldStore();
   const settingsStore = useSettingsStore();
+  const inputMode = useInputModeStore();
   const discordFetchStore = useDiscordFetcherStore();
   const log = useEventLogStore();
 
   function clearBoard() {
     battlefield.clearBoard();
-    toast.add({ title: 'Board cleared', color: 'info' });
+    toast.add({
+      title: 'Board cleared',
+      color: 'info',
+      actions: [undoAction(battlefield)],
+    });
   }
 
   /** Clears the board and On-deck. The idle prompt passes its own reason. */
@@ -28,6 +36,8 @@ export function useReset() {
     battlefield.clearBoard();
     discordFetchStore.reset();
     log.startNewGame(reason);
+    // Undo stays within a game (#215).
+    battlefield.clearHistory();
     toast.add({ title: 'New game', color: 'info' });
   }
 
@@ -35,7 +45,9 @@ export function useReset() {
     battlefield.clearBoard();
     discordFetchStore.reset();
     settingsStore.reset();
+    inputMode.reset();
     log.reset();
+    battlefield.clearHistory();
     toast.add({ title: 'App reset', color: 'info' });
   }
 

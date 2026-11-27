@@ -1,20 +1,50 @@
 import { showsImage } from '~/features/battlefield/cardFaces';
 import { useLocalStorage } from '~/composables/useLocalStorage';
-import { pickImageUri } from '~/composables/useScryfall';
 import { defineStore } from 'pinia';
-import { computed, ref, toValue, watch } from 'vue';
-import type {
-  Battlefield,
-  BoardCard,
-  BoardCardModifier,
-  BoardCardStack,
-} from '~/types/PlayArea';
+import {
+  computed,
+  reactive,
+  ref,
+  shallowRef,
+  toRaw,
+  toValue,
+  watch,
+} from 'vue';
+import { isCounter, type ModifierKey } from '~/types/MtgConcepts';
+import type { Battlefield, BoardCard, BoardCardStack } from '~/types/PlayArea';
 import type { ScryfallCard } from '~/types/Scryfall';
 import { randomUUID } from '~/utils/randomUUID';
 import type { ElementSize, Position } from '@vueuse/core';
-import { useEventLogStore } from '~/features/eventLog';
-import { cardData, copyBoardCard, createBoardCard } from './boardCard';
-import { findFreeSpot, type Rect } from './placement';
+import { useEventLogStore, type EventEntry } from '~/features/eventLog';
+import {
+  cardData,
+  copyBoardCard,
+  createBoardCard,
+  readSavedCard,
+} from './boardCard';
+import { findMeldPartner } from './meld';
+import {
+  arrangeInGrid,
+  arrangeToFit,
+  arrangeRow,
+  rowBand,
+  stackReach,
+} from './arrange';
+import { BOARD_SIZE, findFreeSpot, type Rect } from './placement';
+import { useSettingsStore } from '~/stores/settings';
+import {
+  captureLayout,
+  restoreLayout,
+  sameLayout,
+  UNDO_LIMIT,
+  type BoardLayout,
+} from './undo';
+
+/** One undoable action (#215): the board before it, and what it logged. */
+interface UndoStep {
+  layout: BoardLayout;
+  entries: EventEntry[];
+}
 
 /** How much of a card `copyCard` copies. */
 export type CopyMode = 'card' | 'counters' | 'stack';
@@ -29,12 +59,50 @@ const UNDER_TAKE_OUT_OFFSET = 240;
 const COPY_OFFSET = 80;
 
 const STORAGE_KEY = 'mtg-harmony_battlefield';
+/** Bump when the saved shape changes (#154). */
+const SAVE_VERSION = 1;
+
+const isPosition = (v: unknown): v is Position =>
+  !!v &&
+  typeof v === 'object' &&
+  Number.isFinite((v as Position).x) &&
+  Number.isFinite((v as Position).y);
+
+/**
+ * A stack from saved data with its cards checked, or null if it isn't one
+ * this version can show (#154). A malformed attachment or under is dropped
+ * and the stack kept; a malformed primary drops the stack.
+ */
+function readSavedStack(value: unknown): BoardCardStack | null {
+  if (!value || typeof value !== 'object') return null;
+  const stack = value as BoardCardStack;
+  if (
+    typeof stack.id !== 'string' ||
+    !isPosition(stack.position) ||
+    !(stack.attachments instanceof Set) ||
+    !(stack.unders instanceof Set) ||
+    !readSavedCard(stack.primary)
+  )
+    return null;
+  stack.primary.stack = stack;
+  for (const set of [stack.attachments, stack.unders])
+    for (const card of [...set]) {
+      if (readSavedCard(card)) card.stack = stack;
+      else {
+        console.warn('Dropping a saved card this version can’t read.', card);
+        set.delete(card);
+      }
+    }
+  return stack;
+}
 
 /**
  * A lone untapped card's stack, actions column included, in board pixels.
  * Used for a stack the board hasn't measured yet.
  */
 const NEW_STACK_SIZE: ElementSize = { width: 210, height: 250 };
+/** Space between arranged stacks, in board pixels (#223). */
+const ARRANGE_GAP = 16;
 
 /**
  * The action buttons' column left of a stack's card, in board pixels. Mirrors
@@ -58,9 +126,6 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
   const log = useEventLogStore();
 
   const stacks = ref<BoardCardStack[]>(defaults.stacks);
-  function setStacks(value: BoardCardStack[]) {
-    stacks.value = value;
-  }
 
   // MRU order of the stacks for display purposes.
   const zOrder = ref<string[]>(defaults.zOrder);
@@ -68,9 +133,10 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
   function bringToFront(stack: BoardCardStack) {
     const idx = zOrder.value.indexOf(stack.id);
 
-    if (idx === zOrder.value.length - 1) return; // Already front.
-
-    if (idx !== -1) zOrder.value.splice(idx, 1);
+    if (idx !== -1) {
+      if (idx === zOrder.value.length - 1) return; // Already front.
+      zOrder.value.splice(idx, 1);
+    }
 
     zOrder.value.push(stack.id);
   }
@@ -157,7 +223,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
    * middle (`findFreeSpot`). Before the board reports a view, the saved
    * centre.
    */
-  function newStackPosition(): Position {
+  function newStackPosition(card?: BoardCard): Position {
     const shown = view;
     if (!shown) return { ...center.value };
 
@@ -165,12 +231,108 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
       ...s.position,
       ...stackSize(s),
     }));
-    return findFreeSpot(shown, occupied, NEW_STACK_SIZE, STACK_ACTIONS_WIDTH);
+    // With arranging on, only the card's row of the view (#223).
+    const area =
+      card && useSettingsStore().arrangeNewCards
+        ? rowBand(
+            arrangeRow(card),
+            shown,
+            NEW_STACK_SIZE.height + ARRANGE_GAP * 2,
+          )
+        : shown;
+    return findFreeSpot(area, occupied, NEW_STACK_SIZE, STACK_ACTIONS_WIDTH);
+  }
+
+  /**
+   * Lays every stack out in rows (#223): creatures, then everything else,
+   * then lands, in the middle of the board, shaped to fill the view once
+   * zoomed to fit. Where the view is and its zoom don't matter, only its
+   * shape. Each stack's position changes once.
+   */
+  function arrangeStacks() {
+    const aspect = view && view.height > 0 ? view.width / view.height : 16 / 9;
+    const at = arrangeToFit(
+      stacks.value.map((s) => ({
+        id: s.id,
+        row: arrangeRow(s.primary),
+        size: stackSize(s),
+        position: s.position,
+        reach: stackReach(s),
+      })),
+      { x: BOARD_SIZE.width / 2, y: BOARD_SIZE.height / 2 },
+      aspect,
+      ARRANGE_GAP,
+    );
+    for (const stack of stacks.value) {
+      const p = at.get(stack.id);
+      if (!p) continue;
+      const { width, height } = stackSize(stack);
+      stack.position = {
+        x: Math.min(Math.max(p.x, 0), BOARD_SIZE.width - width),
+        y: Math.min(Math.max(p.y, 0), BOARD_SIZE.height - height),
+      };
+    }
+  }
+
+  /**
+   * Tidies stacks into a row or a roughly square grid from their top-left
+   * corner (#222), moved as a whole to stay on the board.
+   */
+  function arrangeInLine(
+    targets: readonly BoardCardStack[],
+    shape: 'row' | 'grid',
+  ) {
+    if (!targets.length) return;
+    const items = targets.map((s) => ({
+      id: s.id,
+      size: stackSize(s),
+      position: s.position,
+      reach: stackReach(s),
+    }));
+    const origin = {
+      x: Math.min(...items.map((i) => i.position.x)),
+      y: Math.min(...items.map((i) => i.position.y)),
+    };
+    const columns =
+      shape === 'row' ? items.length : Math.ceil(Math.sqrt(items.length));
+    const at = arrangeInGrid(items, origin, columns, ARRANGE_GAP);
+    // How far the layout runs past the board's right and bottom edges.
+    let overX = 0;
+    let overY = 0;
+    for (const { id, size } of items) {
+      const p = at.get(id)!;
+      overX = Math.max(overX, p.x + size.width - BOARD_SIZE.width);
+      overY = Math.max(overY, p.y + size.height - BOARD_SIZE.height);
+    }
+    for (const stack of targets) {
+      const p = at.get(stack.id)!;
+      setStackPosition(stack, {
+        x: Math.max(p.x - overX, 0),
+        y: Math.max(p.y - overY, 0),
+      });
+    }
+  }
+
+  /** Brings stacks to the front, keeping their order among themselves. */
+  function bringAllToFront(targets: readonly BoardCardStack[]) {
+    const chosen = new Set(targets.map((s) => s.id));
+    for (const stack of orderedStacks.value)
+      if (chosen.has(stack.id)) bringToFront(stack);
   }
 
   const snapScale = ref<number>(defaults.snapScale);
-  function setSnapScale(value: number) {
-    snapScale.value = value;
+  // The size to go back to when snapping is turned on again. Only read by
+  // the toggle, and not saved: after a reload it's the default.
+  let lastSnapScale = 0;
+
+  /** Turns grid snapping off, or back on at the size it had (#218). */
+  function toggleSnapping() {
+    if (snapScale.value) {
+      lastSnapScale = snapScale.value;
+      snapScale.value = 0;
+    } else {
+      snapScale.value = lastSnapScale || createDefaults().snapScale;
+    }
   }
 
   function addStackByCard(card: BoardCard, position = center.value) {
@@ -209,9 +371,25 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
             (NEW_STACK_SIZE.width - STACK_ACTIONS_WIDTH) / 2,
           y: at.y - NEW_STACK_SIZE.height / 2,
         }
-      : newStackPosition();
-    const stack = addStackByCard(createBoardCard(scryfallCard), position);
+      : undefined;
+    const card = createBoardCard(scryfallCard);
+    const stack = addStackByCard(card, position ?? newStackPosition(card));
     log.record(how, { card: stack.primary });
+    // A Room cast to the board asks which door opens (#145). The store's
+    // reactive copy, so the choice shows on the board.
+    if (stack.primary.lockedDoors)
+      doorChoice.value = stacks.value.at(-1)!.primary;
+    return stack;
+  }
+
+  /**
+   * Puts a token `source` makes on the board, in its own stack in a free spot
+   * in view, and logs which card made it (#203).
+   */
+  function createToken(source: BoardCard, token: ScryfallCard) {
+    const card = createBoardCard(token);
+    const stack = addStackByCard(card, newStackPosition(card));
+    log.record('tokenCreated', { card: stack.primary, source });
     return stack;
   }
 
@@ -219,6 +397,13 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
   function removeCard(card: BoardCard) {
     log.record('removed', { card });
     return removeCardFromStack(card);
+  }
+
+  /** Removes each card, logged as one group (#221). */
+  function removeCards(cards: readonly BoardCard[]) {
+    log.group(() => {
+      for (const card of cards) removeCard(card);
+    });
   }
 
   /** Empties the board and logs it. */
@@ -268,6 +453,88 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     zOrder.value.push(copy.id);
     log.record('copied', { card: primary, source: card, mode });
     return stacks.value.at(-1)!;
+  }
+
+  /** Splits every stack so each card is a stack of its own (#222). */
+  function explodeAll(targets: readonly BoardCardStack[]) {
+    for (const stack of targets) explodeStack(stack);
+  }
+
+  /** Copies each card, logged as one group (#221). */
+  function copyCards(cards: readonly BoardCard[], mode: CopyMode) {
+    return log.group(() => cards.map((card) => copyCard(card, mode)));
+  }
+
+  /** Every card on the board: primaries, attachments and unders. */
+  function* allCards() {
+    for (const stack of stacks.value) {
+      yield stack.primary;
+      yield* stack.attachments;
+      yield* stack.unders;
+    }
+  }
+
+  /** The other half `card` melds with, if it's on the board (#143). */
+  function meldPartner(card: BoardCard) {
+    return findMeldPartner(card, allCards());
+  }
+
+  /** Puts `next` in `old`'s place in its stack: primary, attachment or under. */
+  function replaceInStack(old: BoardCard, next: BoardCard) {
+    const stack = old.stack!;
+    // Either may be the store's reactive copy or the raw card.
+    if (toRaw(stack.primary) === toRaw(old)) stack.primary = next;
+    else
+      for (const set of [stack.attachments, stack.unders])
+        if (set.delete(old)) set.add(next);
+    next.stack = stack;
+    old.stack = undefined;
+  }
+
+  /**
+   * Melds `card` and its other half into `result` (#143), which takes
+   * `card`'s place in its stack. The other half leaves the board as if
+   * removed. The melded card keeps both halves, as they were, so `unmeld` can
+   * put them back. Returns the melded card, or null when either half has left
+   * the board (say, while `result` was being fetched).
+   */
+  function meld(card: BoardCard, result: ScryfallCard) {
+    if (!card.stack || !stacks.value.includes(card.stack)) return null;
+    const partner = meldPartner(card);
+    if (!partner) return null;
+
+    // First, so a half attached to the other has a stack of its own.
+    removeCardFromStack(partner);
+    const melded = createBoardCard(result);
+    replaceInStack(card, melded);
+    partner.stack = undefined;
+    melded.meldedFrom = [card, partner];
+
+    log.record('melded', { card: melded, source: card, target: partner });
+    return melded;
+  }
+
+  /**
+   * Splits a card melded on the board back into its halves (#143): the first
+   * takes its place, the second a stack of its own beside it. Each comes back
+   * as it was when melded. Returns the halves, or null for a card that wasn't
+   * melded here.
+   */
+  function unmeld(card: BoardCard) {
+    const halves = card.meldedFrom;
+    const stack = card.stack;
+    if (!halves || !stack) return null;
+    const [first, second] = halves;
+
+    replaceInStack(card, first);
+    card.meldedFrom = undefined;
+    addStackByCard(second, {
+      x: stack.position.x + stackSize(stack).width,
+      y: stack.position.y,
+    });
+
+    log.record('unmelded', { card, source: first, target: second });
+    return halves;
   }
 
   function removeStack(stack: BoardCardStack) {
@@ -377,6 +644,24 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     return newStacks;
   }
 
+  /** Whether any card on the board is tapped, for Untap all (#235). */
+  const anyTapped = computed(() => {
+    for (const card of allCards()) if (card.tapped) return true;
+    return false;
+  });
+
+  /**
+   * How many cards Untap all would untap: primaries and attachments. Its
+   * toast is for several (#237).
+   */
+  function untapAllCount() {
+    let n = 0;
+    for (const stack of stacks.value)
+      for (const card of [stack.primary, ...stack.attachments])
+        if (card.tapped) n++;
+    return n;
+  }
+
   function untapAll() {
     for (let i = 0; i < stacks.value.length; i++) {
       const stack = stacks.value[i];
@@ -401,6 +686,37 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     card.tapped = !card.tapped;
   }
 
+  /** Taps every card if any is untapped, else untaps them all (#221). */
+  function tapOrUntap(cards: readonly BoardCard[]) {
+    const tap = cards.some((c) => !c.tapped);
+    for (const card of cards) card.tapped = tap;
+  }
+
+  /**
+   * The Room just cast, waiting for the player to say which door opens
+   * (#145). The board shows the choice while it's set.
+   */
+  const doorChoice = shallowRef<BoardCard | null>(null);
+
+  /** Locks or unlocks one of a Room's doors (0 is the first, on the left). */
+  function setDoorLocked(card: BoardCard, door: number, locked: boolean) {
+    if (!card.lockedDoors) return;
+    const others = card.lockedDoors.filter((d) => d !== door);
+    card.lockedDoors = locked ? [...others, door].sort() : others;
+  }
+
+  /**
+   * Settles the door choice for the Room being cast: `unlocked` opens, the
+   * rest stay locked. Without a choice, both stay locked.
+   */
+  function chooseDoors(unlocked: number[] = []) {
+    const card = doorChoice.value;
+    doorChoice.value = null;
+    if (!card?.lockedDoors) return;
+    for (const door of [0, 1])
+      setDoorLocked(card, door, !unlocked.includes(door));
+  }
+
   /** Flips a card over, between its front and its back. */
   function toggleFlipped(card: BoardCard) {
     card.flipped = !card.flipped;
@@ -414,7 +730,29 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     card.shownAs = showsImage(card, imagesEnabled) ? 'text' : 'art';
   }
 
-  /** Turns a card 180� and back (Kamigawa flip cards). */
+  /** Flips every card over if any is face up, else flips them all back. */
+  function flipAll(cards: readonly BoardCard[]) {
+    const flip = cards.some((c) => !c.flipped);
+    for (const card of cards) card.flipped = flip;
+  }
+
+  /**
+   * Pins each card to text if any shows art, else to art (#222): the
+   * selection's own art-or-text, as one choice.
+   */
+  function showAllAs(cards: readonly BoardCard[], imagesEnabled: boolean) {
+    const shownAs = cards.some((c) => showsImage(c, imagesEnabled))
+      ? 'text'
+      : 'art';
+    for (const card of cards) card.shownAs = shownAs;
+  }
+
+  /** Lets every card on the board follow the art-or-text setting again. */
+  function clearShownAs() {
+    for (const card of allCards()) card.shownAs = undefined;
+  }
+
+  /** Turns a card 180° and back (Kamigawa flip cards). */
   function toggleTurned(card: BoardCard) {
     card.turned = !card.turned;
   }
@@ -430,32 +768,78 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
    * tapping: later events snapshot the new art, and past ones keep the old.
    */
   function swapPrinting(card: BoardCard, printing: ScryfallCard) {
-    const data = cardData(printing);
-    card.scryfallInfo = data;
-    card.name = data.name;
-    card.mana_cost = data.mana_cost;
-    card.image_uri = pickImageUri(data) ?? card.image_uri;
-    card.scryfall_uri = data.scryfall_uri;
+    // Name, image and link all come from it, so nothing else to update.
+    card.scryfallInfo = cardData(printing);
+  }
+
+  /** Sets how many of a counter or keyword a card has; 0 removes it. */
+  function setModifierCount(card: BoardCard, key: ModifierKey, count: number) {
+    if (count > 0) card.modifiers.set(key, count);
+    else card.modifiers.delete(key);
   }
 
   /** Removes every counter and granted keyword from a card. */
   function clearModifiers(card: BoardCard) {
-    card.modifiers = new Set<BoardCardModifier>();
+    card.modifiers = new Map();
+  }
+
+  /**
+   * Changes each card's count of `key` by `delta` (#221): adds to what's
+   * there rather than setting it, and stops at zero.
+   */
+  function changeModifier(
+    cards: readonly BoardCard[],
+    key: ModifierKey,
+    delta: number,
+  ) {
+    for (const card of cards)
+      setModifierCount(card, key, (card.modifiers.get(key) ?? 0) + delta);
+  }
+
+  function clearModifiersOf(cards: readonly BoardCard[]) {
+    for (const card of cards) clearModifiers(card);
+  }
+
+  /** One more of every counter each card already has (#222). */
+  function proliferate(cards: readonly BoardCard[]) {
+    for (const card of cards)
+      for (const [key, count] of card.modifiers)
+        if (isCounter(key)) card.modifiers.set(key, count + 1);
   }
 
   const cardToAttach = ref<BoardCard | null>(null);
+  /** More cards placed with `cardToAttach`, from the selection (#222). */
+  const moreToAttach = shallowRef<readonly BoardCard[]>([]);
   /** Whether the card being placed goes on as an attachment or under. */
   const attachMode = ref<AttachMode>('attach');
 
   /** Starts placing `card` on a stack: attached to it, or under it. */
   function startAttaching(card: BoardCard, mode: AttachMode = 'attach') {
     cardToAttach.value = card;
+    moreToAttach.value = [];
     attachMode.value = mode;
+  }
+
+  /** Starts placing several cards on one stack at once (#222). */
+  function startAttachingAll(
+    cards: readonly BoardCard[],
+    mode: AttachMode = 'attach',
+  ) {
+    const [first, ...rest] = cards;
+    if (!first) return;
+    startAttaching(first, mode);
+    moreToAttach.value = rest;
   }
 
   function cancelAttaching() {
     cardToAttach.value = null;
+    moreToAttach.value = [];
   }
+
+  /** Every card being placed. */
+  const cardsToAttach = computed(() =>
+    cardToAttach.value ? [cardToAttach.value, ...moreToAttach.value] : [],
+  );
 
   /** The set the card being placed would join on `stack`. */
   function targetSet(stack: BoardCardStack) {
@@ -477,16 +861,27 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
         }.`,
       );
 
-    removeCardFromStack(sourceCard);
-
-    targetSet(stack).add(sourceCard);
-    sourceCard.stack = stack;
-
-    if (attachMode.value === 'under')
-      log.record('putUnder', { card: sourceCard, target: stack.primary });
-    else log.record('attached', { card: sourceCard, target: stack.primary });
+    // More cards from the selection skip any that can't go on this stack.
+    const more = moreToAttach.value.filter(
+      (c) => c !== stack.primary && !targetSet(stack).has(c),
+    );
+    log.group(() => {
+      for (const card of [sourceCard, ...more]) placeOn(card, stack);
+    });
 
     cardToAttach.value = null;
+    moreToAttach.value = [];
+  }
+
+  function placeOn(card: BoardCard, stack: BoardCardStack) {
+    removeCardFromStack(card);
+
+    targetSet(stack).add(card);
+    card.stack = stack;
+
+    if (attachMode.value === 'under')
+      log.record('putUnder', { card, target: stack.primary });
+    else log.record('attached', { card, target: stack.primary });
   }
 
   /**
@@ -514,6 +909,8 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
   const isAttaching = computed(() => !!cardToAttach.value);
   /** The ID of the card being attached or put under, if any. */
   const cardToAttachId = computed(() => cardToAttach.value?.id ?? null);
+  /** The IDs of every card being placed, for the move animation. */
+  const cardsToAttachIds = computed(() => cardsToAttach.value.map((c) => c.id));
 
   function isValidAttachmentTarget(targetCard: BoardCard) {
     if (!isAttaching.value) return false;
@@ -521,7 +918,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     const stack = targetCard.stack;
     if (!stack || stack.primary !== targetCard) return false;
 
-    if (cardToAttach.value === targetCard) return false;
+    if (cardsToAttach.value.includes(targetCard)) return false;
 
     // Moving between attachments and unders of the same stack is fine.
     if (targetSet(stack).has(cardToAttach.value!)) return false;
@@ -553,6 +950,97 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     bringToFront(stack);
   }
 
+  // ─── Undo (#215) ──────────────────────────────────────────────────────────
+  // Structural actions only: cards arriving, leaving or changing stacks. Each
+  // public action that does one is wrapped in `step`, so one user action,
+  // bulk ones included, is one step. In memory only: a reload forgets them.
+
+  // Replaced, never changed in place; read for canUndo and canRedo.
+  const undoSteps = shallowRef<UndoStep[]>([]);
+  const redoSteps = shallowRef<UndoStep[]>([]);
+  const canUndo = computed(() => undoSteps.value.length > 0);
+  const canRedo = computed(() => redoSteps.value.length > 0);
+
+  /** Whether a step is running, so actions it calls aren't steps of their own. */
+  let stepping = false;
+
+  /**
+   * Runs `action` as one undoable step: remembers the layout before it and
+   * the log entries it records. An action that changed no stack (a meld whose
+   * other half had left, say) leaves no step.
+   */
+  function step<R>(action: () => R): R {
+    if (stepping) return action();
+    const before = captureLayout(stacks.value, zOrder.value);
+    stepping = true;
+    let outcome: { result: R; entries: EventEntry[] };
+    try {
+      outcome = log.capture(action);
+    } finally {
+      stepping = false;
+    }
+    if (!sameLayout(before, captureLayout(stacks.value, zOrder.value))) {
+      undoSteps.value = [
+        ...undoSteps.value.slice(1 - UNDO_LIMIT),
+        { layout: before, entries: outcome.entries },
+      ];
+      redoSteps.value = [];
+    }
+    return outcome.result;
+  }
+
+  /** Wraps a board action so each call is one undoable step. */
+  function undoable<A extends unknown[], R>(action: (...args: A) => R) {
+    return (...args: A) => step(() => action(...args));
+  }
+
+  function applyLayout(layout: BoardLayout) {
+    const restored = restoreLayout(
+      layout,
+      stacks.value,
+      zOrder.value,
+      (value) => reactive(value) as typeof value,
+    );
+    stacks.value = restored.stacks;
+    zOrder.value = restored.zOrder;
+    // Placing cards or choosing a Room's doors can't go on across the jump.
+    cancelAttaching();
+    const room = doorChoice.value && toRaw(doorChoice.value);
+    if (room && ![...allCards()].some((c) => toRaw(c) === room))
+      doorChoice.value = null;
+  }
+
+  /** Swaps the board for the newest layout in `from`, keeping today's in `to`. */
+  function travel(from: typeof undoSteps, to: typeof undoSteps) {
+    const last = from.value.at(-1);
+    if (!last) return null;
+    const now = captureLayout(stacks.value, zOrder.value);
+    applyLayout(last.layout);
+    from.value = from.value.slice(0, -1);
+    to.value = [...to.value, { layout: now, entries: last.entries }];
+    return last;
+  }
+
+  /** Takes back the last structural action and its log entries. */
+  function undo(): boolean {
+    const last = travel(undoSteps, redoSteps);
+    if (last) log.drop(last.entries);
+    return !!last;
+  }
+
+  /** Does the last undone action again, logging it again. */
+  function redo(): boolean {
+    const last = travel(redoSteps, undoSteps);
+    if (last) log.restore(last.entries);
+    return !!last;
+  }
+
+  /** Forgets every step, for a new game: undo stays within a game. */
+  function clearHistory() {
+    undoSteps.value = [];
+    redoSteps.value = [];
+  }
+
   function clearStacks() {
     stacks.value = [];
     zOrder.value = [];
@@ -561,6 +1049,7 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
   function reset() {
     clearStacks();
     cancelAttaching();
+    doorChoice.value = null;
 
     const fresh = createDefaults();
     snapScale.value = fresh.snapScale;
@@ -569,38 +1058,47 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
 
   function save() {
     const { save: persist } = useLocalStorage();
-    persist(STORAGE_KEY, {
-      stacks: stacks.value,
-      zOrder: zOrder.value,
-      center: center.value,
-      snapScale: snapScale.value,
-    });
+    persist(
+      STORAGE_KEY,
+      {
+        stacks: stacks.value,
+        zOrder: zOrder.value,
+        center: center.value,
+        snapScale: snapScale.value,
+      },
+      SAVE_VERSION,
+    );
   }
 
   function load(): boolean {
     const { load: retrieve } = useLocalStorage();
-    const data = retrieve<Battlefield>(STORAGE_KEY);
+    const data = retrieve<Partial<Record<keyof Battlefield, unknown>>>(
+      STORAGE_KEY,
+      SAVE_VERSION,
+    );
 
     if (!data) {
       return false;
     }
 
-    if (Array.isArray(data?.stacks)) {
-      for (const stack of data.stacks)
-        for (const card of [
-          stack.primary,
-          ...stack.attachments,
-          ...stack.unders,
-        ])
-          card.scryfallInfo = cardData(card.scryfallInfo);
-      stacks.value = data.stacks;
+    if (Array.isArray(data.stacks)) {
+      stacks.value = data.stacks.flatMap((value: unknown) => {
+        const stack = readSavedStack(value);
+        if (!stack)
+          console.warn(
+            'Dropping a saved stack this version can’t read.',
+            value,
+          );
+        return stack ? [stack] : [];
+      });
     }
 
-    if (Array.isArray(data?.zOrder)) zOrder.value = data.zOrder;
+    if (Array.isArray(data.zOrder))
+      zOrder.value = data.zOrder.filter((id) => typeof id === 'string');
 
     reconcileZOrder();
 
-    if (typeof data?.center === 'object') center.value = data.center;
+    if (isPosition(data.center)) center.value = data.center;
 
     if (typeof data.snapScale === 'number') snapScale.value = data.snapScale;
 
@@ -619,25 +1117,43 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     load,
     reset,
 
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    clearHistory,
+
     snapScale,
-    setSnapScale,
+    arrangeStacks,
+    arrangeInLine,
+    bringAllToFront,
+    toggleSnapping,
 
     untapAll,
+    anyTapped,
+    untapAllCount,
     toggleTapped,
+    tapOrUntap,
     toggleFlipped,
+    flipAll,
+    showAllAs,
+    clearShownAs,
     toggleShownAs,
     toggleTurned,
     setFaceNumber,
+    setModifierCount,
     clearModifiers,
+    changeModifier,
+    clearModifiersOf,
+    proliferate,
 
     stacks,
     bringToFront,
     setStackPosition,
     orderedStacks,
     stackZIndex,
-    setStacks,
-    addStackByCard,
-    castCard,
+    castCard: undoable(castCard),
+    createToken: undoable(createToken),
     setView,
     setTransform,
     boardPointFromScreen,
@@ -646,29 +1162,36 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
     setStackSize,
     forgetStackSize,
     stackSize,
-    removeCard,
-    clearBoard,
-    copyCard,
+    removeCard: undoable(removeCard),
+    removeCards: undoable(removeCards),
+    clearBoard: undoable(clearBoard),
+    copyCard: undoable(copyCard),
+    copyCards: undoable(copyCards),
     swapPrinting,
-    clearStacks,
-    removeStack,
-    removeCardFromStack,
-    explodeStack,
-    cardIsInStack,
-    getStackByCard,
+    meldPartner,
+    meld: undoable(meld),
+    unmeld: undoable(unmeld),
+    explodeStack: undoable(explodeStack),
+    explodeAll: undoable(explodeAll),
 
     center,
     setCenter,
 
+    doorChoice,
+    chooseDoors,
+    setDoorLocked,
+
     startAttaching,
+    startAttachingAll,
     cancelAttaching,
-    finishAttaching,
+    finishAttaching: undoable(finishAttaching),
     isAttaching,
     cardToAttachId,
+    cardsToAttachIds,
     attachMode,
     isValidAttachmentTarget,
     canOfferDragMenu,
-    dropCardOn,
-    detach,
+    dropCardOn: undoable(dropCardOn),
+    detach: undoable(detach),
   };
 });

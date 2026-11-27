@@ -43,9 +43,18 @@ export function flushSaves(): void {
   }
 }
 
+/**
+ * Every store saves an object stamped with its own `version` (#154). A
+ * store bumps its version when its saved shape changes; `load` then ignores
+ * older saves, or a store migrates them before calling it.
+ */
 export function useLocalStorage() {
-  /** Saves `value` under `key` once no newer save for that key arrives for 200 ms. */
-  function save(key: string, value: unknown): void {
+  /**
+   * Saves `value` under `key` once no newer save for that key arrives for
+   * 200 ms. With a `version`, `value` is an object and is saved stamped with it.
+   */
+  function save(key: string, value: unknown, version?: number): void {
+    if (version !== undefined) value = { ...(value as object), version };
     clearTimeout(pending.get(key)?.timer);
     const timer = setTimeout(() => {
       pending.delete(key);
@@ -54,15 +63,33 @@ export function useLocalStorage() {
     pending.set(key, { value, timer });
   }
 
-  function load<T>(key: string): T | null {
+  /**
+   * The value saved under `key`, or null if there's none or it can't be read.
+   * With a `version`, also null (and logged) unless it was saved with it.
+   */
+  function load<T>(key: string, version?: number): T | null {
+    let data: unknown;
     try {
       const raw = localStorage.getItem(key);
       if (raw === null) return null;
-      return parse(raw) as T;
+      data = parse(raw);
     } catch (ex) {
       console.error(`Could not load saved data for "${key}".`, ex);
       return null;
     }
+    if (version !== undefined) {
+      const saved =
+        data && typeof data === 'object'
+          ? (data as { version?: unknown }).version
+          : undefined;
+      if (saved !== version) {
+        console.warn(
+          `Ignoring saved data for "${key}": version ${String(saved)}, expected ${version}.`,
+        );
+        return null;
+      }
+    }
+    return data as T;
   }
 
   function remove(key: string): void {

@@ -320,6 +320,9 @@
 .ms-ability-indestructible::before {
   content: "\e95a";
 }
+.ms-ability-learn::before {
+  content: "\e994";
+}
 .ms-ability-lifelink::before {
   content: "\ea4b";
 }

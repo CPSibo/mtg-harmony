@@ -1,0 +1,26 @@
+# Groups GitHub's generated release notes by the PR's labels (#168).
+# Releases are the changelog: there is no CHANGELOG.md.
+changelog:
+  exclude:
+    labels:
+      - duplicate
+      - invalid
+      - wontfix
+  categories:
+    - title: New features
+      labels:
+        - enhancement
+    - title: Fixes
+      labels:
+        - bug
+    - title: Docs
+      labels:
+        - documentation
+    - title: Maintenance
+      labels:
+        - chore
+        - refactor
+        - test
+    - title: Other changes
+      labels:
+        - '*'

@@ -10,7 +10,7 @@
       class="card-image-wrapper cursor-pointer rounded-lg"
       :class="
         settings.cardOutlineEnabled
-          ? 'border-slate-600 hover:border-primary-800'
+          ? 'border-slate-500 hover:border-primary-800'
           : 'border-transparent'
       "
     >
@@ -18,19 +18,47 @@
         ref="cardImageSection"
         class="card-image"
         role="img"
-        :aria-label="card.name"
+        :aria-label="card.scryfallInfo.name"
+        tabindex="0"
+        :aria-description="lockedDescription"
         :style="
           showImage ? { backgroundImage: `url('${imageUri}')` } : undefined
         "
         title="Double tap to open"
         @click="tryAttach"
         @touchend="tryAttach"
+        @keydown.enter.self.prevent="onKey"
+        @keydown.space.self.prevent="onKey"
       >
         <SharedCardText
           v-if="!showImage"
           :card="card.scryfallInfo"
           class="size-full"
         />
+
+        <!-- A Room's locked doors, dimmed under a padlock (#145). In the
+             image's own frame, before it turns to read: the first door is
+             its bottom half. -->
+        <!-- The padlock drops in on locking and shakes loose on unlocking
+             (#204). -->
+        <TransitionGroup
+          v-if="showImage && !card.flipped"
+          name="door-lock"
+          :css="flourish"
+        >
+          <div
+            v-for="door in card.lockedDoors"
+            :key="door"
+            class="door-lock"
+            :class="door === 0 ? 'bottom-0' : 'top-0'"
+            aria-hidden="true"
+          >
+            <UIcon
+              name="i-lucide-lock"
+              class="door-lock-icon"
+            />
+          </div>
+        </TransitionGroup>
 
         <div
           v-if="!!card.faceNumber"
@@ -40,7 +68,11 @@
         </div>
 
         <div
-          v-if="battlefield.isAttaching && isHovered && isValidAttachmentTarget"
+          v-if="
+            battlefield.isAttaching &&
+            (isHovered || isFocused) &&
+            isValidAttachmentTarget
+          "
           class="attach-overlay text-5xl"
         >
           <UIcon
@@ -55,23 +87,49 @@
       </div>
     </div>
 
-    <div class="modifiers grid grid-flow-col gap-1 place-items-start">
-      <div
-        v-for="modifier in card.modifiers"
-        :key="modifier.modifier.name"
+    <!-- Badges pop in and out, and a count bumps when it changes (#204). -->
+    <TransitionGroup
+      tag="div"
+      name="badge"
+      :css="flourish"
+      class="modifiers grid grid-flow-col gap-1 place-items-start"
+    >
+      <!-- As text, there are no halves to dim: name the locked doors. -->
+      <template v-if="!showImage">
+        <span
+          v-for="name in lockedNames"
+          :key="`lock ${name}`"
+          class="modifier-icon gap-1 flex items-center bg-gray-950/90 px-1 py-0.5 rounded-sm"
+          :title="`${name} is locked`"
+        >
+          <UIcon name="i-lucide-lock" />
+          {{ name }}
+        </span>
+      </template>
+      <button
+        v-for="{ modifier, count } in modifiers"
+        :key="modifier.key"
+        type="button"
         class="modifier-icon gap-1 flex items-center bg-gray-950/90 px-1 py-0.5 rounded-sm cursor-pointer"
-        :title="modifier.modifier.name"
+        :title="modifier.name"
+        :aria-label="modifierLabel(modifier, count)"
         @click.stop="emits('showCardModifiers', card)"
       >
-        <span :class="['ms', modifier.modifier.symbol]" />
-        <span
-          v-if="modifier.count > 1"
-          class="modifier-icon-count whitespace-nowrap"
+        <span :class="['ms', modifier.symbol]" />
+        <Transition
+          name="count-bump"
+          :css="flourish"
         >
-          x{{ modifier.count }}
-        </span>
-      </div>
-    </div>
+          <span
+            v-if="count > 1"
+            :key="count"
+            class="modifier-icon-count whitespace-nowrap"
+          >
+            x{{ count }}
+          </span>
+        </Transition>
+      </button>
+    </TransitionGroup>
   </div>
 </template>
 
@@ -79,22 +137,43 @@
 import { useMoveAnimation } from '~/features/castAnimation';
 // Nuxt UI's plain-Vue Icon; components/Icon.vue is the Nuxt-only variant.
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
-import { useElementHover } from '@vueuse/core';
+import { useElementHover, useFocus } from '@vueuse/core';
 import { useDoubleTap } from '~/composables/useDoubleTap';
 import SharedCardText from '~/components/shared/CardText.vue';
 import { useSettingsStore } from '~/stores/settings';
-import { computed, useTemplateRef } from 'vue';
+import { computed, inject, toRaw, useTemplateRef } from 'vue';
+import { BADGES_HELD } from '~/components/playArea/badgesHeld';
 import { useBattlefieldStore } from '~/features/battlefield';
 import {
+  doorNames,
   isLandscape,
   shownImageUri,
   showsImage,
 } from '~/features/battlefield/cardFaces';
-import type { BoardCard } from '~/types/PlayArea';
+import { modifierByKey } from '~/types/MtgConcepts';
+import type { BoardCard, Modifier } from '~/types/PlayArea';
 
 const props = defineProps<{
   card: BoardCard;
 }>();
+
+const badgesHeld = inject(BADGES_HELD, null);
+
+/**
+ * The card's modifiers in the order they were added. While its Modifiers
+ * window is open they stay as they were, and catch up once it has closed,
+ * so the badges animate in view (#204).
+ */
+const modifiers = computed<{ modifier: Modifier; count: number }[]>(
+  (previous) => {
+    const held = badgesHeld?.value;
+    if (previous && held && toRaw(held) === toRaw(props.card)) return previous;
+    return [...props.card.modifiers].flatMap(([key, count]) => {
+      const modifier = modifierByKey(key);
+      return modifier ? [{ modifier, count }] : [];
+    });
+  },
+);
 
 const emits = defineEmits<{
   showCardDetails: [BoardCard];
@@ -105,12 +184,24 @@ const stack = computed(() => props.card.stack);
 
 const battlefield = useBattlefieldStore();
 const settings = useSettingsStore();
+
+/** Whether badges and padlocks animate as they change (#204). */
+const flourish = computed(() => settings.attachFlareEnabled);
 const animateMove = useMoveAnimation();
 
 const showImage = computed(() =>
   showsImage(props.card, settings.imagesEnabled),
 );
 const imageUri = computed(() => shownImageUri(props.card));
+const lockedNames = computed(() => {
+  const names = doorNames(props.card);
+  return (props.card.lockedDoors ?? []).map((door) => names[door]!);
+});
+const lockedDescription = computed(() =>
+  lockedNames.value.length
+    ? `Locked: ${lockedNames.value.join(', ')}`
+    : undefined,
+);
 const landscape = computed(() => isLandscape(props.card));
 // Lies on its long side: a landscape card untapped, or any other card tapped.
 const sideways = computed(() => landscape.value !== props.card.tapped);
@@ -137,15 +228,29 @@ const tryAttach = (ev: Event) => {
   ev.stopPropagation();
   ev.preventDefault();
 
-  const moving = battlefield.cardToAttachId;
-  const play = animateMove(moving ? [moving] : []);
+  const play = animateMove(battlefield.cardsToAttachIds);
   battlefield.finishAttaching(stack.value);
   play(stack.value.primary.id, true);
 };
 
 const cardImageSection = useTemplateRef('cardImageSection');
 const isHovered = useElementHover(cardImageSection);
+const { focused: isFocused } = useFocus(cardImageSection);
 useDoubleTap(cardImageSection, () => emits('showCardDetails', props.card));
+
+/**
+ * Enter or Space on a focused card: picks it as the target while attaching,
+ * otherwise opens its details, as a double tap does (#170).
+ */
+function onKey(ev: KeyboardEvent) {
+  if (battlefield.isAttaching) tryAttach(ev);
+  else emits('showCardDetails', props.card);
+}
+
+/** A counter's name for screen readers, with its count when more than one. */
+function modifierLabel(modifier: Modifier, count: number) {
+  return count > 1 ? `${modifier.name} ×${count}` : modifier.name;
+}
 </script>
 
 <style lang="css" scoped>
@@ -188,6 +293,33 @@ useDoubleTap(cardImageSection, () => emits('showCardDetails', props.card));
       background-clip: padding-box;
       background-position: center center;
       background-size: var(--scaled-short) var(--scaled-long);
+
+      &:focus-visible {
+        outline: 3px solid var(--ui-primary);
+        outline-offset: 2px;
+      }
+
+      .door-lock {
+        position: absolute;
+        left: 0;
+        width: 100%;
+        height: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgb(0 0 0 / 55%);
+        pointer-events: none;
+      }
+
+      .door-lock-icon {
+        width: 30%;
+        height: auto;
+        aspect-ratio: 1;
+        color: white;
+        filter: drop-shadow(0 0 0.15em black);
+        /* Upright however the card has turned. */
+        rotate: calc(var(--rotate, 0deg) * -1);
+      }
     }
   }
 
@@ -236,6 +368,119 @@ useDoubleTap(cardImageSection, () => emits('showCardDetails', props.card));
   left: 12%;
   padding-bottom: 60%;
   grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+/* Card change effects (#204). Vue times each from the animated element's
+   own animation, so the padlock icon's matches its dimmed half's. */
+.door-lock-enter-active {
+  animation: door-dim 420ms ease-out;
+
+  .door-lock-icon {
+    animation: lock-drop 420ms cubic-bezier(0.3, 0, 0.4, 1);
+  }
+}
+
+.door-lock-leave-active {
+  animation: door-dim 380ms ease-in reverse forwards;
+
+  .door-lock-icon {
+    animation: lock-shake 380ms ease-in forwards;
+  }
+}
+
+@keyframes door-dim {
+  from {
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+@keyframes lock-drop {
+  from {
+    translate: 0 -70%;
+    scale: 1.4;
+    opacity: 0;
+  }
+  55% {
+    translate: 0 8%;
+    scale: 0.92;
+    opacity: 1;
+  }
+  75% {
+    translate: 0 -3%;
+    scale: 1.04;
+  }
+  to {
+    translate: 0 0;
+    scale: 1;
+  }
+}
+
+@keyframes lock-shake {
+  15% {
+    translate: -10% 0;
+  }
+  30% {
+    translate: 10% 0;
+  }
+  45% {
+    translate: -6% 0;
+    opacity: 1;
+  }
+  to {
+    translate: 0 -45%;
+    scale: 1.2;
+    opacity: 0;
+  }
+}
+
+.badge-enter-active {
+  animation: badge-pop 300ms cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+.badge-leave-active {
+  animation: badge-pop 200ms ease-in reverse forwards;
+}
+
+@keyframes badge-pop {
+  from {
+    scale: 0;
+    opacity: 0;
+  }
+  to {
+    scale: 1;
+    opacity: 1;
+  }
+}
+
+/* The old count goes at once; the new one bumps in. */
+.count-bump-leave-active {
+  display: none;
+}
+
+.count-bump-enter-active {
+  animation: count-bump 320ms ease-out;
+}
+
+@keyframes count-bump {
+  from {
+    scale: 1.7;
+    color: var(--ui-primary);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .door-lock-enter-active,
+  .door-lock-leave-active,
+  .door-lock-enter-active .door-lock-icon,
+  .door-lock-leave-active .door-lock-icon,
+  .badge-enter-active,
+  .badge-leave-active,
+  .count-bump-enter-active {
+    animation: none;
+  }
 }
 
 .modifier-icon > .ms {

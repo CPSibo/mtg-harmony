@@ -83,6 +83,12 @@ const items = computed<DropdownMenuItem[][]>(() => [
   ],
   [
     {
+      label: 'About',
+      icon: 'i-lucide-info',
+      color: 'neutral',
+      onSelect: () => emit('openAboutRequested'),
+    },
+    {
       label: 'Feedback',
       icon: 'i-lucide-bug',
       color: 'neutral',
@@ -95,6 +101,7 @@ const items = computed<DropdownMenuItem[][]>(() => [
 
 const emit = defineEmits<{
   openSettingsRequested: [];
+  openAboutRequested: [];
   clearBoardRequested: [];
   newGameRequested: [];
   resetAllRequested: [];

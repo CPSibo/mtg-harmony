@@ -10,6 +10,7 @@
     }"
     class="min-w-[60svw]"
     scrollable
+    @after:leave="emit('after:leave')"
   >
     <template #title>
       <div
@@ -35,10 +36,10 @@
     <template #body>
       <div
         v-for="modifier in MODIFIERS"
-        :key="modifier.name"
+        :key="modifier.key"
         :class="[
           'modifier-card flex flex-col items-center gap-1 rounded-md border p-4 text-center transition-colors',
-          getModCount(modifier.name) > 0
+          getModCount(modifier.key) > 0
             ? 'border-primary-500 bg-primary-50 dark:border-primary-400 dark:bg-primary-900/20'
             : 'border-neutral-200 dark:border-neutral-700',
         ]"
@@ -54,31 +55,12 @@
 
         <UInputNumber
           color="secondary"
-          :value="getModCount(modifier.name)"
+          :value="getModCount(modifier.key)"
           :min="0"
           @update:model-value="
-            (value) => {
-              if (!card) return;
-
-              const newValue = value ?? 0;
-
-              let mod = findMod(modifier.name);
-
-              if (!mod) {
-                mod = {
-                  modifier,
-                  count: 0,
-                };
-
-                card.modifiers.add(mod);
-              }
-
-              if (newValue === 0) {
-                card.modifiers.delete(mod);
-              } else {
-                mod.count = newValue;
-              }
-            }
+            (value) =>
+              card &&
+              battlefield.setModifierCount(card, modifier.key, value ?? 0)
           "
         />
       </div>
@@ -117,10 +99,13 @@ import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
 import UInputNumber from '@nuxt/ui/components/InputNumber.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
 import { useBattlefieldStore } from '~/features/battlefield';
-import { MODIFIERS } from '~/types/MtgConcepts';
+import { MODIFIERS, type ModifierKey } from '~/types/MtgConcepts';
 import type { BoardCard } from '~/types/PlayArea';
 
 const open = defineModel<boolean>('open', { default: false });
+
+/** Once the window has finished closing. */
+const emit = defineEmits<{ 'after:leave': [] }>();
 
 const props = defineProps<{
   card: BoardCard | undefined;
@@ -128,18 +113,8 @@ const props = defineProps<{
 
 const battlefield = useBattlefieldStore();
 
-function findMod(name: string) {
-  if (!props.card) return undefined;
-
-  for (const mod of props.card.modifiers) {
-    if (mod.modifier.name === name) return mod;
-  }
-
-  return undefined;
-}
-
-function getModCount(name: string) {
-  return findMod(name)?.count ?? 0;
+function getModCount(key: ModifierKey) {
+  return props.card?.modifiers.get(key) ?? 0;
 }
 
 const removeAllCounters = () => {

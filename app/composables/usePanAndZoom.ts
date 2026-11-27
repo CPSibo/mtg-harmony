@@ -2,6 +2,9 @@ import { useWindowSize } from '@vueuse/core';
 import { computed, ref, toValue, watch } from 'vue';
 import type { MaybeRefOrGetter } from 'vue';
 import type { ElementSize, Position } from '@vueuse/core';
+
+/** A board-pixel rectangle. */
+interface Rect extends Position, ElementSize {}
 import { createFollower } from './pointerSmoothing';
 
 export interface PanAndZoomSettings {
@@ -22,11 +25,9 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
 
   const { width: windowWidth, height: windowHeight } = useWindowSize();
 
-  const scale = ref(1.5);
-  const position = ref<Position>({
-    x: (-size.width / 2) * scale.value + windowWidth.value / 2,
-    y: (-size.height / 2) * scale.value + windowHeight.value / 2,
-  });
+  const DEFAULT_SCALE = 1.5;
+  const scale = ref(DEFAULT_SCALE);
+  const position = ref<Position>(centredOn(size.width / 2, size.height / 2));
   // Read when a gesture ends, not reacted to, so a function (#105).
   const center = (): Position => ({
     x: -position.value.x / scale.value + windowWidth.value / 4,
@@ -164,9 +165,73 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     );
   }
 
+  /** The position that puts board point (x, y) mid-screen at this scale. */
+  function centredOn(x: number, y: number): Position {
+    return {
+      x: windowWidth.value / 2 - x * scale.value,
+      y: windowHeight.value / 2 - y * scale.value,
+    };
+  }
+
+  /** Jumps to a view, as one finished move (#218). */
+  function jumpTo(nextScale: number, x: number, y: number) {
+    panFollower.finish();
+    scale.value = clampScale(nextScale);
+    const p = centredOn(x, y);
+    position.value = clampPosition(p.x, p.y);
+    panFollower.jump(position.value);
+    if (settings.onEnd) settings.onEnd(position.value);
+  }
+
+  /**
+   * Shows all of a board rect, centred, with a margin. Zooms out as far as
+   * it needs but never in past the default scale, so one card isn't huge.
+   */
+  function fitRect(rect: Rect, margin = 48) {
+    const fit = Math.min(
+      (windowWidth.value - margin * 2) / rect.width,
+      (windowHeight.value - margin * 2) / rect.height,
+    );
+    jumpTo(
+      Math.min(fit, DEFAULT_SCALE),
+      rect.x + rect.width / 2,
+      rect.y + rect.height / 2,
+    );
+  }
+
+  /** Back to the starting view: the middle of the board, default scale. */
+  function resetView() {
+    jumpTo(DEFAULT_SCALE, size.width / 2, size.height / 2);
+  }
+
+  /** Pans by an offset in screen pixels, as one finished move. */
+  function panBy(dx: number, dy: number) {
+    panFollower.finish();
+    position.value = clampPosition(
+      position.value.x + dx,
+      position.value.y + dy,
+    );
+    if (settings.onEnd) settings.onEnd(position.value);
+  }
+
   function endPan() {
     panFollower.finish();
     isDragging.value = false;
+  }
+
+  /**
+   * Puts board point (x, y) mid-screen, zoomed in to at least `minScale`, as
+   * one finished move (#219).
+   */
+  function centreOn(x: number, y: number, minScale = 1) {
+    panFollower.finish();
+    scale.value = clampScale(Math.max(scale.value, minScale));
+    position.value = clampPosition(
+      windowWidth.value / 2 - x * scale.value,
+      windowHeight.value / 2 - y * scale.value,
+    );
+    panFollower.jump(position.value);
+    if (settings.onEnd) settings.onEnd(position.value);
   }
 
   function onMouseUp(_e: MouseEvent) {
@@ -307,6 +372,10 @@ export function usePanAndZoom(settings: PanAndZoomSettings) {
     scale,
     style,
     isDragging,
+    panBy,
+    centreOn,
+    fitRect,
+    resetView,
     onWheel,
     onMouseDown,
     onMouseMove,

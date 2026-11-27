@@ -37,7 +37,7 @@ const dfc = (frontType: string, backType: string) =>
 describe('shownImageUri', () => {
   it('shows the front image face up', () => {
     const c = makeCard();
-    expect(shownImageUri(c)).toBe(c.image_uri);
+    expect(shownImageUri(c)).toBe(c.scryfallInfo.image_uris!.border_crop);
   });
 
   it('shows the standard card back when a single-faced card is flipped over', () => {

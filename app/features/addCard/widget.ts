@@ -8,6 +8,8 @@ export function createAddCardWidget(
     id: 'addCard',
     label: 'Add Card',
     icon: 'i-lucide-plus',
+    order: 10,
+    hideWithSelection: true,
 
     commands: [
       {
@@ -15,7 +17,9 @@ export function createAddCardWidget(
         label: 'Add card to battlefield',
         icon: 'i-lucide-plus',
         kbds: 'b-a',
-        execute: store.openAddCardWindow,
+        execute: () => store.openAddCardWindow(),
+        // From the board menu: the card found goes where it opened (#244).
+        executeAt: (at) => store.openAddCardWindow(at),
       },
     ],
   };

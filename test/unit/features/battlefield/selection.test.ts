@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import { nextTick } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield/store';
 import { useSelectionStore } from '~/features/battlefield/selection';
 import { makeCard } from '../../fixtures/cards';
+import { putOnBoard } from '../../fixtures/board';
 
 function boardWithStacks(...positions: { x: number; y: number }[]) {
   const battlefield = useBattlefieldStore();
   for (const position of positions)
-    battlefield.addStackByCard(makeCard(), position);
+    putOnBoard(battlefield, makeCard(), position);
   const stacks = battlefield.stacks;
   stacks.forEach((s) =>
     battlefield.setStackSize(s.id, { width: 100, height: 140 }),
@@ -62,8 +64,24 @@ describe('useSelectionStore (#138)', () => {
     const { battlefield, stacks } = boardWithStacks({ x: 0, y: 0 });
     const selection = useSelectionStore();
     selection.toggle(stacks[0]!.id);
-    battlefield.removeStack(stacks[0]!);
+    battlefield.removeCard(stacks[0]!.primary);
     expect(selection.size).toBe(0);
+  });
+
+  it('leaves selection mode once the board is empty (#237)', async () => {
+    const { battlefield, stacks } = boardWithStacks(
+      { x: 0, y: 0 },
+      { x: 500, y: 0 },
+    );
+    const selection = useSelectionStore();
+    selection.setMode(true);
+    battlefield.removeCard(stacks[0]!.primary);
+    await nextTick();
+    expect(selection.mode).toBe(true);
+
+    battlefield.removeCard(battlefield.stacks[0]!.primary);
+    await nextTick();
+    expect(selection.mode).toBe(false);
   });
 
   it("moves the other selected stacks by the leader's offset", () => {
@@ -104,5 +122,27 @@ describe('useSelectionStore (#138)', () => {
     expect(selection.startGroupDrag(stacks[0]!.id)).toBe(false);
     selection.toggle(stacks[0]!.id);
     expect(selection.startGroupDrag(stacks[0]!.id)).toBe(false);
+  });
+});
+
+describe('useSelectionStore targets (#216)', () => {
+  it('selects one stack, replacing the selection', () => {
+    const { stacks } = boardWithStacks({ x: 0, y: 0 }, { x: 500, y: 0 });
+    const selection = useSelectionStore();
+    selection.toggle(stacks[0]!.id);
+    selection.selectOnly(stacks[1]!.id);
+    expect(selection.ids()).toEqual([stacks[1]!.id]);
+  });
+
+  it('gives the selected stacks themselves, in board order', () => {
+    const { stacks } = boardWithStacks(
+      { x: 0, y: 0 },
+      { x: 500, y: 0 },
+      { x: 1000, y: 0 },
+    );
+    const selection = useSelectionStore();
+    selection.toggle(stacks[2]!.id);
+    selection.toggle(stacks[0]!.id);
+    expect(selection.stacks()).toEqual([stacks[0], stacks[2]]);
   });
 });

@@ -2,12 +2,15 @@
   <div
     class="stack-actions flex-col gap-4 flex"
     :class="{ 'is-touch': isTouch, 'is-menu-open': copyMenuOpen }"
+    @click.capture="selection.setMode(false)"
   >
     <UButton
       :ui="{ base: 'bg-primary/80 text-black' }"
       size="xs"
       variant="solid"
       :disabled="battlefield.isAttaching"
+      :aria-label="stack.primary.tapped ? 'Untap' : 'Tap'"
+      :title="stack.primary.tapped ? 'Untap' : 'Tap'"
       @click="battlefield.toggleTapped(stack.primary)"
     >
       <span
@@ -21,6 +24,8 @@
 
     <UButton
       icon="i-lucide-ellipsis"
+      aria-label="Card details"
+      title="Card details"
       :ui="{ base: 'bg-slate-300/85 text-black' }"
       size="xs"
       variant="solid"
@@ -34,18 +39,18 @@
         {
           label: 'Copy card',
           icon: 'i-lucide-copy',
-          onSelect: () => copyCard(stack.primary, 'card'),
+          onSelect: () => copy('card'),
           color: 'primary',
         },
         {
           label: 'Copy card + counters',
           icon: 'i-lucide-copy-plus',
-          onSelect: () => copyCard(stack.primary, 'counters'),
+          onSelect: () => copy('counters'),
         },
         {
           label: 'Copy everything',
           icon: 'i-lucide-square-stack',
-          onSelect: () => copyCard(stack.primary, 'stack'),
+          onSelect: () => copy('stack'),
         },
       ]"
       :content="{
@@ -57,6 +62,7 @@
       <UButton
         icon="i-lucide-copy"
         aria-label="Copy"
+        title="Copy"
         :ui="{ base: 'bg-slate-300/85 text-black' }"
         size="xs"
         variant="solid"
@@ -67,6 +73,7 @@
     <UButton
       icon="i-lucide-trash"
       aria-label="Remove card"
+      title="Remove card"
       :ui="{ base: 'bg-error/80 text-black' }"
       size="xs"
       variant="solid"
@@ -88,8 +95,13 @@ import PlayAreaRemoveCardModal from '~/components/playArea/RemoveCardModal.vue';
 import { useInputModeStore } from '~/stores/inputMode';
 import { storeToRefs } from 'pinia';
 import { ref } from 'vue';
-import { useBattlefieldStore } from '~/features/battlefield';
+import {
+  useBattlefieldStore,
+  useSelectionStore,
+  type CopyMode,
+} from '~/features/battlefield';
 import { useCopyAnimation } from '~/features/castAnimation';
+import { cardsLabel, useActionToast } from '~/composables/useActionToast';
 import type { BoardCard, BoardCardStack } from '~/types/PlayArea';
 
 const props = defineProps<{
@@ -104,7 +116,23 @@ const inputModeStore = useInputModeStore();
 const { isTouch } = storeToRefs(inputModeStore);
 
 const battlefield = useBattlefieldStore();
+// A stack's own buttons are outside selection mode (#235).
+const selection = useSelectionStore();
 const copyCard = useCopyAnimation();
+
+// The same toasts as the selection's commands (#237). Tapping one card
+// needs none: it turns in front of you.
+const actionToast = useActionToast();
+
+function copy(mode: CopyMode) {
+  copyCard(props.stack.primary, mode);
+  actionToast(
+    'selection.copy',
+    `Copied ${cardsLabel([props.stack.primary])}`,
+    'i-lucide-copy',
+    true,
+  );
+}
 
 const showConfirmRemove = ref(false);
 // The menu renders in a portal, so opening it ends the stack's hover. Without this the
@@ -119,16 +147,22 @@ const copyMenuOpen = ref(false);
   z-index: 1;
   position: relative;
 
-  &:not(.is-touch):not(.is-menu-open) * {
-    display: none;
+  /* Hidden but still in the tab order, so Tab can reach a card's actions
+     (#170). The container keeps its pointer events, so hovering where the
+     actions sit shows them. */
+  &:not(.is-touch):not(.is-menu-open) > * {
+    opacity: 0;
+    pointer-events: none;
   }
 }
 
-.board-card-stack:hover {
-  .stack-actions {
-    * {
-      display: block;
-    }
+/* Keyboard focus on the card or its actions shows them too; a click doesn't,
+   so they don't stay up after the mouse leaves. */
+.board-card-stack:hover,
+.board-card-stack:has(:focus-visible) {
+  .stack-actions > * {
+    opacity: 1;
+    pointer-events: auto;
   }
 }
 </style>

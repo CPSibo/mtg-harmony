@@ -14,6 +14,8 @@ import {
 } from './types';
 
 const STORAGE_KEY = 'mtg-harmony_eventLog';
+/** Bump when the saved shape changes (#154). */
+const SAVE_VERSION = 1;
 
 /**
  * The most entries the current game keeps. A realistic long game (six
@@ -100,12 +102,16 @@ export const useEventLogStore = defineStore('eventLog', () => {
     return enqueue(async () => {
       const batch = pending.value;
       if (!batch.length) return;
-      const ok = await (await archive()).archiveEntries(batch);
-      archiveAvailable.value = ok;
+      const result = await (await archive()).archiveEntries(batch);
+      // A failed write keeps the batch in `pending`, saved with the current
+      // game, for the next start or New game to retry (#156).
+      if (result === 'failed') return;
+      archiveAvailable.value = result === 'archived';
       // Archived, or nowhere to put it: either way it leaves localStorage.
       const done = new Set(batch);
       pending.value = pending.value.filter((e) => !done.has(e));
-      if (ok && archived.value) archived.value = [...archived.value, ...batch];
+      if (result === 'archived' && archived.value)
+        archived.value = [...archived.value, ...batch];
     });
   }
 
@@ -130,12 +136,33 @@ export const useEventLogStore = defineStore('eventLog', () => {
     });
   }
 
-  /** Every entry the log has, oldest first: after `loadHistory()`, past games too. */
-  const history = computed(() => [
+  /**
+   * Lets go of the archive (#173): the log window loads it on open and
+   * drops it on close, so up to a year of past games isn't held for good.
+   * Queued, so it also undoes a load still under way.
+   */
+  function unloadHistory() {
+    void enqueue(async () => {
+      archived.value = null;
+    });
+  }
+
+  /**
+   * Past games, oldest first: the archive once loaded, and finished games
+   * not yet archived. Kept apart from the current game, so a new event
+   * doesn't copy them all again (#173).
+   */
+  const pastEntries = computed(() => [
     ...(archived.value ?? []),
     ...pending.value,
-    ...entries.value,
   ]);
+
+  /**
+   * Every entry the log has, oldest first: after `loadHistory()`, past games
+   * too. Copies them all whenever anything changes; for export, which reads
+   * it once. The log window reads `pastEntries` and `entries` apart.
+   */
+  const history = computed(() => [...pastEntries.value, ...entries.value]);
 
   /** Empties the archive. The current game stays. */
   function clearHistory() {
@@ -202,6 +229,64 @@ export const useEventLogStore = defineStore('eventLog', () => {
     return true;
   }
 
+  /** The group entries recorded now join, inside `group()`. */
+  let currentGroup: string | undefined;
+
+  /**
+   * Records every entry `action` records as one group (#221), which the log
+   * window shows as one row. Nested groups join the outer one.
+   */
+  function group<R>(action: () => R): R {
+    if (currentGroup) return action();
+    currentGroup = randomUUID();
+    try {
+      return action();
+    } finally {
+      currentGroup = undefined;
+    }
+  }
+
+  /** Where entries recorded now also go, inside `capture()`. */
+  let captured: EventEntry[] | null = null;
+
+  /**
+   * Runs `action` and returns what it returned along with every entry it
+   * recorded (#215), so undo can take them back out. Nested captures also
+   * pass their entries to the outer one.
+   */
+  function capture<R>(action: () => R): { result: R; entries: EventEntry[] } {
+    const outer = captured;
+    const mine: EventEntry[] = [];
+    captured = mine;
+    try {
+      return { result: action(), entries: mine };
+    } finally {
+      captured = outer;
+      outer?.push(...mine);
+    }
+  }
+
+  /** Takes entries back out of the current game, for undo (#215). */
+  function drop(gone: readonly EventEntry[]) {
+    if (!gone.length) return;
+    const set = new Set(gone);
+    entries.value = entries.value.filter((e) => !set.has(e));
+    reindexSnapshots();
+  }
+
+  /**
+   * Puts dropped entries back, for redo (#215), in time order among any
+   * recorded since. Entries from another game stay out.
+   */
+  function restore(back: readonly EventEntry[]) {
+    const mine = back.filter((e) => e.gameId === gameId.value);
+    if (!mine.length) return;
+    // Stable, so entries recorded in the same millisecond keep their order.
+    entries.value = [...entries.value, ...mine].sort((a, b) => a.at - b.at);
+    reindexSnapshots();
+    trim();
+  }
+
   /** Adds an entry for the current game and returns it. */
   function record<T extends EventType>(
     type: T,
@@ -219,9 +304,11 @@ export const useEventLogStore = defineStore('eventLog', () => {
       at: Date.now(),
       type,
       gameId: gameId.value,
+      ...(currentGroup && { groupId: currentGroup }),
     } as EventEntryOf<T>;
 
     entries.value.push(entry as EventEntry);
+    captured?.push(entry as EventEntry);
     changed();
     trim(entry.at);
     return entry;
@@ -251,12 +338,16 @@ export const useEventLogStore = defineStore('eventLog', () => {
   }
 
   function save() {
-    useLocalStorage().save(STORAGE_KEY, {
-      entries: entries.value,
-      pending: pending.value,
-      gameId: gameId.value,
-      newGameOfferDismissedAt: newGameOfferDismissedAt.value,
-    });
+    useLocalStorage().save(
+      STORAGE_KEY,
+      {
+        entries: entries.value,
+        pending: pending.value,
+        gameId: gameId.value,
+        newGameOfferDismissedAt: newGameOfferDismissedAt.value,
+      },
+      SAVE_VERSION,
+    );
   }
 
   function load(): boolean {
@@ -265,7 +356,7 @@ export const useEventLogStore = defineStore('eventLog', () => {
       pending?: unknown;
       gameId?: unknown;
       newGameOfferDismissedAt?: unknown;
-    }>(STORAGE_KEY);
+    }>(STORAGE_KEY, SAVE_VERSION);
     if (!data) return false;
 
     if (Array.isArray(data.entries))
@@ -288,12 +379,18 @@ export const useEventLogStore = defineStore('eventLog', () => {
     entries,
     gameId,
     record,
+    group,
+    capture,
+    drop,
+    restore,
     startNewGame,
     reset,
     nearlyFull,
     history,
+    pastEntries,
     historyLoading,
     loadHistory,
+    unloadHistory,
     clearHistory,
     archiveAvailable,
     settled,

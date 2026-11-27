@@ -8,6 +8,8 @@ export function createEventLogWidget(
     id: 'eventLog',
     label: 'Event Log',
     icon: 'i-lucide-scroll-text',
+    order: 70,
+    hideWithSelection: true,
 
     commands: [
       {

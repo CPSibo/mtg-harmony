@@ -1,8 +1,9 @@
 import { defineStore } from 'pinia';
-import { computed, ref, shallowRef, triggerRef } from 'vue';
+import { computed, ref, shallowRef, triggerRef, watch } from 'vue';
 import type { Position } from '@vueuse/core';
 import { BOARD_SIZE, overlaps, type Rect } from './placement';
 import { useBattlefieldStore } from './store';
+import type { BoardCardStack } from '~/types/PlayArea';
 
 /**
  * Which stacks are selected (#138), whether selection mode is on, and the
@@ -17,6 +18,15 @@ export const useSelectionStore = defineStore('selection', () => {
   /** Taps toggle stacks and a drag on the empty board draws a box. */
   const mode = ref(false);
 
+  // Nothing left to select once the board is empty, say after removing every
+  // card: selection mode ends (#237).
+  watch(
+    () => battlefield.stacks.length === 0,
+    (empty) => {
+      if (empty) mode.value = false;
+    },
+  );
+
   /** Selected IDs of stacks still on the board, in board order. */
   const idList = computed(() =>
     battlefield.stacks.filter((s) => selected.value.has(s.id)).map((s) => s.id),
@@ -24,6 +34,11 @@ export const useSelectionStore = defineStore('selection', () => {
   const size = computed(() => idList.value.length);
 
   const ids = () => idList.value;
+  /** The selected stacks, in board order: what selection commands act on. */
+  const stacks = () => {
+    const chosen = new Set(idList.value);
+    return battlefield.stacks.filter((s) => chosen.has(s.id));
+  };
   const has = (id: string) => selected.value.has(id);
 
   function replace(next: Set<string>) {
@@ -41,8 +56,41 @@ export const useSelectionStore = defineStore('selection', () => {
     triggerRef(selected);
   }
 
+  /** Selects just this stack (a plain tap or Tab, #216). */
+  function selectOnly(id: string) {
+    if (selected.value.size === 1 && selected.value.has(id)) return;
+    replace(new Set([id]));
+  }
+
   function clear() {
     if (selected.value.size) replace(new Set());
+  }
+
+  // ─── Building a selection (#220) ──────────────────────────────────────────
+
+  /** Selects just the stacks `pick` accepts. */
+  function selectWhere(pick: (stack: BoardCardStack) => boolean) {
+    replace(new Set(battlefield.stacks.filter(pick).map((s) => s.id)));
+  }
+
+  function selectAll() {
+    selectWhere(() => true);
+  }
+
+  function invert() {
+    const was = new Set(idList.value);
+    selectWhere((s) => !was.has(s.id));
+  }
+
+  /** Selects the stacks whose card is tapped, or untapped. */
+  function selectTapped(tapped: boolean) {
+    selectWhere((s) => !!s.primary.tapped === tapped);
+  }
+
+  /** Adds every stack whose card is named like a selected stack's card. */
+  function selectSameName() {
+    const names = new Set(stacks().map((s) => s.primary.scryfallInfo.name));
+    selectWhere((s) => names.has(s.primary.scryfallInfo.name));
   }
 
   function setMode(value: boolean) {
@@ -113,10 +161,18 @@ export const useSelectionStore = defineStore('selection', () => {
     mode,
     size,
     ids,
+    stacks,
     has,
+    selectOnly,
     toggle,
     add,
     clear,
+    replace,
+    selectWhere,
+    selectAll,
+    invert,
+    selectTapped,
+    selectSameName,
     setMode,
     escape,
     selectInRect,

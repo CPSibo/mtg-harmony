@@ -71,6 +71,47 @@ export function flightKeyframes(
   }
 }
 
+/**
+ * Keyframes that send an element laid out at `from` (fixed, top-left origin)
+ * to the graveyard, centred on `to` (#175): a small lift, then it spins down
+ * into the corner, shrinking, greying and fading out.
+ */
+export function graveyardKeyframes(
+  from: ScreenRect,
+  to: ScreenRect,
+): Keyframe[] {
+  const hw = from.width / 2;
+  const hh = from.height / 2;
+  const dx = to.x + to.width / 2 - (from.x + hw);
+  const dy = to.y + to.height / 2 - (from.y + hh);
+  // Turns and scales round its centre, so `translate` is where the centre goes.
+  const at = (t: number, lift: number, deg: number, scale: number) =>
+    `translate(${dx * t}px, ${dy * t - lift}px) ` +
+    `translate(${hw}px, ${hh}px) rotate(${deg}deg) scale(${scale}) ` +
+    `translate(${-hw}px, ${-hh}px)`;
+  const shade = (grey: number) =>
+    `drop-shadow(0 12px 18px rgb(0 0 0 / 0.45)) grayscale(${grey}) brightness(${1 - grey * 0.5})`;
+
+  return [
+    { transform: at(0, 0, 0, 1), opacity: 1, filter: shade(0) },
+    {
+      transform: at(-0.03, 16, -6, 1.06),
+      opacity: 1,
+      filter: shade(0),
+      offset: 0.2,
+      easing: 'cubic-bezier(0.5, 0, 0.8, 0.6)',
+    },
+    {
+      transform: at(0.8, 0, 160, 0.45),
+      opacity: 0.9,
+      filter: shade(0.7),
+      offset: 0.8,
+      easing: 'ease-in',
+    },
+    { transform: at(1, 0, 220, 0.2), opacity: 0, filter: shade(1) },
+  ];
+}
+
 /** Evenly spread directions for `count` sparkles, in radians. */
 export function sparkleAngles(count: number): number[] {
   return Array.from({ length: count }, (_, i) => (i / count) * Math.PI * 2);
@@ -83,4 +124,15 @@ export function flightTiming(flight: Exclude<CastFlight, 'off'>) {
   return flight === 'tilt'
     ? { easing: 'linear', landAt: 1 }
     : { easing: 'cubic-bezier(0.22, 0.8, 0.3, 1)', landAt: 0.78 };
+}
+
+/**
+ * One half of On-deck's flip: a turn about the vertical axis between two
+ * angles, in degrees (0 is face on, ±90 edge-on), swelling a little at the
+ * edge-on end as if lifted off the table.
+ */
+export function revealKeyframes(from: number, to: number): Keyframe[] {
+  const pose = (deg: number) =>
+    `perspective(1200px) rotateY(${deg}deg) scale(${1 + (Math.abs(deg) / 90) * 0.06})`;
+  return [{ transform: pose(from) }, { transform: pose(to) }];
 }

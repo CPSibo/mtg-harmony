@@ -7,9 +7,9 @@ import {
 import { stubStorage } from '../fixtures/storage';
 
 /** Saves through the debounced `save` and lets the debounce run out. */
-function saveNow(key: string, value: unknown) {
+function saveNow(key: string, value: unknown, version?: number) {
   vi.useFakeTimers();
-  useLocalStorage().save(key, value);
+  useLocalStorage().save(key, value, version);
   vi.runAllTimers();
 }
 
@@ -119,6 +119,28 @@ describe('useLocalStorage', () => {
     vi.runAllTimers();
 
     expect(handler).toHaveBeenCalledOnce();
+  });
+
+  // #154: every store's save carries a version, so a later change to its
+  // shape knows what it's reading.
+  describe('versions', () => {
+    it('stamps the version on a save and loads it back', () => {
+      saveNow('key', { a: 1 }, 3);
+
+      expect(useLocalStorage().load('key', 3)).toEqual({ version: 3, a: 1 });
+    });
+
+    it.each([
+      ['another version', { version: 2, a: 1 }],
+      ['no version', { a: 1 }],
+      ['not an object', 7],
+    ])('ignores and logs a save with %s', (_, saved) => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      saveNow('key', saved);
+
+      expect(useLocalStorage().load('key', 3)).toBeNull();
+      expect(warn).toHaveBeenCalledOnce();
+    });
   });
 
   it('returns null for a missing key', () => {

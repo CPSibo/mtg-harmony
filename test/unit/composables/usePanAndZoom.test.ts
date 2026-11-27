@@ -45,6 +45,28 @@ describe('usePanAndZoom', () => {
     }
   });
 
+  // #170: Tab to a card off screen scrolls the board's wrapper; Board.vue
+  // undoes the scroll and pans by it instead.
+  it('pans by an offset, within the board, and reports the end', () => {
+    const ends: unknown[] = [];
+    const scope = effectScope();
+    const pz = scope.run(() =>
+      usePanAndZoom({
+        size: { width: 5000, height: 5000 },
+        onEnd: (p) => ends.push(p),
+      }),
+    )!;
+    const start = { ...pz.position.value };
+
+    pz.panBy(-200, 120);
+
+    expect(pz.position.value).toEqual({ x: start.x - 200, y: start.y + 120 });
+    expect(ends).toHaveLength(1);
+
+    pz.panBy(1e6, 1e6);
+    expect(pz.position.value).toEqual({ x: 0, y: 0 });
+  });
+
   describe('touch', () => {
     const touch = (id: number, x: number, y: number) =>
       ({ identifier: id, clientX: x, clientY: y }) as Touch;
@@ -82,5 +104,76 @@ describe('usePanAndZoom', () => {
       expect(pz.scale.value).toBe(scale);
       expect(pz.position.value.x).not.toBe(start.x);
     });
+  });
+});
+
+describe('usePanAndZoom centreOn (#219)', () => {
+  it('puts a board point mid-screen, zooming in to at least the minimum', () => {
+    const pz = setup();
+    pz.scale.value = 0.5;
+    pz.centreOn(1200, 3000, 1);
+    expect(pz.scale.value).toBe(1);
+    const centre = boardPoint(
+      pz,
+      window.innerWidth / 2,
+      window.innerHeight / 2,
+    );
+    expect(centre.x).toBeCloseTo(1200);
+    expect(centre.y).toBeCloseTo(3000);
+  });
+
+  it('keeps a closer zoom', () => {
+    const pz = setup();
+    pz.centreOn(2500, 2500, 1);
+    expect(pz.scale.value).toBe(1.5);
+  });
+});
+
+describe('usePanAndZoom views (#218)', () => {
+  const screenCentre = () => ({
+    x: window.innerWidth / 2,
+    y: window.innerHeight / 2,
+  });
+
+  it('fits a rect: centred on screen, as big as fits', () => {
+    const pz = setup();
+    const rect = { x: 1000, y: 2000, width: 800, height: 400 };
+    pz.fitRect(rect);
+
+    const centre = boardPoint(pz, screenCentre().x, screenCentre().y);
+    expect(centre.x).toBeCloseTo(1400);
+    expect(centre.y).toBeCloseTo(2200);
+    // The rect fits inside the window with room to spare.
+    expect(rect.width * pz.scale.value).toBeLessThan(window.innerWidth);
+    expect(rect.height * pz.scale.value).toBeLessThan(window.innerHeight);
+  });
+
+  it("doesn't zoom in past the default scale on a small rect", () => {
+    const pz = setup();
+    pz.fitRect({ x: 2500, y: 2500, width: 10, height: 10 });
+    expect(pz.scale.value).toBe(1.5);
+  });
+
+  it('reports the new view when done', () => {
+    const ends: unknown[] = [];
+    const pz = effectScope().run(() =>
+      usePanAndZoom({
+        size: { width: 5000, height: 5000 },
+        onEnd: (p) => ends.push(p),
+      }),
+    )!;
+    pz.fitRect({ x: 1000, y: 1000, width: 500, height: 500 });
+    expect(ends).toHaveLength(1);
+  });
+
+  it('resets to the middle of the board at the default scale', () => {
+    const pz = setup();
+    pz.fitRect({ x: 0, y: 0, width: 4000, height: 4000 });
+    pz.resetView();
+
+    expect(pz.scale.value).toBe(1.5);
+    const centre = boardPoint(pz, screenCentre().x, screenCentre().y);
+    expect(centre.x).toBeCloseTo(2500);
+    expect(centre.y).toBeCloseTo(2500);
   });
 });

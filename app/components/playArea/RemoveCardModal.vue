@@ -12,7 +12,9 @@
     <template #body>
       <p>
         Do you want to remove
-        <code class="bg-accented">{{ props.card?.name || 'Unknown' }}</code>
+        <code class="bg-accented">{{
+          props.card?.scryfallInfo.name || 'Unknown'
+        }}</code>
         from the battlefield?
       </p>
 
@@ -59,6 +61,7 @@ import UButton from '@nuxt/ui/components/Button.vue';
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
 import { computed } from 'vue';
+import { cardsLabel, useActionToast } from '~/composables/useActionToast';
 import { useRemoveAnimation } from '~/features/castAnimation';
 import type { BoardCard } from '~/types/PlayArea';
 
@@ -88,9 +91,19 @@ const cancel = () => {
   emit('canceled');
 };
 
+const actionToast = useActionToast();
+
 const removeCard = () => {
   showConfirmRemove.value = false;
   if (!props.card) return;
+
+  // The same toast as removing from the selection (#237).
+  actionToast(
+    'selection.remove',
+    `Removed ${cardsLabel([props.card])}`,
+    'i-lucide-trash',
+    true,
+  );
 
   void removeWithAnimation(props.card);
 

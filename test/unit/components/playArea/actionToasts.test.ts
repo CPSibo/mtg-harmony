@@ -1,0 +1,169 @@
+import { flushPromises } from '@vue/test-utils';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import TapButton from '~/components/layout/TapButton.vue';
+import BoardCardStackActions from '~/components/playArea/BoardCardStackActions.vue';
+import CardDetails from '~/components/playArea/CardDetails.vue';
+import RemoveCardsModal from '~/components/playArea/RemoveCardsModal.vue';
+import { cardsLabel } from '~/composables/useActionToast';
+import { useBattlefieldStore, useSelectionStore } from '~/features/battlefield';
+import { useSettingsStore } from '~/stores/settings';
+import { putOnBoard } from '../../fixtures/board';
+import { makeCard } from '../../fixtures/cards';
+import { buttonNamed, mountInApp, unmountAll } from '../../fixtures/mount';
+
+const toasts: {
+  id?: string;
+  title?: string;
+  actions?: { label: string; onClick: () => void }[];
+}[] = [];
+vi.mock('@nuxt/ui/composables', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@nuxt/ui/composables')>()),
+  useToast: () => ({
+    add: (toast: (typeof toasts)[number]) => toasts.push(toast),
+  }),
+}));
+
+const buttonLabelled = (label: string) =>
+  document.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
+
+/** A card on the board, named `name`. */
+function boardCard(name = 'Grizzly Bears') {
+  return putOnBoard(useBattlefieldStore(), makeCard({ name }));
+}
+
+describe('cardsLabel (#237)', () => {
+  it('names one card and counts more', () => {
+    const a = makeCard({ name: 'Grizzly Bears' });
+    const b = makeCard({ name: 'Llanowar Elves' });
+    expect(cardsLabel([a])).toBe('Grizzly Bears');
+    expect(cardsLabel([a, b])).toBe('2 cards');
+  });
+});
+
+// The same toasts, under the same names, as the palette's commands.
+describe('toasts for actions outside the palette (#237)', () => {
+  beforeEach(() => (toasts.length = 0));
+  afterEach(unmountAll);
+
+  it('none for tapping one card with its own button', async () => {
+    const stack = boardCard();
+    mountInApp(BoardCardStackActions, { props: { stack } });
+    await flushPromises();
+
+    buttonLabelled('Tap').click();
+    expect(stack.primary.tapped).toBe(true);
+    expect(toasts).toEqual([]);
+  });
+
+  it('removing a card from its details', async () => {
+    const stack = boardCard();
+    mountInApp(CardDetails, { props: { card: stack.primary, open: true } });
+    await flushPromises();
+
+    buttonNamed('Remove').click();
+    await flushPromises();
+    // The confirm's own Remove button, the last one in the document.
+    const confirms = [...document.querySelectorAll('button')].filter(
+      (b) => b.textContent?.trim() === 'Remove',
+    );
+    confirms.at(-1)!.click();
+    await flushPromises();
+
+    expect(toasts).toContainEqual(
+      expect.objectContaining({
+        id: 'selection.remove',
+        title: 'Removed Grizzly Bears',
+      }),
+    );
+  });
+
+  it('removing several cards', async () => {
+    const cards = [boardCard().primary, boardCard('Llanowar Elves').primary];
+    mountInApp(RemoveCardsModal, { props: { open: true, cards } });
+    await flushPromises();
+
+    const confirm = [...document.querySelectorAll('button')].find((b) =>
+      b.textContent?.includes('Remove'),
+    )!;
+    confirm.click();
+    expect(toasts).toEqual([
+      expect.objectContaining({ title: 'Removed 2 cards' }),
+    ]);
+  });
+
+  it('flipping from the details', async () => {
+    const stack = boardCard();
+    mountInApp(CardDetails, { props: { card: stack.primary, open: true } });
+    await flushPromises();
+
+    buttonNamed('Flip over').click();
+    expect(toasts).toEqual([
+      expect.objectContaining({
+        id: 'selection.flip',
+        title: 'Flipped Grizzly Bears',
+      }),
+    ]);
+  });
+
+  it('the top bar’s tap button, for several cards only', async () => {
+    const one = boardCard();
+    const two = boardCard('Llanowar Elves');
+    one.primary.tapped = true;
+    mountInApp(TapButton);
+    await flushPromises();
+
+    buttonLabelled('Untap all').click();
+    expect(toasts).toEqual([]);
+
+    one.primary.tapped = true;
+    two.primary.tapped = true;
+    buttonLabelled('Untap all').click();
+    expect(toasts).toEqual([
+      expect.objectContaining({
+        id: 'board.untapAll',
+        title: 'Untapped every card',
+      }),
+    ]);
+
+    useSelectionStore().selectOnly(one.id);
+    await flushPromises();
+    buttonLabelled('Tap selected card').click();
+    expect(toasts).toHaveLength(1);
+
+    useSelectionStore().selectAll();
+    one.primary.tapped = false;
+    await flushPromises();
+    buttonLabelled('Tap selected cards').click();
+    expect(toasts.at(-1)).toEqual(
+      expect.objectContaining({ id: 'selection.tap', title: 'Tapped 2 cards' }),
+    );
+  });
+
+  // #215: structural actions offer Undo on their toast; others don't.
+  it('offers Undo on a removal, which brings the cards back', async () => {
+    useSettingsStore().attachFlareEnabled = false;
+    const cards = [boardCard().primary, boardCard('Llanowar Elves').primary];
+    mountInApp(RemoveCardsModal, { props: { open: true, cards } });
+    await flushPromises();
+
+    [...document.querySelectorAll('button')]
+      .find((b) => b.textContent?.includes('Remove'))!
+      .click();
+    await flushPromises();
+    expect(useBattlefieldStore().stacks).toHaveLength(0);
+    const undo = toasts[0]!.actions?.find((a) => a.label === 'Undo');
+    expect(undo).toBeDefined();
+
+    undo!.onClick();
+    expect(useBattlefieldStore().stacks).toHaveLength(2);
+  });
+
+  it('offers no Undo on a flip', async () => {
+    const stack = boardCard();
+    mountInApp(CardDetails, { props: { card: stack.primary, open: true } });
+    await flushPromises();
+
+    buttonNamed('Flip over').click();
+    expect(toasts[0]!.actions).toBeUndefined();
+  });
+});

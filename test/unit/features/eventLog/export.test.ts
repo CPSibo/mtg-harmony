@@ -153,6 +153,26 @@ describe('exportEntries', () => {
     expect(csv.at(-2)).toContain(',attached,Aura,Aura to Host,');
   });
 
+  // #175
+  it('says where a card cast to the graveyard went', () => {
+    const log = sampleLog();
+    log.record('cast', {
+      card: makeScryfallCard({ name: 'Shock' }),
+      toGraveyard: true,
+    });
+    const entries = selectForExport(log.history, {
+      range: 'game',
+      cards: 'cast',
+      gameId: log.gameId,
+    });
+
+    const text = exportEntries(entries, 'text').split('\n');
+    const csv = exportEntries(entries, 'csv').split('\n');
+
+    expect(text.at(-2)).toBe('09:05  Cast   Shock to the graveyard');
+    expect(csv.at(-2)).toContain(',cast,Shock,Shock to the graveyard,');
+  });
+
   it('writes just the header for nothing', () => {
     expect(exportEntries([], 'csv')).toBe(
       'time,event,card,details,scryfall_url,game\n',

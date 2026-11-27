@@ -1,0 +1,108 @@
+import { flushPromises } from '@vue/test-utils';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import SelectionBar from '~/components/playArea/SelectionBar.vue';
+import {
+  createBoardCard,
+  useBattlefieldStore,
+  useSelectionStore,
+} from '~/features/battlefield';
+import { useWidgetRegistry } from '~/features/widgets';
+import { putOnBoard } from '../../fixtures/board';
+import { makeScryfallCard } from '../../fixtures/cards';
+import { mountInApp, unmountAll } from '../../fixtures/mount';
+
+function twoStacks() {
+  const board = useBattlefieldStore();
+  return [0, 1].map(
+    (i) =>
+      putOnBoard(board, createBoardCard(makeScryfallCard()), {
+        x: i * 300,
+        y: 0,
+      }).id,
+  );
+}
+
+/** The bar while it's open; closed, it's only the selection mode button. */
+const bar = () => document.querySelector('.selection-bar[role="status"]');
+
+describe('SelectionBar (#216)', () => {
+  afterEach(unmountAll);
+
+  it('is only the selection mode button with nothing selected', async () => {
+    twoStacks();
+    mountInApp(SelectionBar);
+    await flushPromises();
+    expect(bar()).toBeNull();
+    expect(
+      document.querySelector('.selection-bar [aria-label="Select stacks"]'),
+    ).not.toBeNull();
+  });
+
+  it('opens for any selection, outside selection mode too (#237)', async () => {
+    const [a, b] = twoStacks();
+    const selection = useSelectionStore();
+    mountInApp(SelectionBar);
+
+    selection.selectOnly(a!);
+    await flushPromises();
+    expect(selection.mode).toBe(false);
+    expect(bar()?.textContent).toContain('(1)');
+
+    selection.toggle(b!);
+    await flushPromises();
+    // The count is in the selection mode button (#237).
+    expect(bar()?.textContent).toContain('(2)');
+  });
+
+  it('shows for one stack in selection mode', async () => {
+    const [a] = twoStacks();
+    const selection = useSelectionStore();
+    selection.setMode(true);
+    selection.selectOnly(a!);
+    mountInApp(SelectionBar);
+    await flushPromises();
+    expect(bar()?.textContent).toContain('Selecting');
+    expect(bar()?.textContent).toContain('(1)');
+  });
+
+  it('shows the selection commands meant for it, as buttons', async () => {
+    const [a, b] = twoStacks();
+    const selection = useSelectionStore();
+    selection.toggle(a!);
+    selection.toggle(b!);
+    const tap = vi.fn();
+    useWidgetRegistry().register({
+      id: 't',
+      label: 'T',
+      icon: 'i-lucide-plus',
+      commands: [
+        {
+          id: 'tap',
+          label: 'Tap',
+          icon: 'i-lucide-plus',
+          scope: 'selection',
+          bar: 'button',
+          execute: tap,
+        },
+        {
+          id: 'palette-only',
+          label: 'Palette only',
+          icon: 'i-lucide-plus',
+          scope: 'selection',
+          execute: () => {},
+        },
+      ],
+    });
+    mountInApp(SelectionBar);
+    await flushPromises();
+
+    const button = bar()!.querySelector<HTMLButtonElement>(
+      'button[aria-label="Tap"]',
+    );
+    button!.click();
+    expect(tap).toHaveBeenCalledOnce();
+    expect(bar()!.querySelector('[aria-label="Palette only"]')).toBeNull();
+    // Nothing for the menu, so no "More" button.
+    expect(bar()!.querySelector('[aria-label="More"]')).toBeNull();
+  });
+});

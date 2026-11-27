@@ -1,4 +1,5 @@
 import { pickImageUri } from '~/composables/useScryfall';
+import { cardImage } from './boardCard';
 import type { BoardCard } from '~/types/PlayArea';
 import type { ScryfallCard, ScryfallCardFace } from '~/types/Scryfall';
 
@@ -22,7 +23,7 @@ export function showsImage(card: BoardCard, imagesEnabled: boolean): boolean {
 
 /** The image the card shows: its front, its back face, or the standard back. */
 export function shownImageUri(card: BoardCard): string {
-  if (!card.flipped) return card.image_uri;
+  if (!card.flipped) return cardImage(card);
   const back = backFace(card.scryfallInfo);
   return (
     (back && pickImageUri({ image_uris: back.image_uris } as ScryfallCard)) ??
@@ -52,6 +53,22 @@ export function isLandscapeFace(info: ScryfallCard, flipped = false): boolean {
   if (info.layout === 'split') return !info.keywords?.includes('Aftermath');
   const front = backFace(info) ? info.card_faces?.[0] : undefined;
   return LANDSCAPE_TYPES.test(front?.type_line ?? info.type_line ?? '');
+}
+
+const ROOM_TYPE = /\bRoom\b/;
+
+/** Whether it's a Room: two doors, each locked or unlocked (#145). */
+export function isRoom(info: ScryfallCard): boolean {
+  const faces = info.card_faces;
+  return (
+    faces?.length === 2 && faces.every((f) => ROOM_TYPE.test(f.type_line ?? ''))
+  );
+}
+
+/** A Room's door names, first (left) door first. Empty for other cards. */
+export function doorNames(card: BoardCard): string[] {
+  if (!isRoom(card.scryfallInfo)) return [];
+  return card.scryfallInfo.card_faces!.map((f) => f.name);
 }
 
 /** Whether the card can be turned 180° (Kamigawa flip cards). */

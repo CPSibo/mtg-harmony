@@ -10,10 +10,20 @@ import type { EventEntry } from './types';
 
 /** Archived games older than this are dropped. */
 export const ARCHIVE_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000;
-/** At most this many archived entries are kept; the oldest games go first. */
-export const ARCHIVE_MAX_ENTRIES = 500_000;
+/**
+ * At most this many archived entries are kept; the oldest games go first.
+ * About 100 long games. The log window holds them all in memory while it's
+ * open, so not more (#173).
+ */
+export const ARCHIVE_MAX_ENTRIES = 100_000;
 
 const DB_NAME = 'mtg-harmony';
+/**
+ * The shape of a game record (#154). Bump when it changes; records of
+ * another version are skipped (or migrated) on load. Separate from the
+ * database's own version, which only changes with its stores and indexes.
+ */
+const RECORD_VERSION = 1;
 
 interface GameSummary {
   gameId: string;
@@ -27,7 +37,7 @@ interface ArchiveSchema extends DBSchema {
   games: { key: string; value: GameSummary; indexes: { end: number } };
   gameEntries: {
     key: string;
-    value: { gameId: string; entries: EventEntry[] };
+    value: { gameId: string; version: number; entries: EventEntry[] };
   };
 }
 
@@ -51,17 +61,23 @@ async function open(): Promise<IDBPDatabase<ArchiveSchema> | null> {
 }
 
 /**
+ * How an archive write went. `unavailable`: there's no IndexedDB here, so
+ * there never will be an archive. `failed`: there is one, but this write
+ * didn't land (storage full, a transient error), so it's worth retrying.
+ */
+export type ArchiveResult = 'archived' | 'unavailable' | 'failed';
+
+/**
  * Adds `entries` to the archive, one record per game, then drops games past
- * the age and entry limits. Archiving a game again replaces it. Resolves
- * whether it worked; false when IndexedDB is unavailable or the write failed.
+ * the age and entry limits. Archiving a game again replaces it.
  */
 export async function archiveEntries(
   entries: readonly EventEntry[],
   maxEntries = ARCHIVE_MAX_ENTRIES,
-): Promise<boolean> {
-  if (!entries.length) return true;
+): Promise<ArchiveResult> {
+  if (!entries.length) return 'archived';
   const db = await open();
-  if (!db) return false;
+  if (!db) return 'unavailable';
 
   const byGame = new Map<string, EventEntry[]>();
   for (const entry of entries) {
@@ -75,7 +91,9 @@ export async function archiveEntries(
     const games = tx.objectStore('games');
     for (const [gameId, game] of byGame) {
       void games.put({ gameId, end: game.at(-1)!.at, count: game.length });
-      void tx.objectStore('gameEntries').put({ gameId, entries: game });
+      void tx
+        .objectStore('gameEntries')
+        .put({ gameId, version: RECORD_VERSION, entries: game });
     }
 
     // Retention: oldest games first, while too old or over the cap.
@@ -89,11 +107,11 @@ export async function archiveEntries(
       total -= game.count;
     }
     await tx.done;
-    return true;
+    return 'archived';
   } catch (ex) {
     // Storage full, or the browser refused.
     console.error('Could not archive event log entries.', ex);
-    return false;
+    return 'failed';
   } finally {
     db.close();
   }
@@ -109,7 +127,16 @@ export async function loadArchive(): Promise<EventEntry[] | null> {
     const games = await Promise.all(
       order.map((gameId) => tx.objectStore('gameEntries').get(gameId)),
     );
-    return games.flatMap((game) => game?.entries ?? []);
+    return games.flatMap((game) => {
+      if (!game) return [];
+      if (game.version !== RECORD_VERSION) {
+        console.warn(
+          `Skipping archived game ${game.gameId}: version ${game.version}, expected ${RECORD_VERSION}.`,
+        );
+        return [];
+      }
+      return game.entries;
+    });
   } catch (ex) {
     console.error('Could not load the event log archive.', ex);
     return null;

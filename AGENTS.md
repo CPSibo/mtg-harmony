@@ -22,12 +22,13 @@ Follow these steps for every work item (a GitHub issue):
 4. Ask any clarifying questions before starting, and wait for the answers.
 5. Write red-green unit tests for the work: failing first, then passing. Skip this step when the change has nothing
    unit-testable (docs, config, CI), and say so in the PR.
-6. Implement the work.
+6. Implement the work, and bump the version (see [Versioning](#versioning)).
 7. Run every check in the [Definition of Done](#definition-of-done) locally.
-8. `git fetch origin` and merge `origin/dev` again in case anything landed meanwhile. If anything came in, re-run
-   step 7.
+8. `git fetch origin` and merge `origin/dev` again in case anything landed meanwhile. If anything came in, re-bump
+   the version from `dev`'s and re-run step 7.
 9. Push the branch and open a **draft** PR against `dev`. Link the issue (`Closes #N`) and any other issues, docs or
-   artefacts of note.
+   artefacts of note. Label the PR with its type (`enhancement`, `bug`, `documentation`, `chore`, `refactor` or
+   `test`): release notes are grouped by it. Say in the PR which bump you made and why.
 10. Before handing the task back, stop everything you started: dev and preview servers, background processes,
     containers, and browser tabs or panes. Check nothing still listens on the ports you used (`3000`, `4173`,
     `5173`), and delete temporary files outside the scratchpad. Stopping a background task can leave its child
@@ -45,6 +46,23 @@ npm run build         # production build into dist/
 
 `npm run test:e2e` runs the Playwright tests (CI runs them too). Run `npx playwright install chromium` once first.
 
+## Versioning
+
+Every PR to `dev` bumps the version in `package.json` exactly once, from `dev`'s version, with
+`npm version <x.y.z> --no-git-tag-version` (it updates the lockfile too). CI's `version` job fails otherwise.
+
+| Change                                                              | Before 1.0 | From 1.0 |
+| ------------------------------------------------------------------- | ---------- | -------- |
+| No change to intended behaviour (fixes, refactors, docs, tests, CI) | patch      | patch    |
+| A behaviour change or addition                                      | patch      | minor    |
+| A breaking change (e.g. saved data or settings that no longer load) | minor      | major    |
+
+The owner decides when the version becomes 1.0.0; don't bump to it otherwise.
+
+Open branches can bump from the same version. Git merges the identical lines without a conflict, so the second PR
+would land without a bump. Re-bump whenever you merge `dev` in. The `version` job only re-runs on a push, so update
+a PR's branch from `dev` before merging it if another bump has landed since.
+
 ## Unit tests
 
 - Vitest, in `test/unit/` mirroring `app/`. The config reuses `vite.config.ts`, so imports resolve as in the app.
@@ -52,8 +70,13 @@ npm run build         # production build into dist/
   (`fake-indexeddb`; happy-dom has none), real timers and a fresh Pinia, so a store created in a test starts from
   its defaults. Await the event log's `settled()` before checking its archive.
 - Mock Scryfall at the module boundary (`vi.mock('~/composables/useScryfall', …)`). Tests never hit the network.
-- Build cards with `test/unit/fixtures/cards.ts`. To watch or break storage writes, use `stubStorage()` from
+- Build cards with `test/unit/fixtures/cards.ts` and put them on the board with `putOnBoard` from
+  `test/unit/fixtures/board.ts`. To watch or break storage writes, use `stubStorage()` from
   `test/unit/fixtures/storage.ts`; spying on `Storage.prototype` leaks between tests under happy-dom.
+- Component tests mount with `mountInApp` from `test/unit/fixtures/mount.ts` (`@vue/test-utils`, the test's
+  Pinia, Nuxt UI and the bundled icons, attached to the document). Modals and slideovers teleport to
+  `document.body`, so query the document (`buttonNamed`), not the wrapper, and call `unmountAll` in `afterEach`.
+  Test a component where its logic lives in it; gestures and layout stay with the end-to-end tests.
 - A test for a known, unfixed bug asserts the correct behaviour and is marked `it.fails`, with the issue number
   in its name. When the fix lands it fails loudly; change it to `it`.
 
@@ -65,7 +88,12 @@ npm run build         # production build into dist/
   servers before running it.
 - Mock Scryfall with `page.route` (see `mockScryfall` in `test/e2e/smoke.spec.ts`): API calls and card images.
   Tests never hit the network.
+- Service workers are blocked (`serviceWorkers: 'block'`), since requests they make skip `page.route`. A test of
+  offline behaviour allows them with `test.use({ serviceWorkers: 'allow' })`.
 - Prefer role-based locators (`getByRole`). Board cards expose `role="img"` named after the card.
+- Tests run with `prefers-reduced-motion: reduce`, so the app skips its animations (#212). Measuring or focusing a
+  card mid-animation flakes: a cast card is hidden while its copy flies in, and boxes move while attaching or
+  tapping. A test of an animation itself opts back in with `test.use({ reducedMotion: 'no-preference' })`.
 - A test blocked by a known bug uses `test.fixme(true, '…: #N')`.
 
 ## Node version
@@ -79,6 +107,17 @@ npm run build         # production build into dist/
 - npm 12 (bundled with Node 26) refuses to re-resolve one optional Tailwind package (`EALLOWREMOTE` on
   `@tailwindcss/oxide-wasm32-wasi`). `npm ci` is unaffected. When changing dependencies, run
   `npm install --allow-remote=all`.
+
+## Dependencies
+
+Renovate (`renovate.json`) opens dependency PRs against `dev` on Monday mornings (UTC), at most five at a time, for
+releases at least 3 days old. Dev tooling minors, GitHub Actions, Vue, and Vite with Vitest are grouped; a Node
+major moves `.node-version`, `engines` and `@types/node` together. Lockfile maintenance runs monthly. It updates the
+lockfile with npm 10, as Cloudflare does, which avoids npm 12's `EALLOWREMOTE`.
+
+Treat a Renovate PR like any other: run the [Definition of Done](#definition-of-done) on its branch. Some updates
+need a generated file refreshed, and their PR says which: `npm run icons:lucide` for Nuxt UI or Lucide,
+`npm run fonts:mana` for mana-font.
 
 ## Reactivity
 
@@ -120,7 +159,6 @@ There are no auto-imports. Import every component, composable and Vue API explic
 - Every card on the board is a token. There is no library, hand, graveyard or exile, so don't add zones.
 - The app is plain Vite + Vue 3, not Nuxt. Don't bring back Nuxt-only features (Nuxt modules, auto-imports,
   `#app`/`#imports` APIs, file-based routing).
-- Renovate stays off until the project is stable.
 
 ## Generated assets
 

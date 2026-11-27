@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   describeEntry,
+  entryDetails,
   filterEntries,
   scryfallCardFromSnapshot,
+  takeNewest,
   useEventLogStore,
   type EventEntry,
 } from '~/features/eventLog';
@@ -73,6 +75,10 @@ describe('describeEntry', () => {
     });
     log.record('removed', { card: makeCard({ name: 'C' }) });
     log.record('added', { card: makeCard({ name: 'D' }) });
+    log.record('cast', {
+      card: makeScryfallCard({ name: 'E' }),
+      toGraveyard: true,
+    });
     log.startNewGame('newGame');
 
     expect(log.history.map((e: EventEntry) => describeEntry(e))).toEqual([
@@ -84,8 +90,18 @@ describe('describeEntry', () => {
       'Put A under B',
       'Removed C',
       'Added D',
+      'Cast E to the graveyard',
       'New game (from the menu)',
     ]);
+  });
+});
+
+// #173
+describe('takeNewest', () => {
+  it('takes from the newer list first, then the older, up to the limit', () => {
+    expect(takeNewest([3, 2], [1, 0], 3)).toEqual([3, 2, 1]);
+    expect(takeNewest([5, 4, 3, 2], [1], 3)).toEqual([5, 4, 3]);
+    expect(takeNewest([], [1, 0], 5)).toEqual([1, 0]);
   });
 });
 
@@ -114,5 +130,45 @@ describe('event log window', () => {
     expect(log.windowIsOpen).toBe(true);
     log.closeWindow();
     expect(log.windowIsOpen).toBe(false);
+  });
+});
+
+// #143
+describe('meld entries', () => {
+  it('say which halves melded into which card, and back', () => {
+    const log = useEventLogStore();
+    const halves = {
+      source: makeCard({ name: 'Bruna' }),
+      target: makeCard({ name: 'Gisela' }),
+    };
+    const card = makeCard({ name: 'Brisela' });
+    log.record('melded', { card, ...halves });
+    log.record('unmelded', { card, ...halves });
+
+    expect(log.entries.map((e: EventEntry) => describeEntry(e))).toEqual([
+      'Melded Bruna and Gisela into Brisela',
+      'Unmelded Brisela into Bruna and Gisela',
+    ]);
+    expect(log.entries.map((e: EventEntry) => entryDetails(e))).toEqual([
+      'Bruna and Gisela into Brisela',
+      'Brisela into Bruna and Gisela',
+    ]);
+  });
+});
+
+// #203
+describe('token entries', () => {
+  it('say which card created the token', () => {
+    const log = useEventLogStore();
+    log.record('tokenCreated', {
+      card: makeCard({ name: 'Ooze' }),
+      source: makeCard({ name: 'Mitotic Slime' }),
+    });
+
+    expect(describeEntry(log.entries[0]!)).toBe(
+      'Created Ooze from Mitotic Slime',
+    );
+    expect(entryDetails(log.entries[0]!)).toBe('Ooze from Mitotic Slime');
+    expect(filterEntries(log.entries, { name: 'slime' })).toHaveLength(1);
   });
 });

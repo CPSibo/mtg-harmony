@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { openDB } from 'idb';
+import { describe, expect, it, vi } from 'vitest';
 import {
   ARCHIVE_MAX_AGE_MS,
   archiveEntries,
@@ -27,13 +28,26 @@ function entry(gameId: string, at: number, c = card): EventEntry {
   };
 }
 
+/** Makes IndexedDB refuse every write, as when storage is full. */
+function failWrites() {
+  const transaction = IDBDatabase.prototype.transaction;
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  return vi
+    .spyOn(IDBDatabase.prototype, 'transaction')
+    .mockImplementation(function (this: IDBDatabase, ...args) {
+      if (args[1] === 'readwrite')
+        throw new DOMException('Quota exceeded', 'QuotaExceededError');
+      return transaction.apply(this, args);
+    });
+}
+
 describe('event log archive', () => {
   it('keeps archived games, oldest first, across games', async () => {
     const a = [entry('game-a', 1), entry('game-a', 2)];
     const b = [entry('game-b', 3)];
 
-    expect(await archiveEntries(b)).toBe(true);
-    expect(await archiveEntries(a)).toBe(true);
+    expect(await archiveEntries(b)).toBe('archived');
+    expect(await archiveEntries(a)).toBe('archived');
 
     expect((await loadArchive())?.map((e) => e.id)).toEqual(
       [...a, ...b].map((e) => e.id),
@@ -84,10 +98,35 @@ describe('event log archive', () => {
     expect(await loadArchive()).toEqual([]);
   });
 
+  // #154: records carry a version, so a later shape change knows them.
+  it('skips archived games of another version', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await archiveEntries([entry('current', 1)]);
+    const db = await openDB('mtg-harmony', 1);
+    await db.put('games', { gameId: 'future', end: T, count: 1 });
+    await db.put('gameEntries', {
+      gameId: 'future',
+      version: 99,
+      entries: [entry('future', 2)],
+    });
+    db.close();
+
+    const loaded = await loadArchive();
+
+    expect(loaded!.map((e) => e.gameId)).toEqual(['current']);
+  });
+
   it('reports no archive when IndexedDB is unavailable', async () => {
     Reflect.deleteProperty(globalThis, 'indexedDB');
 
-    expect(await archiveEntries([entry('game-a', 1)])).toBe(false);
+    expect(await archiveEntries([entry('game-a', 1)])).toBe('unavailable');
     expect(await loadArchive()).toBeNull();
+  });
+
+  // #156: a failed write and no IndexedDB were both `false`.
+  it('tells a failed write apart from no IndexedDB', async () => {
+    failWrites();
+
+    expect(await archiveEntries([entry('game-a', 1)])).toBe('failed');
   });
 });

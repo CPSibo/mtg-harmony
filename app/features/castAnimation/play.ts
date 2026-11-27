@@ -2,6 +2,8 @@ import { nextTick } from 'vue';
 import {
   flightKeyframes,
   flightTiming,
+  graveyardKeyframes,
+  revealKeyframes,
   sparkleAngles,
   type ScreenRect,
 } from './keyframes';
@@ -20,7 +22,7 @@ export interface CastSource {
 
 const COLOUR = 'var(--ui-primary, #a78bfa)';
 
-function reducedMotion() {
+export function reducedMotion() {
   return (
     typeof matchMedia === 'function' &&
     matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -64,18 +66,30 @@ function jitter(i: number, salt: number) {
   return v - Math.floor(v);
 }
 
-/** Fine magic dust: many tiny bright specks that twinkle and drift down. */
+/**
+ * Fine magic dust: many tiny bright specks that twinkle and drift down.
+ * `ash` is grey and violet specks that drift up instead, for the graveyard.
+ */
 function sparkles(
   layer: HTMLElement,
   rect: ScreenRect,
   count = 32,
   spread = 0.8,
+  tone: 'magic' | 'ash' = 'magic',
 ): Animation[] {
   const reach = Math.max(rect.width, rect.height) * spread;
   return sparkleAngles(count).map((base, i) => {
     const s = document.createElement('div');
     const size = 2 + Math.round(jitter(i, 1) * 2);
     const gold = jitter(i, 2) < 0.5;
+    const [core, glow] =
+      tone === 'ash'
+        ? gold
+          ? ['#c4b5fd', '#6d28d9']
+          : ['#d4d4d8', '#52525b']
+        : gold
+          ? ['#fff3b0', '#ffd76a']
+          : ['#ffffff', COLOUR];
     Object.assign(s.style, {
       position: 'absolute',
       left: '50%',
@@ -83,8 +97,8 @@ function sparkles(
       width: `${size}px`,
       height: `${size}px`,
       borderRadius: '50%',
-      background: gold ? '#fff3b0' : '#ffffff',
-      boxShadow: `0 0 3px 1px ${gold ? '#ffd76a' : COLOUR}`,
+      background: core,
+      boxShadow: `0 0 3px 1px ${glow}`,
       // Hidden outside the animation, so none lingers in the middle.
       opacity: '0',
     });
@@ -93,7 +107,7 @@ function sparkles(
     const r = reach * (0.45 + jitter(i, 4) * 0.6);
     const x = Math.cos(angle) * r;
     const y = Math.sin(angle) * r;
-    const fall = 20 + jitter(i, 5) * 25;
+    const fall = (20 + jitter(i, 5) * 25) * (tone === 'ash' ? -1.5 : 1);
     const at = (t: number, drop: number) =>
       `translate(calc(-50% + ${x * t}px), calc(-50% + ${y * t + drop}px))`;
     return s.animate(
@@ -219,13 +233,76 @@ export async function playCastAnimation(
   }
 }
 
+/** The graveyard's spot on screen: a small card in the bottom-right corner. */
+function graveyardSpot(): ScreenRect {
+  const width = 24;
+  const height = 34;
+  return {
+    x: window.innerWidth - 32 - width,
+    y: window.innerHeight - 32 - height,
+    width,
+    height,
+  };
+}
+
+/**
+ * Sends a copy of `source` (where the card was shown, measured before its
+ * window closed) spinning down into the bottom-right corner, where it
+ * crumbles into ash (#175). Never throws: it's decoration.
+ */
+export async function playGraveyardAnimation(
+  source: CastSource | null,
+  duration: number,
+) {
+  if (
+    !source ||
+    reducedMotion() ||
+    typeof Element.prototype.animate !== 'function'
+  )
+    return;
+  try {
+    const spot = graveyardSpot();
+    const flyer = makeFlyer(source.element, source.rect);
+    try {
+      const flight = flyer.animate(graveyardKeyframes(source.rect, spot), {
+        duration: duration * 1.2,
+        easing: 'linear',
+        fill: 'forwards',
+      });
+      await Promise.race([
+        flight.finished,
+        new Promise((resolve) => setTimeout(resolve, duration * 1.2 + 100)),
+      ]);
+    } finally {
+      flyer.remove();
+    }
+
+    const layer = document.createElement('div');
+    Object.assign(layer.style, fixedBox(spot));
+    document.body.appendChild(layer);
+    await Promise.allSettled(
+      sparkles(layer, spot, 20, 2.2, 'ash').map((a) => a.finished),
+    );
+    layer.remove();
+  } catch {
+    // Decoration only.
+  }
+}
+
 /** Where `element` is now, to fly from once its window has closed. */
 export function castSource(
   element: Element | null | undefined,
 ): CastSource | null {
   if (!element) return null;
   const { x, y, width, height } = element.getBoundingClientRect();
-  return width && height ? { element, rect: { x, y, width, height } } : null;
+  // Copied now: by the time the flight starts, the element may show another
+  // card, such as On-deck's next one.
+  return width && height
+    ? {
+        element: element.cloneNode(true) as Element,
+        rect: { x, y, width, height },
+      }
+    : null;
 }
 
 /** A board card's root element, found by card ID. */
@@ -359,6 +436,68 @@ export async function playMoveAnimation(
   }
 }
 
+/** How long the other half takes to fly onto a melded card. */
+const MELD_FLIGHT_MS = 480;
+
+/**
+ * Melding (#204): a copy of the other half (`partner`, measured before the
+ * meld took it off the board) arcs onto the melded card and fades into it,
+ * then the melded card pops with rings and sparkles. Without a partner only
+ * the burst plays. Never throws: it's decoration.
+ */
+export async function playMeldAnimation(
+  partner: CastSource | null,
+  meldedId: string,
+) {
+  if (reducedMotion() || typeof Element.prototype.animate !== 'function')
+    return;
+  try {
+    await nextTick();
+    await frame();
+    const target = cardRoot(meldedId)?.querySelector<HTMLElement>(
+      '.card-image-wrapper',
+    );
+    const image = cardImage(meldedId);
+    if (!target || !image) return;
+
+    if (partner) {
+      const r = image.getBoundingClientRect();
+      const flyer = makeFlyer(partner.element, partner.rect);
+      try {
+        const options = {
+          duration: MELD_FLIGHT_MS,
+          easing: 'cubic-bezier(0.45, 0, 0.3, 1)',
+          fill: 'forwards' as const,
+        };
+        const flight = flyer.animate(
+          flightKeyframes('arc', partner.rect, {
+            x: r.x,
+            y: r.y,
+            width: r.width,
+            height: r.height,
+          }),
+          options,
+        );
+        // Fades into the melded card over the last stretch.
+        flyer.animate(
+          [{ opacity: 1 }, { opacity: 1, offset: 0.7 }, { opacity: 0 }],
+          options,
+        );
+        // Capped, in case animations pause in a hidden tab.
+        await Promise.race([
+          flight.finished,
+          new Promise((resolve) => setTimeout(resolve, MELD_FLIGHT_MS + 100)),
+        ]);
+      } finally {
+        flyer.remove();
+      }
+    }
+    await land(target, 'sparkleRing');
+  } catch {
+    // Decoration only.
+  }
+}
+
 /**
  * Plays a removed card out (#124): it shrinks, tips and fades, leaving a
  * puff of dust. A card that leads its stack takes the stack's buttons with
@@ -400,7 +539,7 @@ export async function playRemoveAnimation(cardId: string) {
     ];
     const buttons = leads
       ? stackEl!.querySelector<HTMLElement>(
-          '.primary-card-wrapper > :first-child',
+          '.primary-card-wrapper > .stack-actions',
         )
       : null;
     if (buttons && buttons !== root)
@@ -413,5 +552,41 @@ export async function playRemoveAnimation(cardId: string) {
     ]);
   } catch {
     // Decoration only.
+  }
+}
+
+/**
+ * Flips a card face up (On-deck's reveal): `back` turns away until it's
+ * edge-on, then `face` turns in from edge-on. Resolves once done, at once
+ * with reduced motion. `face` stays edge-on until its turn starts.
+ */
+export async function playRevealAnimation(
+  face: HTMLElement,
+  back: HTMLElement,
+  duration: number,
+) {
+  if (reducedMotion() || typeof Element.prototype.animate !== 'function')
+    return;
+  const half = duration / 2;
+  const away = back.animate(revealKeyframes(0, 90), {
+    duration: half,
+    easing: 'ease-in',
+    fill: 'forwards',
+  });
+  const into = face.animate(revealKeyframes(-90, 0), {
+    duration: half,
+    delay: half,
+    easing: 'ease-out',
+    fill: 'backwards',
+  });
+  try {
+    await Promise.race([
+      Promise.all([away.finished, into.finished]),
+      new Promise((resolve) => setTimeout(resolve, duration + 100)),
+    ]);
+  } catch {
+    // Cancelled: the card changed or the panel closed mid-flip.
+  } finally {
+    into.cancel();
   }
 }

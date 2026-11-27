@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { useReset } from '~/composables/useReset';
 import { useBattlefieldStore } from '~/features/battlefield';
 import { useEventLogStore } from '~/features/eventLog';
+import { useInputModeStore } from '~/stores/inputMode';
 import { useSettingsStore } from '~/stores/settings';
 import { makeScryfallCard } from '../fixtures/cards';
 
@@ -63,9 +64,51 @@ describe('useReset', () => {
     expect(toastAdd).toHaveBeenCalledOnce();
   });
 
+  // #159: back to a fresh install, so the input mode is guessed again.
+  it('reset app forgets the input mode and guesses it from the device', () => {
+    vi.stubGlobal('matchMedia', (q: string) => ({
+      matches: q === '(pointer: coarse)',
+    }));
+    const inputMode = useInputModeStore();
+    window.dispatchEvent(
+      new PointerEvent('pointerdown', { pointerType: 'mouse' }),
+    );
+    expect(inputMode.inputMode).toBe('cursor');
+
+    useReset().resetAppData();
+
+    expect(inputMode.inputMode).toBe('touch');
+    vi.unstubAllGlobals();
+  });
+
   it('a new game from the idle prompt says so', () => {
     useReset().newGame('idlePrompt');
 
     expect(markers()).toEqual(['idlePrompt']);
+  });
+
+  // #215: undo never reaches back into another game.
+  it('new game and reset app forget what could be undone', () => {
+    const board = useBattlefieldStore();
+    board.castCard(makeScryfallCard());
+    useReset().newGame();
+    expect(board.canUndo).toBe(false);
+
+    board.castCard(makeScryfallCard());
+    useReset().resetAppData();
+    expect(board.canUndo).toBe(false);
+  });
+
+  // #215: Clear board is a step of its own, offered back on its toast.
+  it('clear board can be undone, from its toast', () => {
+    const board = useBattlefieldStore();
+    board.castCard(makeScryfallCard());
+    toastAdd.mockClear();
+
+    useReset().clearBoard();
+    const { actions } = toastAdd.mock.calls[0]![0];
+    actions[0].onClick();
+
+    expect(board.stacks).toHaveLength(1);
   });
 });

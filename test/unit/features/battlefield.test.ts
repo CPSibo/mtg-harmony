@@ -3,23 +3,24 @@ import { describe, expect, it, vi } from 'vitest';
 import { isReactive, nextTick } from 'vue';
 import { useBattlefieldStore } from '~/features/battlefield';
 import { useEventLogStore, type EventEntry } from '~/features/eventLog';
-import type { BoardCardModifier, BoardCardStack } from '~/types/PlayArea';
-import { makeCard, makeScryfallCard } from '../fixtures/cards';
+import type { BoardCard, BoardCardStack } from '~/types/PlayArea';
+import { makeCard, makeMeldCards, makeScryfallCard } from '../fixtures/cards';
+import { putOnBoard } from '../fixtures/board';
 import { stubStorage } from '../fixtures/storage';
 
 const STORAGE_KEY = 'mtg-harmony_battlefield';
 
 function names(stacks: BoardCardStack[]) {
-  return stacks.map((s) => s.primary.name);
+  return stacks.map((s) => s.primary.scryfallInfo.name);
 }
 
 /** A board with a "Host" stack carrying `count` attachments named "Aura N". */
 function boardWithAttachments(count: number) {
   const board = useBattlefieldStore();
   board.setCenter({ x: 1000, y: 1000 });
-  board.addStackByCard(makeCard({ name: 'Host' }));
+  putOnBoard(board, makeCard({ name: 'Host' }));
   for (let i = 0; i < count; i++) {
-    board.addStackByCard(makeCard({ name: `Aura ${i}` }));
+    putOnBoard(board, makeCard({ name: `Aura ${i}` }));
     board.startAttaching(board.stacks[1]!.primary);
     board.finishAttaching(board.stacks[0]!);
   }
@@ -30,7 +31,7 @@ function boardWithAttachments(count: number) {
 function boardWithUnders(count: number) {
   const board = useBattlefieldStore();
   board.setCenter({ x: 1000, y: 1000 });
-  board.addStackByCard(makeCard({ name: 'Host' }));
+  putOnBoard(board, makeCard({ name: 'Host' }));
   const host = board.stacks[0]!;
   for (let i = 0; i < count; i++) {
     const under = makeCard({ name: `Under ${i}` });
@@ -42,36 +43,6 @@ function boardWithUnders(count: number) {
 
 describe('battlefield store', () => {
   describe('adding and removing stacks', () => {
-    it('adds a stack at the board centre and links the card to it', () => {
-      const board = useBattlefieldStore();
-      board.setCenter({ x: 40, y: 60 });
-
-      board.addStackByCard(makeCard({ name: 'New' }));
-
-      const stack = board.stacks[0]!;
-      expect(names(board.stacks)).toEqual(['New']);
-      expect(stack.primary.stack).toBe(stack);
-      expect(stack.position).toEqual({ x: 40, y: 60 });
-      expect(board.orderedStacks.map((s) => s.id)).toEqual([stack.id]);
-    });
-
-    it('copies the centre, so moving the board later leaves the stack put', () => {
-      const board = useBattlefieldStore();
-      board.addStackByCard(makeCard());
-
-      board.setCenter({ x: 999, y: 999 });
-
-      expect(board.stacks[0]!.position).toEqual({ x: 0, y: 0 });
-    });
-
-    it('gives every stack its own ID', () => {
-      const board = useBattlefieldStore();
-      board.addStackByCard(makeCard());
-      board.addStackByCard(makeCard());
-
-      expect(board.stacks[0]!.id).not.toBe(board.stacks[1]!.id);
-    });
-
     // #23: adding the same token twice used to give both copies one ID.
     it('casts a fresh card each time, even from the same Scryfall card', () => {
       const board = useBattlefieldStore();
@@ -90,46 +61,63 @@ describe('battlefield store', () => {
       expect(b.primary.tapped).toBe(false);
     });
 
-    it('removes a stack and its z-order entry', () => {
+    it('removes a card’s stack and its z-order entry', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard({ name: 'Keep' }));
-      board.addStackByCard(makeCard({ name: 'Drop' }));
+      putOnBoard(board, makeCard({ name: 'Keep' }));
+      putOnBoard(board, makeCard({ name: 'Drop' }));
       const [keep, drop] = board.stacks as [BoardCardStack, BoardCardStack];
 
-      expect(board.removeStack(drop)).toBe(true);
+      board.removeCard(drop.primary);
 
       expect(names(board.stacks)).toEqual(['Keep']);
       expect(board.orderedStacks.map((s) => s.id)).toEqual([keep.id]);
-      expect(board.removeStack(drop)).toBe(false);
+      expect(board.removeCard(drop.primary)).toBe(false);
     });
 
-    it('clears every stack', () => {
+    it('clears every stack on reset', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard());
-      board.addStackByCard(makeCard());
+      putOnBoard(board, makeCard());
+      putOnBoard(board, makeCard());
 
-      board.clearStacks();
+      board.reset();
 
       expect(board.stacks).toEqual([]);
       expect(board.orderedStacks).toEqual([]);
     });
   });
 
+  // #172: helpers that change the board without logging stay inside the store.
+  it('keeps its unlogged stack helpers private', () => {
+    const board = useBattlefieldStore();
+
+    for (const name of [
+      'setStacks',
+      'setSnapScale',
+      'addStackByCard',
+      'clearStacks',
+      'removeStack',
+      'removeCardFromStack',
+      'cardIsInStack',
+      'getStackByCard',
+    ])
+      expect(board).not.toHaveProperty(name);
+  });
+
   describe('z-order', () => {
     it('orders stacks by when they were added', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard({ name: 'A' }));
-      board.addStackByCard(makeCard({ name: 'B' }));
-      board.addStackByCard(makeCard({ name: 'C' }));
+      putOnBoard(board, makeCard({ name: 'A' }));
+      putOnBoard(board, makeCard({ name: 'B' }));
+      putOnBoard(board, makeCard({ name: 'C' }));
 
       expect(names(board.orderedStacks)).toEqual(['A', 'B', 'C']);
     });
 
     it('brings a stack to the front without reordering the stacks array', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard({ name: 'A' }));
-      board.addStackByCard(makeCard({ name: 'B' }));
-      board.addStackByCard(makeCard({ name: 'C' }));
+      putOnBoard(board, makeCard({ name: 'A' }));
+      putOnBoard(board, makeCard({ name: 'B' }));
+      putOnBoard(board, makeCard({ name: 'C' }));
 
       board.bringToFront(board.stacks[0]!);
 
@@ -139,8 +127,8 @@ describe('battlefield store', () => {
 
     it('leaves the order alone when the stack is already in front', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard({ name: 'A' }));
-      board.addStackByCard(makeCard({ name: 'B' }));
+      putOnBoard(board, makeCard({ name: 'A' }));
+      putOnBoard(board, makeCard({ name: 'B' }));
 
       board.bringToFront(board.stacks[1]!);
 
@@ -149,9 +137,9 @@ describe('battlefield store', () => {
 
     it('keeps an exploded stack in front, its cards just beneath it (#126)', () => {
       const board = boardWithAttachments(2);
-      board.addStackByCard(makeCard({ name: 'Neighbour' }));
+      putOnBoard(board, makeCard({ name: 'Neighbour' }));
       board.bringToFront(
-        board.stacks.find((s) => s.primary.name === 'Neighbour')!,
+        board.stacks.find((s) => s.primary.scryfallInfo.name === 'Neighbour')!,
       );
 
       board.explodeStack(board.stacks[0]!);
@@ -166,7 +154,7 @@ describe('battlefield store', () => {
 
     it('keeps a stack in front of a card detached from it (#126)', () => {
       const board = boardWithUnders(1);
-      board.addStackByCard(makeCard({ name: 'Neighbour' }));
+      putOnBoard(board, makeCard({ name: 'Neighbour' }));
 
       board.detach([...board.stacks[0]!.unders][0]!);
 
@@ -181,8 +169,8 @@ describe('battlefield store', () => {
   describe('attaching', () => {
     it('moves a card from its own stack onto another stack', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard({ name: 'Host' }));
-      board.addStackByCard(makeCard({ name: 'Aura' }));
+      putOnBoard(board, makeCard({ name: 'Host' }));
+      putOnBoard(board, makeCard({ name: 'Aura' }));
       const aura = board.stacks[1]!.primary;
 
       board.startAttaching(aura);
@@ -193,7 +181,9 @@ describe('battlefield store', () => {
 
       const host = board.stacks[0]!;
       expect(names(board.stacks)).toEqual(['Host']);
-      expect([...host.attachments].map((c) => c.name)).toEqual(['Aura']);
+      expect([...host.attachments].map((c) => c.scryfallInfo.name)).toEqual([
+        'Aura',
+      ]);
       expect([...host.attachments][0]!.stack).toBe(host);
       expect(board.isAttaching).toBe(false);
     });
@@ -201,8 +191,8 @@ describe('battlefield store', () => {
     describe('dropping onto a stack (#108)', () => {
       it('offers the drag menu only for a single-card stack onto another stack', () => {
         const board = useBattlefieldStore();
-        board.addStackByCard(makeCard({ name: 'Host' }));
-        board.addStackByCard(makeCard({ name: 'Solo' }));
+        putOnBoard(board, makeCard({ name: 'Host' }));
+        putOnBoard(board, makeCard({ name: 'Solo' }));
         const [host, solo] = board.stacks as [BoardCardStack, BoardCardStack];
 
         expect(board.canOfferDragMenu(solo, host)).toBe(true);
@@ -217,16 +207,16 @@ describe('battlefield store', () => {
 
       it('refuses a stack with attachments as the dragged stack', () => {
         const board = boardWithAttachments(1);
-        board.addStackByCard(makeCard({ name: 'Other' }));
+        putOnBoard(board, makeCard({ name: 'Other' }));
         const [host, other] = board.stacks as [BoardCardStack, BoardCardStack];
         expect(board.canOfferDragMenu(host, other)).toBe(false);
       });
 
       it('attaches or puts under through dropCardOn', () => {
         const board = useBattlefieldStore();
-        board.addStackByCard(makeCard({ name: 'Host' }));
-        board.addStackByCard(makeCard({ name: 'Aura' }));
-        board.addStackByCard(makeCard({ name: 'Exiled' }));
+        putOnBoard(board, makeCard({ name: 'Host' }));
+        putOnBoard(board, makeCard({ name: 'Aura' }));
+        putOnBoard(board, makeCard({ name: 'Exiled' }));
         const [host, aura, exiled] = board.stacks as [
           BoardCardStack,
           BoardCardStack,
@@ -237,8 +227,12 @@ describe('battlefield store', () => {
         board.dropCardOn(exiled.primary, host, 'under');
 
         expect(names(board.stacks)).toEqual(['Host']);
-        expect([...host.attachments].map((c) => c.name)).toEqual(['Aura']);
-        expect([...host.unders].map((c) => c.name)).toEqual(['Exiled']);
+        expect([...host.attachments].map((c) => c.scryfallInfo.name)).toEqual([
+          'Aura',
+        ]);
+        expect([...host.unders].map((c) => c.scryfallInfo.name)).toEqual([
+          'Exiled',
+        ]);
         expect(board.isAttaching).toBe(false);
       });
     });
@@ -254,8 +248,8 @@ describe('battlefield store', () => {
 
     it('refuses to finish without a card, onto itself, or twice', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard({ name: 'Host' }));
-      board.addStackByCard(makeCard({ name: 'Aura' }));
+      putOnBoard(board, makeCard({ name: 'Host' }));
+      putOnBoard(board, makeCard({ name: 'Aura' }));
       const host = board.stacks[0]!;
       const aura = board.stacks[1]!.primary;
 
@@ -276,8 +270,8 @@ describe('battlefield store', () => {
 
     it('accepts only other stacks’ primary cards as targets', () => {
       const board = boardWithAttachments(1); // Host with Aura 0.
-      board.addStackByCard(makeCard({ name: 'Other' }));
-      board.addStackByCard(makeCard({ name: 'Equipment' }));
+      putOnBoard(board, makeCard({ name: 'Other' }));
+      putOnBoard(board, makeCard({ name: 'Equipment' }));
       const [host, other, equipment] = board.stacks as BoardCardStack[];
       const aura = [...host!.attachments][0]!;
 
@@ -302,7 +296,7 @@ describe('battlefield store', () => {
 
     it('does not detach a primary card', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard());
+      putOnBoard(board, makeCard());
 
       board.detach(board.stacks[0]!.primary);
 
@@ -315,7 +309,7 @@ describe('battlefield store', () => {
       const board = boardWithAttachments(1);
       const aura = [...board.stacks[0]!.attachments][0]!;
 
-      expect(board.removeCardFromStack(aura)).toBe(true);
+      expect(board.removeCard(aura)).toBe(true);
 
       expect(board.stacks[0]!.attachments.size).toBe(0);
       expect(names(board.stacks)).toEqual(['Host']);
@@ -325,7 +319,7 @@ describe('battlefield store', () => {
       const board = boardWithUnders(1);
       const under = [...board.stacks[0]!.unders][0]!;
 
-      expect(board.removeCardFromStack(under)).toBe(true);
+      expect(board.removeCard(under)).toBe(true);
 
       expect(board.stacks[0]!.unders.size).toBe(0);
     });
@@ -333,7 +327,7 @@ describe('battlefield store', () => {
     it('splits attachments into new stacks when the primary card is removed', () => {
       const board = boardWithAttachments(2);
 
-      const result = board.removeCardFromStack(board.stacks[0]!.primary);
+      const result = board.removeCard(board.stacks[0]!.primary);
 
       expect(names(board.stacks)).toEqual(['Aura 0', 'Aura 1']);
       expect(result).toEqual(board.stacks);
@@ -342,7 +336,7 @@ describe('battlefield store', () => {
     it('returns false for a card that is on no stack', () => {
       const board = useBattlefieldStore();
 
-      expect(board.removeCardFromStack(makeCard())).toBe(false);
+      expect(board.removeCard(makeCard())).toBe(false);
     });
   });
 
@@ -384,7 +378,7 @@ describe('battlefield store', () => {
   describe('card state', () => {
     it('untaps every primary and attachment', () => {
       const board = boardWithAttachments(1);
-      board.addStackByCard(makeCard({ name: 'Other' }));
+      putOnBoard(board, makeCard({ name: 'Other' }));
       const cards = board.stacks.flatMap((s) => [s.primary, ...s.attachments]);
       for (const card of cards) card.tapped = true;
 
@@ -395,7 +389,7 @@ describe('battlefield store', () => {
 
     it('toggles tapped', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard());
+      putOnBoard(board, makeCard());
       const card = board.stacks[0]!.primary;
 
       board.toggleTapped(card);
@@ -406,7 +400,7 @@ describe('battlefield store', () => {
 
     it('pins a card to the opposite of what it shows', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard());
+      putOnBoard(board, makeCard());
       const card = board.stacks[0]!.primary;
 
       board.toggleShownAs(card, true);
@@ -420,7 +414,7 @@ describe('battlefield store', () => {
 
     it('flips a card over and back', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard());
+      putOnBoard(board, makeCard());
       const card = board.stacks[0]!.primary;
 
       board.toggleFlipped(card);
@@ -429,9 +423,9 @@ describe('battlefield store', () => {
       expect(card.flipped).toBe(false);
     });
 
-    it('turns a card 180� and back', () => {
+    it('turns a card 180° and back', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard());
+      putOnBoard(board, makeCard());
       const card = board.stacks[0]!.primary;
 
       board.toggleTurned(card);
@@ -442,7 +436,7 @@ describe('battlefield store', () => {
 
     it('sets the face number', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard());
+      putOnBoard(board, makeCard());
       const card = board.stacks[0]!.primary;
 
       board.setFaceNumber(card, 3);
@@ -453,7 +447,7 @@ describe('battlefield store', () => {
     it('swaps a card to another printing, keeping its state (#114)', async () => {
       const board = useBattlefieldStore();
       const log = useEventLogStore();
-      board.addStackByCard(makeCard({ name: 'Bolt', tapped: true }));
+      putOnBoard(board, makeCard({ name: 'Bolt', tapped: true }));
       const card = board.stacks[0]!.primary;
       const id = card.id;
       card.faceNumber = 2;
@@ -470,8 +464,12 @@ describe('battlefield store', () => {
       expect(card.id).toBe(id);
       expect(card.scryfallInfo.id).toBe(printing.id);
       expect(Object.isFrozen(card.scryfallInfo)).toBe(true);
-      expect(card.image_uri).toBe('https://img.example/old-art.jpg');
-      expect(card.scryfall_uri).toBe('https://scryfall.com/card/lea/161');
+      expect(card.scryfallInfo.image_uris!.border_crop).toBe(
+        'https://img.example/old-art.jpg',
+      );
+      expect(card.scryfallInfo.scryfall_uri).toBe(
+        'https://scryfall.com/card/lea/161',
+      );
       expect(card.tapped).toBe(true);
       expect(card.faceNumber).toBe(2);
       expect(card.stack).toBe(board.stacks[0]);
@@ -480,11 +478,7 @@ describe('battlefield store', () => {
 
     it('clears modifiers', () => {
       const board = useBattlefieldStore();
-      const flying: BoardCardModifier = {
-        modifier: { name: 'Flying', symbol: 'ms ms-ability-flying' },
-        count: 1,
-      };
-      board.addStackByCard(makeCard({ modifiers: new Set([flying]) }));
+      putOnBoard(board, makeCard({ modifiers: new Map([['flying', 1]]) }));
       const card = board.stacks[0]!.primary;
 
       board.clearModifiers(card);
@@ -494,7 +488,7 @@ describe('battlefield store', () => {
 
     it('moves a stack', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard());
+      putOnBoard(board, makeCard());
 
       board.setStackPosition(board.stacks[0]!, { x: 12, y: 34 });
 
@@ -505,9 +499,9 @@ describe('battlefield store', () => {
   describe('reset', () => {
     it('restores the default board', () => {
       const board = useBattlefieldStore();
-      board.addStackByCard(makeCard());
+      putOnBoard(board, makeCard());
       board.setCenter({ x: 5, y: 5 });
-      board.setSnapScale(25);
+      board.snapScale = 25;
       board.startAttaching(makeCard());
 
       board.reset();
@@ -527,13 +521,15 @@ describe('battlefield store', () => {
       await nextTick();
       vi.runAllTimers();
 
-      board.clearStacks();
+      board.reset();
       board.setCenter({ x: 0, y: 0 });
       expect(board.load()).toBe(true);
 
       const host = board.stacks[0]!;
       expect(names(board.stacks)).toEqual(['Host']);
-      expect([...host.attachments].map((c) => c.name)).toEqual(['Aura 0']);
+      expect([...host.attachments].map((c) => c.scryfallInfo.name)).toEqual([
+        'Aura 0',
+      ]);
       // devalue keeps the card <-> stack cycle intact.
       expect(host.primary.stack).toBe(host);
       expect(board.center).toEqual({ x: 7, y: 8 });
@@ -545,7 +541,7 @@ describe('battlefield store', () => {
       await nextTick();
       vi.runAllTimers();
 
-      board.clearStacks();
+      board.reset();
       board.load();
 
       const host = board.stacks[0]!;
@@ -569,6 +565,7 @@ describe('battlefield store', () => {
       localStorage.setItem(
         STORAGE_KEY,
         stringify({
+          version: 1,
           stacks,
           zOrder: ['gone', 'stack-1'],
           center: { x: 0, y: 0 },
@@ -579,6 +576,121 @@ describe('battlefield store', () => {
       const board = useBattlefieldStore();
 
       expect(names(board.orderedStacks)).toEqual(['B', 'A']);
+    });
+
+    // #154: one bad stack or card used to throw in store setup, leaving a
+    // blank page.
+    describe('a save it can only partly read', () => {
+      /** A one-card stack, saved as the store would. */
+      function savedStack(name: string, i: number) {
+        const card = makeCard({ name });
+        const stack: BoardCardStack = {
+          id: `stack-${i}`,
+          primary: card,
+          attachments: new Set(),
+          unders: new Set(),
+          position: { x: 0, y: 0 },
+        };
+        card.stack = stack;
+        return stack;
+      }
+
+      function saveBoard(stacks: unknown[], version = 1) {
+        localStorage.setItem(
+          STORAGE_KEY,
+          stringify({
+            version,
+            stacks,
+            zOrder: [],
+            center: { x: 0, y: 0 },
+            snapScale: 10,
+          }),
+        );
+      }
+
+      function quietWarnings() {
+        return vi.spyOn(console, 'warn').mockImplementation(() => {});
+      }
+
+      it('drops a stack without a primary card and keeps the rest', () => {
+        const warn = quietWarnings();
+        const broken = { ...savedStack('Broken', 0), primary: undefined };
+        saveBoard([broken, savedStack('Fine', 1)]);
+
+        const board = useBattlefieldStore();
+
+        expect(names(board.stacks)).toEqual(['Fine']);
+        expect(warn).toHaveBeenCalled();
+      });
+
+      it("drops a stack whose attachments aren't a Set", () => {
+        quietWarnings();
+        const broken = { ...savedStack('Broken', 0), attachments: [] };
+        saveBoard([broken, savedStack('Fine', 1)]);
+
+        expect(names(useBattlefieldStore().stacks)).toEqual(['Fine']);
+      });
+
+      it('drops a stack whose primary card is malformed', () => {
+        quietWarnings();
+        const broken = savedStack('Broken', 0);
+        (broken.primary as unknown as Record<string, unknown>).scryfallInfo =
+          null;
+        saveBoard([broken, savedStack('Fine', 1)]);
+
+        expect(names(useBattlefieldStore().stacks)).toEqual(['Fine']);
+      });
+
+      it("drops a stack whose card's Scryfall data is malformed", () => {
+        quietWarnings();
+        const broken = savedStack('Broken', 0);
+        broken.primary.scryfallInfo = {
+          ...broken.primary.scryfallInfo,
+          card_faces: 5 as never,
+        };
+        saveBoard([broken, savedStack('Fine', 1)]);
+
+        expect(names(useBattlefieldStore().stacks)).toEqual(['Fine']);
+      });
+
+      it('drops a malformed attachment and keeps the stack', () => {
+        quietWarnings();
+        const host = savedStack('Host', 0);
+        const aura = makeCard({ name: 'Aura' });
+        aura.stack = host;
+        host.attachments.add(aura);
+        host.attachments.add({ id: 7 } as unknown as BoardCard);
+        saveBoard([host]);
+
+        const board = useBattlefieldStore();
+
+        const loaded = board.stacks[0]!;
+        expect([...loaded.attachments].map((c) => c.scryfallInfo.name)).toEqual(
+          ['Aura'],
+        );
+        expect([...loaded.attachments][0]!.stack).toBe(loaded);
+      });
+
+      it("drops counters it doesn't know and keeps the card", () => {
+        quietWarnings();
+        const stack = savedStack('Host', 0);
+        stack.primary.modifiers = new Map([
+          ['flying', 2],
+          ['retired', 1],
+        ]) as BoardCard['modifiers'];
+        saveBoard([stack]);
+
+        const card = useBattlefieldStore().stacks[0]!.primary;
+
+        expect([...card.modifiers]).toEqual([['flying', 2]]);
+      });
+
+      it('starts empty from a save of another version', () => {
+        quietWarnings();
+        saveBoard([savedStack('Old', 0)], 99);
+
+        expect(useBattlefieldStore().stacks).toEqual([]);
+      });
     });
 
     it('starts empty when nothing is saved', () => {
@@ -610,8 +722,6 @@ describe('battlefield store', () => {
 
 // #33
 describe('copying cards', () => {
-  const flying = { name: 'Flying', symbol: 'ms ms-ability-flying' };
-
   /** A tapped Host with a +1 counter, face number 3, an attachment and an under. */
   function decoratedHost() {
     const board = boardWithAttachments(1);
@@ -621,7 +731,7 @@ describe('copying cards', () => {
     host.primary.faceNumber = 3;
     host.primary.flipped = true;
     host.primary.shownAs = 'text';
-    host.primary.modifiers.add({ modifier: flying, count: 2 });
+    host.primary.modifiers.set('flying', 2);
     const under = makeCard({ name: 'Under 0', tapped: true });
     host.unders.add(under);
     under.stack = host;
@@ -635,8 +745,8 @@ describe('copying cards', () => {
 
     expect(copy.primary.id).not.toBe(host.primary.id);
     expect(copy.primary.scryfallInfo).toBe(host.primary.scryfallInfo);
+    expect(copy.primary.scryfallInfo.name).toBe('Host');
     expect(copy.primary).toMatchObject({
-      name: 'Host',
       tapped: false,
       faceNumber: 0,
       stack: copy,
@@ -657,14 +767,12 @@ describe('copying cards', () => {
       flipped: true,
       shownAs: 'text',
     });
-    expect([...copy.primary.modifiers]).toEqual([
-      { modifier: flying, count: 2 },
-    ]);
+    expect([...copy.primary.modifiers]).toEqual([['flying', 2]]);
     expect(copy.attachments.size).toBe(0);
 
     // The copy's counters are its own.
-    [...copy.primary.modifiers][0]!.count = 9;
-    expect([...host.primary.modifiers][0]!.count).toBe(2);
+    copy.primary.modifiers.set('flying', 9);
+    expect(host.primary.modifiers.get('flying')).toBe(2);
   });
 
   it('copies an attached card on its own', () => {
@@ -673,7 +781,7 @@ describe('copying cards', () => {
 
     const copy = board.copyCard(aura, 'card');
 
-    expect(copy.primary.name).toBe('Aura 0');
+    expect(copy.primary.scryfallInfo.name).toBe('Aura 0');
     expect(host.attachments.size).toBe(1);
   });
 
@@ -682,9 +790,14 @@ describe('copying cards', () => {
 
     const copy = board.copyCard(host.primary, 'stack');
 
-    expect(copy.primary).toMatchObject({ name: 'Host', tapped: true });
-    expect([...copy.attachments].map((c) => c.name)).toEqual(['Aura 0']);
-    expect([...copy.unders]).toMatchObject([{ name: 'Under 0', tapped: true }]);
+    expect(copy.primary.scryfallInfo.name).toBe('Host');
+    expect(copy.primary.tapped).toBe(true);
+    expect([...copy.attachments].map((c) => c.scryfallInfo.name)).toEqual([
+      'Aura 0',
+    ]);
+    expect([...copy.unders]).toMatchObject([
+      { scryfallInfo: { name: 'Under 0' }, tapped: true },
+    ]);
     const all = [copy.primary, ...copy.attachments, ...copy.unders];
     const originals = [host.primary, ...host.attachments, ...host.unders];
     for (const card of all) {
@@ -698,7 +811,7 @@ describe('copying cards', () => {
 
     const copy = board.copyCard([...host.attachments][0]!, 'stack');
 
-    expect(copy.primary.name).toBe('Host');
+    expect(copy.primary.scryfallInfo.name).toBe('Host');
     expect(copy.attachments.size).toBe(1);
   });
 
@@ -719,16 +832,18 @@ describe('copying cards', () => {
 describe('unders', () => {
   it('puts a board card under another stack', () => {
     const board = useBattlefieldStore();
-    const host = board.addStackByCard(makeCard({ name: 'Host' }));
+    const host = putOnBoard(board, makeCard({ name: 'Host' }));
     const exiled = makeCard({ name: 'Exiled' });
-    board.addStackByCard(exiled);
+    putOnBoard(board, exiled);
 
     board.startAttaching(exiled, 'under');
     expect(board.attachMode).toBe('under');
     board.finishAttaching(board.stacks[0]!);
 
     expect(names(board.stacks)).toEqual(['Host']);
-    expect([...board.stacks[0]!.unders].map((c) => c.name)).toEqual(['Exiled']);
+    expect(
+      [...board.stacks[0]!.unders].map((c) => c.scryfallInfo.name),
+    ).toEqual(['Exiled']);
     expect(board.stacks[0]!.attachments.size).toBe(0);
     expect(exiled.stack).toStrictEqual(host);
     expect(board.isAttaching).toBe(false);
@@ -780,7 +895,7 @@ describe('unders', () => {
     const board = boardWithUnders(1);
     const under = [...board.stacks[0]!.unders][0]!;
 
-    board.removeCardFromStack(under);
+    board.removeCard(under);
 
     expect(board.stacks[0]!.unders.size).toBe(0);
     expect(board.stacks).toHaveLength(1);
@@ -819,9 +934,9 @@ describe('event log', () => {
 
   it('logs attaching and putting under, with the target', () => {
     const board = useBattlefieldStore();
-    const host = board.addStackByCard(makeCard({ name: 'Host' }));
-    board.addStackByCard(makeCard({ name: 'Aura' }));
-    board.addStackByCard(makeCard({ name: 'Exiled' }));
+    const host = putOnBoard(board, makeCard({ name: 'Host' }));
+    putOnBoard(board, makeCard({ name: 'Aura' }));
+    putOnBoard(board, makeCard({ name: 'Exiled' }));
 
     board.startAttaching(board.stacks[1]!.primary);
     board.finishAttaching(host);
@@ -833,7 +948,7 @@ describe('event log', () => {
 
   it('logs a copy with its source and mode', () => {
     const board = useBattlefieldStore();
-    const host = board.addStackByCard(makeCard({ name: 'Host' }));
+    const host = putOnBoard(board, makeCard({ name: 'Host' }));
 
     const copy = board.copyCard(host.primary, 'counters');
 
@@ -994,5 +1109,138 @@ describe('casting at a drop point', () => {
     expect(
       useBattlefieldStore().boardPointFromScreen({ x: 1, y: 1 }),
     ).toBeNull();
+  });
+});
+
+// #143
+describe('melding', () => {
+  /** Bruna and Gisela on the board, each in its own stack. */
+  function boardWithMeldPair() {
+    const board = useBattlefieldStore();
+    const cards = makeMeldCards();
+    board.castCard(cards.bruna);
+    board.castCard(cards.gisela);
+    // The store's reactive cards, as components pass them.
+    const [bruna, gisela] = board.stacks.map((s) => s.primary) as [
+      BoardCard,
+      BoardCard,
+    ];
+    useEventLogStore().reset();
+    return { board, bruna, gisela, brisela: cards.brisela };
+  }
+
+  function logged() {
+    return useEventLogStore().entries.map((e: EventEntry) =>
+      'source' in e && 'target' in e
+        ? `${e.type} ${e.card.name} from ${e.source.name} + ${e.target.name}`
+        : e.type,
+    );
+  }
+
+  it('offers the other half only while it is on the board', () => {
+    const { board, bruna, gisela } = boardWithMeldPair();
+
+    expect(board.meldPartner(bruna)?.id).toBe(gisela.id);
+    expect(board.meldPartner(gisela)?.id).toBe(bruna.id);
+
+    board.removeCard(gisela);
+
+    expect(board.meldPartner(bruna)).toBeUndefined();
+  });
+
+  it('finds the other half as an attachment or under', () => {
+    const { board, bruna, gisela } = boardWithMeldPair();
+    board.dropCardOn(gisela, bruna.stack!, 'under');
+
+    expect(board.meldPartner(bruna)?.id).toBe(gisela.id);
+  });
+
+  it('melds both halves into one card in place of the first', () => {
+    const { board, bruna, gisela, brisela } = boardWithMeldPair();
+    const stack = bruna.stack!;
+    const position = { ...stack.position };
+
+    const melded = board.meld(bruna, brisela)!;
+
+    expect(names(board.stacks)).toEqual(['Brisela, Voice of Nightmares']);
+    expect(board.stacks[0]!.id).toBe(stack.id);
+    expect(board.stacks[0]!.position).toEqual(position);
+    expect(melded.stack?.id).toBe(stack.id);
+    expect(melded.meldedFrom?.map((c) => c.id)).toEqual([bruna.id, gisela.id]);
+    expect(melded.meldedFrom?.every((c) => !c.stack)).toBe(true);
+    expect(logged()).toEqual([
+      'melded Brisela, Voice of Nightmares from Bruna, the Fading Light + Gisela, the Broken Blade',
+    ]);
+  });
+
+  it('melds a half that is attached to the other', () => {
+    const { board, bruna, gisela, brisela } = boardWithMeldPair();
+    board.dropCardOn(bruna, gisela.stack!, 'attach');
+
+    board.meld(bruna, brisela);
+
+    expect(names(board.stacks)).toEqual(['Brisela, Voice of Nightmares']);
+    expect(board.stacks[0]!.attachments.size).toBe(0);
+  });
+
+  it('does nothing when the other half has left the board', () => {
+    const { board, bruna, gisela, brisela } = boardWithMeldPair();
+    board.removeCard(gisela);
+    useEventLogStore().reset();
+
+    expect(board.meld(bruna, brisela)).toBeNull();
+    expect(names(board.stacks)).toEqual(['Bruna, the Fading Light']);
+    expect(logged()).toEqual([]);
+  });
+
+  it('unmelds back into the original halves, with their state', () => {
+    const { board, bruna, gisela, brisela } = boardWithMeldPair();
+    board.toggleTapped(gisela);
+    const melded = board.meld(bruna, brisela)!;
+    const stackId = melded.stack!.id;
+
+    const halves = board.unmeld(melded)!;
+
+    expect(halves.map((c) => c.id)).toEqual([bruna.id, gisela.id]);
+    expect(names(board.stacks)).toEqual([
+      'Bruna, the Fading Light',
+      'Gisela, the Broken Blade',
+    ]);
+    expect(board.stacks[0]!.id).toBe(stackId);
+    expect(board.stacks[1]!.primary.tapped).toBe(true);
+    expect(board.stacks[1]!.position.x).toBeGreaterThan(
+      board.stacks[0]!.position.x,
+    );
+    expect(logged()).toEqual([
+      'melded Brisela, Voice of Nightmares from Bruna, the Fading Light + Gisela, the Broken Blade',
+      'unmelded Brisela, Voice of Nightmares from Bruna, the Fading Light + Gisela, the Broken Blade',
+    ]);
+  });
+
+  it('cannot unmeld a card that was not melded on the board', () => {
+    const board = useBattlefieldStore();
+    const brisela = board.castCard(makeMeldCards().brisela).primary;
+
+    expect(board.unmeld(brisela)).toBeNull();
+    expect(names(board.stacks)).toEqual(['Brisela, Voice of Nightmares']);
+  });
+
+  it('keeps the halves through a save and load', async () => {
+    vi.useFakeTimers();
+    const { board, bruna, brisela } = boardWithMeldPair();
+    board.meld(bruna, brisela);
+    await nextTick();
+    vi.runAllTimers();
+
+    board.reset();
+    board.load();
+
+    const melded = board.stacks[0]!.primary;
+    expect(melded.meldedFrom?.map((c) => c.scryfallInfo.name)).toEqual([
+      'Bruna, the Fading Light',
+      'Gisela, the Broken Blade',
+    ]);
+    expect(Object.isFrozen(melded.meldedFrom![0]!.scryfallInfo)).toBe(true);
+    expect(board.unmeld(melded)).toHaveLength(2);
   });
 });

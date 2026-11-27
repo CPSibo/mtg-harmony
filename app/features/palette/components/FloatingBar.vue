@@ -18,7 +18,9 @@
   >
     <UButton
       icon="i-lucide-search"
-      class="fixed top-[calc(0.5rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2"
+      aria-label="Search commands"
+      title="Search commands"
+      class="sm:fixed sm:top-[calc(0.5rem+env(safe-area-inset-top))] sm:left-1/2 sm:-translate-x-1/2 max-sm:px-3"
       color="neutral"
       variant="subtle"
       @click="
@@ -27,18 +29,29 @@
         }
       "
     >
+      <!-- In the middle of the top row; on phones, in the row after On-deck,
+           without the key hint (#240). -->
       <template #trailing>
-        <UKbd value="/" />
+        <UKbd
+          value="/"
+          class="max-sm:hidden"
+        />
       </template>
     </UButton>
 
     <template #content>
-      <UCommandPalette
-        ref="palette"
-        v-model:search-term="searchTerm"
-        :groups="groups"
-        @update:model-value="open = false"
-      />
+      <div
+        ref="content"
+        class="contents"
+      >
+        <!-- A shorter list, so the board shows below it (#235). -->
+        <UCommandPalette
+          v-model:search-term="searchTerm"
+          :groups="groups"
+          :ui="{ viewport: 'max-h-[min(22rem,50svh)]' }"
+          @update:model-value="open = false"
+        />
+      </div>
       <!-- A picked command runs and the palette gets out of its way, so a
            window it opens (like Add Card) isn't left stacked under it. -->
     </template>
@@ -50,15 +63,22 @@ import UButton from '@nuxt/ui/components/Button.vue';
 import UKbd from '@nuxt/ui/components/Kbd.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
 import { defineShortcuts } from '@nuxt/ui/composables';
-import { computed, defineAsyncComponent, ref, useTemplateRef } from 'vue';
+import {
+  computed,
+  defineAsyncComponent,
+  ref,
+  useTemplateRef,
+  watch,
+} from 'vue';
 import { useCloseOnTouchOutside } from '~/composables/useCloseOnTouchOutside';
 import { useWidgetRegistry } from '~/features/widgets';
+import { whenIdle } from '~/utils/whenIdle';
 
 // The palette (with fuse.js and a virtualizer) loads when the browser is
 // idle or on first open, so it stays out of the startup bundle.
 const loadPalette = () => import('@nuxt/ui/components/CommandPalette.vue');
 const UCommandPalette = defineAsyncComponent(loadPalette);
-window.requestIdleCallback?.(() => void loadPalette());
+whenIdle(() => void loadPalette());
 
 const open = defineModel<boolean>('open');
 
@@ -73,6 +93,22 @@ const groups = computed(() => registry.paletteGroups);
 
 const searchTerm = ref('');
 
-const palette = useTemplateRef<{ $el: Element }>('palette');
-useCloseOnTouchOutside(open, () => palette.value?.$el);
+// The palette's own `$el` can be a text node, so the touch and focus checks
+// test against this wrapper (`display: contents`, so layout is unchanged).
+const content = useTemplateRef('content');
+useCloseOnTouchOutside(open, content);
+
+// Let go of focus as soon as the palette starts closing (#230). Its search box
+// stays on screen while it animates out, and a press on the board doesn't take
+// focus, so the next "/" went into the box (shortcuts ignore inputs) instead
+// of opening the palette again.
+watch(open, (isOpen) => {
+  const active = document.activeElement;
+  if (
+    !isOpen &&
+    active instanceof HTMLElement &&
+    content.value?.contains(active)
+  )
+    active.blur();
+});
 </script>

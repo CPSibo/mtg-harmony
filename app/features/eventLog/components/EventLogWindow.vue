@@ -55,57 +55,99 @@
         class="flex flex-col divide-y divide-default max-h-[60svh] overflow-y-auto"
         aria-label="Events"
       >
-        <li
-          v-for="entry in shown"
-          :key="entry.id"
-          class="flex items-center gap-3 py-2"
-          :class="{ 'bg-elevated/50': entry.type === 'gameMarker' }"
+        <template
+          v-for="row in rows"
+          :key="row.kind === 'group' ? row.id : row.entry.id"
         >
-          <SharedCardImage
-            v-if="
-              'card' in entry && entry.card.imageUri && settings.imagesEnabled
-            "
-            :landscape="entry.card.landscape"
-            frame-class="w-11"
-            :src="entry.card.imageUri"
-            alt=""
-            class="w-8 rounded-sm mtg-card-display"
-          />
-          <UIcon
-            v-else
-            :name="EVENT_LABELS[entry.type].icon"
-            class="size-8 p-1.5 text-muted"
-          />
-
-          <div class="flex flex-col grow min-w-0">
-            <span class="truncate">{{ describeEntry(entry) }}</span>
-            <time
-              class="text-xs text-muted"
-              :datetime="new Date(entry.at).toISOString()"
-            >
-              {{ formatTime(entry.at) }}
-            </time>
-          </div>
-
-          <UButton
-            v-if="entry.type === 'fetched'"
-            icon="i-lucide-sparkles"
-            size="sm"
-            variant="soft"
-            :aria-label="`Cast ${entry.card.name}`"
-            @click="castAgain(entry.card)"
+          <!-- One action on several cards, such as removing a selection (#221). -->
+          <li
+            v-if="row.kind === 'group'"
+            class="py-2"
           >
-            Cast
-          </UButton>
-        </li>
+            <details>
+              <summary class="flex items-center gap-3 cursor-pointer list-none">
+                <UIcon
+                  :name="EVENT_LABELS[row.entries[0]!.type].icon"
+                  class="size-8 p-1.5 text-muted shrink-0"
+                />
+                <div class="flex flex-col grow min-w-0">
+                  <span class="truncate">{{ describeGroup(row.entries) }}</span>
+                  <time
+                    class="text-xs text-muted"
+                    :datetime="new Date(row.entries[0]!.at).toISOString()"
+                  >
+                    {{ formatTime(row.entries[0]!.at) }}
+                  </time>
+                </div>
+                <UIcon
+                  name="i-lucide-chevron-down"
+                  class="size-4 text-muted shrink-0"
+                />
+              </summary>
+              <ul class="ms-11 mt-1 flex flex-col gap-0.5 text-sm text-muted">
+                <li
+                  v-for="entry in row.entries"
+                  :key="entry.id"
+                  class="truncate"
+                >
+                  {{ describeEntry(entry) }}
+                </li>
+              </ul>
+            </details>
+          </li>
+          <li
+            v-else
+            class="flex items-center gap-3 py-2"
+            :class="{ 'bg-elevated/50': row.entry.type === 'gameMarker' }"
+          >
+            <SharedCardImage
+              v-if="
+                'card' in row.entry &&
+                row.entry.card.imageUri &&
+                settings.imagesEnabled
+              "
+              :landscape="row.entry.card.landscape"
+              frame-class="w-11"
+              :src="row.entry.card.imageUri"
+              alt=""
+              class="w-8 rounded-sm mtg-card-display"
+            />
+            <UIcon
+              v-else
+              :name="EVENT_LABELS[row.entry.type].icon"
+              class="size-8 p-1.5 text-muted"
+            />
+
+            <div class="flex flex-col grow min-w-0">
+              <span class="truncate">{{ describeEntry(row.entry) }}</span>
+              <time
+                class="text-xs text-muted"
+                :datetime="new Date(row.entry.at).toISOString()"
+              >
+                {{ formatTime(row.entry.at) }}
+              </time>
+            </div>
+
+            <UButton
+              v-if="row.entry.type === 'fetched'"
+              icon="i-lucide-sparkles"
+              size="sm"
+              variant="soft"
+              :aria-label="`Cast ${row.entry.card.name}`"
+              @click="castAgain(row.entry.card)"
+            >
+              Cast
+            </UButton>
+          </li>
+        </template>
       </ul>
 
       <p
-        v-if="matching.length > shown.length"
+        v-if="matchingCount > shown.length"
         class="text-xs text-muted text-center"
       >
-        Showing the newest {{ shown.length }} of {{ matching.length }}. Filter
-        to find older events.
+        Showing the newest {{ shown.length }} of {{ matchingCount }}. Filter to
+        find older events.
       </p>
     </template>
 
@@ -149,7 +191,10 @@ import {
   EVENT_LABELS,
   EVENT_TYPES,
   describeEntry,
+  describeGroup,
   filterEntries,
+  groupRows,
+  takeNewest,
   scryfallCardFromSnapshot,
   useEventLogStore,
   type EventType,
@@ -181,14 +226,20 @@ watch(
   () => log.windowIsOpen,
   (open) => {
     if (open) void log.loadHistory();
-    else confirmingClear.value = false;
+    else {
+      confirmingClear.value = false;
+      // Past games can be large; read them again next time (#173).
+      log.unloadHistory();
+    }
   },
   { immediate: true },
 );
 
 const emptyMessage = computed(() => {
   if (log.historyLoading) return 'Loading past games…';
-  return log.history.length ? 'No events match.' : 'Nothing logged yet.';
+  return log.pastEntries.length || log.entries.length
+    ? 'No events match.'
+    : 'Nothing logged yet.';
 });
 
 /** Clear past games asks for a second click, within a few seconds. */
@@ -206,13 +257,25 @@ function clearHistory() {
   toast.add({ title: 'Past games cleared', color: 'info' });
 }
 
-const matching = computed(() =>
-  filterEntries(log.history, {
-    types: types.value,
-    name: nameDebounced.value,
-  }),
+// The current game and past games are filtered apart, so a new event only
+// refilters the current game; past games refilter when the filter changes
+// (#173).
+const filter = computed(() => ({
+  types: types.value,
+  name: nameDebounced.value,
+}));
+const matchingNow = computed(() => filterEntries(log.entries, filter.value));
+const matchingPast = computed(() =>
+  filterEntries(log.pastEntries, filter.value),
 );
-const shown = computed(() => matching.value.slice(0, MAX_SHOWN));
+const matchingCount = computed(
+  () => matchingNow.value.length + matchingPast.value.length,
+);
+const shown = computed(() =>
+  takeNewest(matchingNow.value, matchingPast.value, MAX_SHOWN),
+);
+/** What was recorded together shows as one row (#221). */
+const rows = computed(() => groupRows(shown.value));
 
 const today = new Date().toDateString();
 function formatTime(at: number) {
