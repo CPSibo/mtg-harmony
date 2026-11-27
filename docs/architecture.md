@@ -97,30 +97,30 @@ with `useWidget(definition)`, which does steps 2 and the unregister for it. The 
 Widgets with commands: Add Card, the event log, Board, Find, Select, Arrange, On-deck and App. Widgets have no settings of their own: the
 settings dialog binds to the stores directly.
 
-| Shortcut              | Command                                                    |
-| --------------------- | ---------------------------------------------------------- |
-| `/`                   | Open the palette                                           |
-| `b-a`                 | Add card                                                   |
-| `e-l`                 | Event log                                                  |
-| `Ctrl+Z` / `Cmd+Z`    | Undo the last structural change (#215)                     |
-| `Ctrl+Shift+Z`        | Redo it (`Cmd+Shift+Z` on a Mac)                           |
-| `u-u`                 | Untap all                                                  |
-| `z-f` / `z-s` / `z-r` | Zoom to fit all cards / to the selection / reset the view  |
-| `s-m`                 | Selection mode on or off                                   |
-| `o-o`                 | Show or hide On-deck                                       |
-| `o-n` / `o-p`         | Next / previous On-deck card                               |
-| `o-c` / `o-g`         | Cast the On-deck card to the board / to the graveyard      |
-| `f-b`                 | Find on board                                              |
-| `a-a`                 | Smart arrange the selection, or every card                 |
-| `Space Space`         | Smart arrange, then zoom to fit (a setting, on by default) |
-| `s-a` / `s-i`         | Select all / invert the selection                          |
-| `s-t` / `s-u`         | Select tapped / untapped                                   |
-| `s-n`                 | Select every card with the same name as the selection      |
-| `s-y`                 | Select by type                                             |
-| `t-t`                 | Tap or untap the selection                                 |
-| `c-c`                 | Counters and keywords on the selection                     |
-| `r-r`                 | Remove the selection (asks first)                          |
-| `p-p`                 | Proliferate the selection                                  |
+| Shortcut              | Command                                                   |
+| --------------------- | --------------------------------------------------------- |
+| `/`                   | Open the palette                                          |
+| `b-a`                 | Add card                                                  |
+| `e-l`                 | Event log                                                 |
+| `Ctrl+Z` / `Cmd+Z`    | Undo the last structural change (#215)                    |
+| `Ctrl+Shift+Z`        | Redo it (`Cmd+Shift+Z` on a Mac)                          |
+| `u-u`                 | Untap all                                                 |
+| `z-f` / `z-s` / `z-r` | Zoom to fit all cards / to the selection / reset the view |
+| `s-m`                 | Selection mode on or off                                  |
+| `o-o`                 | Show or hide On-deck                                      |
+| `o-n` / `o-p`         | Next / previous On-deck card                              |
+| `o-c` / `o-g`         | Cast the On-deck card to the board / to the graveyard     |
+| `f-b`                 | Find on board                                             |
+| `a-a`                 | Smart arrange every card, then zoom to fit                |
+| `Space Space`         | The same as `a-a` (a setting, on by default)              |
+| `s-a` / `s-i`         | Select all / invert the selection                         |
+| `s-t` / `s-u`         | Select tapped / untapped                                  |
+| `s-n`                 | Select every card with the same name as the selection     |
+| `s-y`                 | Select by type                                            |
+| `t-t`                 | Tap or untap the selection                                |
+| `c-c`                 | Counters and keywords on the selection                    |
+| `r-r`                 | Remove the selection (asks first)                         |
+| `p-p`                 | Proliferate the selection                                 |
 
 ### Commands that depend on the selection
 

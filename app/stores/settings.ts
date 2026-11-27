@@ -61,7 +61,7 @@ export interface AppSettings {
   /** Whether new cards go in their row of the view (#223). */
   arrangeNewCards: boolean;
 
-  /** Whether Space, Space runs Smart arrange and zooms to fit (#235). */
+  /** Whether Space, Space runs Smart arrange, as `a-a` does (#235). */
   arrangeShortcutEnabled: boolean;
 
   /** Whether the board shows the themed background instead of the grid (#246). */

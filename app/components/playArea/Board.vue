@@ -246,40 +246,47 @@ useWidget({
   commands: [
     {
       id: 'arrange.smart',
-      toast: () => `Arranged ${count(arrangeTargets().length)}`,
+      toast: smartArrangeToast,
       label: 'Smart arrange',
       description:
-        'Creatures in front, lands at the back. The selection, or all cards',
+        'All cards: creatures in front, lands at the back. Then shows them',
       icon: 'i-lucide-layout-grid',
       kbds: 'a-a',
-      enabled: anyStacks,
+      enabled: canSmartArrange,
       execute: smartArrange,
     },
     {
+      // The same as Smart arrange, on a second shortcut.
       id: 'arrange.smartAndFit',
-      toast: () =>
-        `Arranged ${count(arrangeTargets().length)} and zoomed to fit`,
-      label: 'Smart arrange and zoom to fit',
-      description: 'Then shows every card',
-      icon: 'i-lucide-scan',
+      toast: smartArrangeToast,
+      label: 'Smart arrange',
+      icon: 'i-lucide-layout-grid',
       kbds: 'space-space',
-      enabled: () => anyStacks() && settings.arrangeShortcutEnabled,
+      shortcutOnly: true,
+      enabled: () => canSmartArrange() && settings.arrangeShortcutEnabled,
       // Space also works a focused button or card; leave it to them.
       shortcutGuard: () => !takesSpace(document.activeElement),
-      execute: () => {
-        smartArrange();
-        zoomToStacks();
-      },
+      execute: smartArrange,
     },
   ],
 });
 
-/** What Smart arrange moves (#223): the selection, or every stack. */
-const arrangeTargets = () =>
-  selection.size ? selection.stacks() : battlefield.stacks;
+/**
+ * Smart arrange is all or nothing: it hands the layout and the camera to the
+ * app, so it isn't offered for a selection.
+ */
+function canSmartArrange() {
+  return anyStacks() && !selection.size;
+}
 
+function smartArrangeToast() {
+  return `Arranged ${count(battlefield.stacks.length)} and zoomed to fit`;
+}
+
+/** Arranges every stack where the camera can't skew it, then shows them. */
 function smartArrange() {
-  battlefield.arrangeStacks(arrangeTargets());
+  battlefield.arrangeStacks();
+  zoomToStacks();
 }
 
 /** "1 card", "3 cards": for the commands' toasts (#237). */

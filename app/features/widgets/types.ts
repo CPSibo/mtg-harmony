@@ -47,6 +47,11 @@ export interface WidgetCommand {
    */
   shortcutGuard?: () => boolean;
   /**
+   * A second shortcut for a command the palette already lists: the palette
+   * leaves this one out.
+   */
+  shortcutOnly?: boolean;
+  /**
    * An info toast saying what the command did (#237), read just before it
    * runs, so it can count or name what it acts on. Commands that ask for
    * more (Add card, Find) or open something (On-deck, the event log) have

@@ -112,7 +112,7 @@
 
         <UFormField
           label="Space, Space to arrange"
-          description="Press Space twice to Smart arrange (the selection, or every card) and then zoom to fit"
+          description="Press Space twice to Smart arrange every card and zoom to fit"
         >
           <USwitch v-model="arrangeShortcutEnabled" />
         </UFormField>
