@@ -1,7 +1,7 @@
 /**
- * Path helpers for the background's motifs (#246). Motifs are drawn in a
- * 200 × 200 box centred on (100, 100), as centre-line paths that `brush` turns
- * into filled outlines of varying width. Everything here is plain maths:
+ * Path helpers for the background's emblems (#246, #250). Emblems are drawn in
+ * a 200 × 200 box centred on (100, 100), mostly as centre-line paths that
+ * `brush` or `mono` turn into filled outlines. Everything here is plain maths:
  * neither happy-dom nor Node can measure an SVG path.
  */
 
@@ -15,13 +15,43 @@ export const fmt = (n: number) => {
   return s === '-0.0' ? '0.0' : s;
 };
 
-const pt = (p: Point) => `${fmt(p[0])} ${fmt(p[1])}`;
+export const pt = (p: Point) => `${fmt(p[0])} ${fmt(p[1])}`;
+
+/** Points joined by straight lines, not closed. */
+export const polyD = (ps: readonly Point[]) =>
+  ps.map((q, i) => (i ? 'L' : 'M') + pt(q)).join('');
+
+/** A filled path; `evenodd`, so a closed outline's inner loop is a hole. */
+export const path = (d: string, attrs = '') =>
+  `<path fill-rule='evenodd' d='${d}'${attrs}/>`;
+
+/** A filled dot. */
+export const dot = (x: number, y: number, r: number) =>
+  `<circle cx='${fmt(x)}' cy='${fmt(y)}' r='${fmt(r)}'/>`;
 
 /** The point at radius `r` and angle `a` around (cx, cy). */
 export const polar = (r: number, a: number, cx = 100, cy = 100): Point => [
   cx + r * Math.cos(a),
   cy + r * Math.sin(a),
 ];
+
+/** `p` turned by `a` round (cx, cy). */
+export function rotate(p: Point, a: number, cx = 100, cy = 100): Point {
+  const dx = p[0] - cx;
+  const dy = p[1] - cy;
+  const c = Math.cos(a);
+  const s = Math.sin(a);
+  return [cx + dx * c - dy * s, cy + dx * s + dy * c];
+}
+
+/** The corners of a regular `n`-gon, the first at angle `a0`. */
+export const ngon = (
+  n: number,
+  r: number,
+  a0 = -Math.PI / 2,
+  cx = 100,
+  cy = 100,
+) => Array.from({ length: n }, (_, k) => polar(r, a0 + (k * TAU) / n, cx, cy));
 
 /** A circle as a closed polyline. */
 export function circle(cx: number, cy: number, r: number, steps = 48): string {
@@ -223,6 +253,19 @@ export function brush(d: string, base: number, phase: number): string {
       : base * (0.18 + 1.02 * Math.sin(Math.PI * t ** 0.85) ** 0.7);
   };
 
+  return outline(p, closed, width);
+}
+
+/**
+ * A polyline as a filled outline, `width(i)` wide at point `i`: closed, an
+ * outer and an inner loop for `fill-rule="evenodd"`; open, one loop round it.
+ */
+export function outline(
+  p: readonly Point[],
+  closed: boolean,
+  width: (i: number) => number,
+): string {
+  const m = p.length;
   const left: Point[] = [];
   const right: Point[] = [];
   for (let i = 0; i < m; i++) {
@@ -237,9 +280,72 @@ export function brush(d: string, base: number, phase: number): string {
     left.push([p[i]![0] + nx * w, p[i]![1] + ny * w]);
     right.push([p[i]![0] - nx * w, p[i]![1] - ny * w]);
   }
-  const line = (ps: readonly Point[]) =>
-    ps.map((q, i) => (i ? 'L' : 'M') + pt(q)).join('');
   return closed
-    ? `${line(left)}Z${line(right)}Z`
-    : `${line(left)}${line(right.reverse()).replace(/^M/, 'L')}Z`;
+    ? `${polyD(left)}Z${polyD(right)}Z`
+    : `${polyD(left)}${polyD(right.reverse()).replace(/^M/, 'L')}Z`;
+}
+
+/**
+ * A centre-line path as an even line `w` wide (#250). Straight lines keep
+ * only their corners, mitred; curves are sampled as sparsely as `brush`
+ * samples. Every vertex costs when the tile is rendered again for a zoom.
+ */
+export function mono(d: string, w: number): string {
+  const { points, closed } = flatten(d);
+  const length = pathLength(points);
+  if (!length) return '';
+  if (!/[QC]/i.test(d)) return mitred(points, closed, w);
+  const p = resample(points, Math.max(8, Math.ceil(length / BRUSH_SPACING)));
+  if (closed) p.pop();
+  return outline(p, closed, () => w);
+}
+
+/** The steepest a mitred corner may be, as how far its point sticks out per half width. */
+const MITRE_LIMIT = 4;
+
+/**
+ * A polyline as an outline `w` wide with mitred corners, so a corner keeps
+ * its full width without points either side of it.
+ */
+export function mitred(
+  points: readonly Point[],
+  closed: boolean,
+  w: number,
+): string {
+  // Repeated points, and a closed path's last point, have no direction.
+  const p = points.filter(
+    (q, i) =>
+      i === 0 || q[0] !== points[i - 1]![0] || q[1] !== points[i - 1]![1],
+  );
+  if (closed && p.length > 1) {
+    const [a, z] = [p[0]!, p[p.length - 1]!];
+    if (a[0] === z[0] && a[1] === z[1]) p.pop();
+  }
+  const m = p.length;
+  if (m < 2) return '';
+  const dir = (i: number, j: number): Point => {
+    const a = p[(i + m) % m]!;
+    const b = p[(j + m) % m]!;
+    const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+    return [(b[0] - a[0]) / l, (b[1] - a[1]) / l];
+  };
+  const left: Point[] = [];
+  const right: Point[] = [];
+  for (let i = 0; i < m; i++) {
+    const before = closed || i > 0 ? dir(i - 1, i) : dir(i, i + 1);
+    const after = closed || i < m - 1 ? dir(i, i + 1) : before;
+    // The corner's normal halves the turn; it reaches further the sharper it is.
+    let nx = -before[1] - after[1];
+    let ny = before[0] + after[0];
+    const l = Math.hypot(nx, ny) || 1;
+    nx /= l;
+    ny /= l;
+    const cos = nx * -after[1] + ny * after[0];
+    const reach = w / 2 / Math.max(cos, 1 / MITRE_LIMIT);
+    left.push([p[i]![0] + nx * reach, p[i]![1] + ny * reach]);
+    right.push([p[i]![0] - nx * reach, p[i]![1] - ny * reach]);
+  }
+  return closed
+    ? `${polyD(left)}Z${polyD(right)}Z`
+    : `${polyD(left)}${polyD(right.reverse()).replace(/^M/, 'L')}Z`;
 }

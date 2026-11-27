@@ -121,6 +121,29 @@ describe('settings store', () => {
     expect(reloaded.boardSpotlightsEnabled).toBe(false);
   });
 
+  // #250
+  it('saves the emblem style, art deco by default', async () => {
+    vi.useFakeTimers();
+    const store = useSettingsStore();
+    expect(store.boardEmblemStyle).toBe('deco');
+
+    store.setBoardEmblemStyle('knot');
+    const reloaded = await reload();
+    expect(reloaded.boardEmblemStyle).toBe('knot');
+
+    reloaded.reset();
+    expect(reloaded.boardEmblemStyle).toBe('deco');
+  });
+
+  it('ignores an unknown saved emblem style', () => {
+    localStorage.setItem(
+      'mtg-harmony_settings',
+      JSON.stringify({ boardEmblemStyle: 'neon', version: 1 }),
+    );
+    setActivePinia(createPinia());
+    expect(useSettingsStore().boardEmblemStyle).toBe('deco');
+  });
+
   it('toggles one board colour at a time', () => {
     const store = useSettingsStore();
     store.toggleBoardColor('R');

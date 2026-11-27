@@ -253,9 +253,15 @@ still be scrolled, and focusing a card partly off-screen scrolled it, shifting e
 The themed background (#246, on by default) replaces the grid lines in the same backdrop. It's built from the
 `boardColors` setting (W, U, B, R, G and C; none is a neutral board):
 
-- **Lattice tile**: one SVG, a diagonal lattice with a medallion per cell holding the colour's motif. Each motif is
-  drawn once in `<defs>` and placed with `<use>`; the motifs are brushed outlines computed from centre-line paths
-  (`geometry.ts`, `motifs.ts`) and kept per motif. With 3 or more colours, `shuffleLayout` lays them over an
+- **Lattice tile**: one SVG, a diagonal lattice with a medallion per cell holding the colour's emblem. Each emblem is
+  drawn once in `<defs>` and placed with `<use>`. The **Emblem style** setting (`boardEmblemStyle`, #250) picks how
+  they're drawn (`emblems/`, one module per style, listed in picker order in `emblems/index.ts`): art deco (the
+  default), constellations, knotwork, carved stone, brushed line art, or the mana-font symbols in four treatments.
+  Every style draws fills only, in a 200 × 200 box, which the tile colours with a radial gradient (the outlined mana
+  symbols use the gradient as a stroke too); none draws its own outer circle, since the lattice rings each one. The
+  shapes are computed from paths (`geometry.ts`), woven or brushed where the style needs it, and each emblem is kept
+  once drawn. The mana symbols are read from `mana-font/svg/*.svg` at build time and scaled into their path data,
+  so the gradient, set in tile units, still lines up. The style picker previews each style with `emblemPreview`. With 3 or more colours, `shuffleLayout` lays them over an
   8 × 8-cell block so no neighbours match, from a fixed seed; 2 make a checkerboard. The SVG is rendered into a
   PNG (`rasterUrl`) and that's what's set: panning moves the background every frame, and a browser may draw a large
   SVG with clips and masks from scratch each time, where a bitmap is only a texture. It's rasterised through

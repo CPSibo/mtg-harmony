@@ -1,6 +1,7 @@
 import { refDebounced } from '@vueuse/core';
 import { computed, onScopeDispose, readonly, ref, watch, type Ref } from 'vue';
 import { DARK_PALETTE, LIGHT_PALETTE, type BoardColor } from './colors';
+import { DEFAULT_EMBLEM_STYLE, type EmblemStyle } from './emblems';
 import { bitmapUrl, preloadImages, rasterUrl } from './images';
 import { DARK_SPOTLIGHTS, LIGHT_SPOTLIGHTS, spotlightTile } from './spotlights';
 import { buildTile, svgUrl } from './tile';
@@ -27,6 +28,8 @@ export interface BoardBackgroundOptions {
   lodFadeMs?: () => number;
   /** Whether the dark theme shows: only its images are built. */
   dark?: () => boolean;
+  /** How the emblems are drawn (#250). */
+  emblems?: () => EmblemStyle;
 }
 
 export interface BoardBackground {
@@ -92,6 +95,7 @@ export function useBoardBackground(
     settleMs = SETTLE_MS,
     lodFadeMs = defaultLodFade,
     dark = () => false,
+    emblems = () => DEFAULT_EMBLEM_STYLE,
   }: BoardBackgroundOptions = {},
 ): BoardBackground {
   const themed = ref(false);
@@ -114,7 +118,12 @@ export function useBoardBackground(
   // off. See `build` for its parts.
   const key = computed(() =>
     enabled()
-      ? `${dark() ? 'D' : 'L'}${colors().join('')}${spotlights() ? '+' : ''}`
+      ? [
+          dark() ? 'D' : 'L',
+          emblems(),
+          colors().join(''),
+          spotlights() ? '+' : '',
+        ].join(' ')
       : null,
   );
   const step = computed(() => detailStep(resolution()));
@@ -267,14 +276,19 @@ async function empty(): Promise<Built> {
 
 /**
  * Builds a selection with the lattice rendered at `detail`. The selection is
- * `D` or `L` for the theme, then its colours, then `+` if they're washed with
- * spotlights.
+ * `D` or `L` for the theme, the emblem style, the colours, then `+` if they're
+ * washed with spotlights, separated by spaces.
  */
 async function build(selection: string, detail: number): Promise<Built> {
-  const dark = selection.startsWith('D');
-  const washed = selection.endsWith('+');
-  const picked = [...selection.slice(1).replace('+', '')] as BoardColor[];
-  const tile = buildTile(picked, dark ? DARK_PALETTE : LIGHT_PALETTE);
+  const [theme, style, colors = '', wash] = selection.split(' ');
+  const dark = theme === 'D';
+  const washed = wash === '+';
+  const picked = [...colors] as BoardColor[];
+  const tile = buildTile(
+    picked,
+    dark ? DARK_PALETTE : LIGHT_PALETTE,
+    style as EmblemStyle,
+  );
   const lattice: Lattice = { svg: svgUrl(tile.svg), size: tile.size, detail };
   const s = washed
     ? spotlightTile(picked, dark ? DARK_SPOTLIGHTS : LIGHT_SPOTLIGHTS)

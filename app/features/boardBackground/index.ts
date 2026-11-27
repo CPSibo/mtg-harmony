@@ -1,7 +1,9 @@
 export * from './colors';
 export {
   buildTile,
+  emblemPreview,
   motifLayout,
+  svgDataUri,
   svgUrl,
   CELL,
   PERIOD,
@@ -16,3 +18,10 @@ export {
 } from './spotlights';
 export { shuffleLayout, seededRandom } from './shuffle';
 export { useBoardBackground } from './useBoardBackground';
+export {
+  DEFAULT_EMBLEM_STYLE,
+  EMBLEM_STYLES,
+  emblemStyleName,
+  isEmblemStyle,
+  type EmblemStyle,
+} from './emblems';

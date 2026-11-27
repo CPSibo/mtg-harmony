@@ -747,6 +747,7 @@ const background = useBoardBackground(
   {
     resolution: () => scale.value * pixelRatio.value,
     dark: () => dark.value,
+    emblems: () => settings.boardEmblemStyle,
   },
 );
 

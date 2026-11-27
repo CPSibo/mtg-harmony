@@ -3,6 +3,8 @@ import {
   brush,
   circle,
   flatten,
+  mitred,
+  mono,
   pathLength,
   resample,
   transform,
@@ -96,5 +98,50 @@ describe('brush', () => {
 
   it('draws nothing for an empty path', () => {
     expect(brush('M5 5L5 5', 3, 0)).toBe('');
+  });
+});
+
+// #250: every vertex costs when the tile is rendered again for a zoom.
+describe('mono', () => {
+  it('keeps only the ends of a straight line', () => {
+    const d = mono('M0 0L100 0', 2);
+    expect(numbers(d)).toEqual([0, 1, 100, 1, 100, -1, 0, -1]);
+  });
+
+  it('samples a curve', () => {
+    expect(numbers(mono('M0 0Q50 50 100 0', 2)).length).toBeGreaterThan(20);
+  });
+});
+
+describe('mitred', () => {
+  it('keeps a square corner its full width', () => {
+    const d = mitred(
+      [
+        [0, 0],
+        [10, 0],
+        [10, 10],
+      ],
+      false,
+      2,
+    );
+    // The corner's outer point sits a half width out on both sides.
+    expect(numbers(d).slice(2, 4)).toEqual([9, 1]);
+    expect(numbers(d)).toContain(11);
+  });
+
+  it('draws a closed square as an outer and an inner loop', () => {
+    const d = mitred(
+      [
+        [0, 0],
+        [10, 0],
+        [10, 10],
+        [0, 10],
+        [0, 0],
+      ],
+      true,
+      2,
+    );
+    expect(subpaths(d)).toBe(2);
+    expect(numbers(d)).toHaveLength(16);
   });
 });
