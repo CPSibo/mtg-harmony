@@ -241,21 +241,30 @@ describe('discord fetcher store', () => {
 
   // #175: for instants, sorceries and anything else that doesn't stay.
   describe('castToGraveyard', () => {
-    it('logs the card as cast to the graveyard and clears it, with no stack', async () => {
+    it('logs the card as cast to the graveyard, with no stack', async () => {
       const store = useDiscordFetcherStore();
       await store.next();
       await settle(store);
 
-      store.castToGraveyard();
+      await store.castToGraveyard();
 
-      const last = useEventLogStore().entries.at(-1)!;
-      expect(last).toMatchObject({
+      const cast = useEventLogStore().entries.find((e) => e.type === 'cast')!;
+      expect(cast).toMatchObject({
         type: 'cast',
         toGraveyard: true,
         card: { name: 'Card 1' },
       });
-      expect(store.card).toBeNull();
       expect(useBattlefieldStore().stacks).toHaveLength(0);
+    });
+
+    it('shows the next card', async () => {
+      const store = useDiscordFetcherStore();
+      await store.next();
+      await settle(store);
+
+      await store.castToGraveyard();
+
+      expect(store.card?.scryfallInfo.name).toBe('Card 2');
     });
 
     it('does nothing without a card', () => {
@@ -264,6 +273,79 @@ describe('discord fetcher store', () => {
       store.castToGraveyard();
 
       expect(useEventLogStore().entries).toHaveLength(0);
+    });
+  });
+
+  // Casting reveals the next card, as Discord does.
+  describe('castToBoard', () => {
+    it('puts a new instance of the card on the board', async () => {
+      const store = useDiscordFetcherStore();
+      await store.next();
+      await settle(store);
+      const shown = store.card!;
+
+      const { stack } = store.castToBoard()!;
+
+      expect(stack.primary.scryfallInfo.name).toBe('Card 1');
+      expect(stack.primary.id).not.toBe(shown.id);
+      expect(useBattlefieldStore().stacks).toHaveLength(1);
+    });
+
+    it('centres the card on a board point', async () => {
+      const store = useDiscordFetcherStore();
+      await store.next();
+      await settle(store);
+
+      const { stack } = store.castToBoard({ x: 500, y: 400 })!;
+
+      expect(useBattlefieldStore().stacks[0]!.id).toBe(stack.id);
+      expect(stack.position).not.toEqual({ x: 0, y: 0 });
+    });
+
+    it('shows the next card', async () => {
+      const store = useDiscordFetcherStore();
+      await store.next();
+      await settle(store);
+
+      await store.castToBoard()!.next;
+
+      expect(store.card?.scryfallInfo.name).toBe('Card 2');
+      expect(shownNames()).toEqual(['Card 1', 'Card 2']);
+    });
+
+    it('does nothing without a card', () => {
+      const store = useDiscordFetcherStore();
+
+      expect(store.castToBoard()).toBeNull();
+      expect(useBattlefieldStore().stacks).toHaveLength(0);
+    });
+
+    it('from a previous card, steps forward one rather than to a new card', async () => {
+      const store = useDiscordFetcherStore();
+      await store.next();
+      await store.next();
+      await store.next();
+      await settle(store);
+      store.prev();
+      store.prev();
+
+      await store.castToBoard()!.next;
+
+      expect(store.card?.scryfallInfo.name).toBe('Card 2');
+      expect(shownNames()).toEqual(['Card 1', 'Card 2', 'Card 3']);
+    });
+
+    it('leaves nothing shown when the next card cannot come', async () => {
+      const store = useDiscordFetcherStore();
+      await store.next();
+      await settle(store);
+      store.queue.splice(0);
+      produce = () => ['Scryfall is down'];
+
+      const result = await store.castToBoard()!.next;
+
+      expect(result.success).toBe(false);
+      expect(store.card).toBeNull();
     });
   });
 

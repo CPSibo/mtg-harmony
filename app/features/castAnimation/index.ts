@@ -2,6 +2,7 @@ export * from './options';
 export {
   flightKeyframes,
   graveyardKeyframes,
+  revealKeyframes,
   sparkleAngles,
   type ScreenRect,
 } from './keyframes';
@@ -14,6 +15,8 @@ export {
   playMeldAnimation,
   playMoveAnimation,
   playRemoveAnimation,
+  playRevealAnimation,
+  reducedMotion,
   type CastAnimationOptions,
   type CastSource,
 } from './play';
