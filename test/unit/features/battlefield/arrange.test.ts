@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   arrangeInRows,
+  arrangeToFit,
   arrangeRow,
+  BOARD_SIZE,
   rowBand,
   stackReach,
   createBoardCard,
@@ -86,6 +88,19 @@ describe('arrangeInRows (#223)', () => {
     );
     expect(at.get('a')).toEqual({ x: 0, y: 0 });
     expect(at.get('b')).toEqual({ x: 110, y: 0 });
+  });
+
+  it('reads the cards line by line, so arranging again changes nothing', () => {
+    // Two lines already laid out: a b / c, with c left of b.
+    const items = [
+      item('a', 'creatures', 0, 0),
+      item('b', 'creatures', 110, 0),
+      item('c', 'creatures', 0, 150),
+    ];
+    const at = arrangeInRows(items, { x: 0, y: 0, width: 230 }, 10);
+    expect(at.get('a')).toEqual({ x: 0, y: 0 });
+    expect(at.get('b')).toEqual({ x: 110, y: 0 });
+    expect(at.get('c')).toEqual({ x: 0, y: 150 });
   });
 
   it('wraps a row at the width', () => {
@@ -182,6 +197,45 @@ describe('stackReach (#237)', () => {
   });
 });
 
+describe('arrangeToFit', () => {
+  const size = { width: 100, height: 100 };
+  const items = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      id: `c${i}`,
+      row: 'creatures' as const,
+      size,
+      position: { x: i, y: 0 },
+    }));
+  const bounds = (at: Map<string, { x: number; y: number }>) => {
+    const ps = [...at.values()];
+    const left = Math.min(...ps.map((p) => p.x));
+    const top = Math.min(...ps.map((p) => p.y));
+    return {
+      left,
+      top,
+      width: Math.max(...ps.map((p) => p.x)) + size.width - left,
+      height: Math.max(...ps.map((p) => p.y)) + size.height - top,
+    };
+  };
+
+  it('shapes the layout like the view: a square view gets a square grid', () => {
+    const b = bounds(arrangeToFit(items(9), { x: 0, y: 0 }, 1, 0));
+    expect(b.width).toBe(300);
+    expect(b.height).toBe(300);
+  });
+
+  it('lays a few cards in one line in a wide view', () => {
+    const b = bounds(arrangeToFit(items(3), { x: 0, y: 0 }, 16 / 9, 0));
+    expect(b.height).toBe(100);
+  });
+
+  it('centres the layout on the given point', () => {
+    const b = bounds(arrangeToFit(items(9), { x: 2500, y: 2500 }, 1, 0));
+    expect(b.left + b.width / 2).toBe(2500);
+    expect(b.top + b.height / 2).toBe(2500);
+  });
+});
+
 describe('rowBand (#223)', () => {
   const view: Rect = { x: 100, y: 200, width: 900, height: 900 };
 
@@ -223,7 +277,7 @@ describe('battlefield arranging (#223)', () => {
     return battlefield;
   }
 
-  it('arranges stacks into rows inside the view', () => {
+  it('arranges every stack into rows, creatures first', () => {
     const battlefield = board();
     const land = putOnBoard(battlefield, card('Land'), { x: 900, y: 50 });
     const bear = putOnBoard(battlefield, card('Creature — Bear'), {
@@ -231,12 +285,29 @@ describe('battlefield arranging (#223)', () => {
       y: 1200,
     });
 
-    battlefield.arrangeStacks([land, bear]);
+    battlefield.arrangeStacks();
     const [l, b] = [land, bear].map(
       (s) => battlefield.stacks.find((x) => x.id === s.id)!.position,
     );
     expect(b!.y).toBeLessThan(l!.y);
-    expect(b!.x).toBeGreaterThanOrEqual(0);
+  });
+
+  it('lands the same wherever the view is and however zoomed', () => {
+    const battlefield = board();
+    for (let i = 0; i < 6; i++)
+      putOnBoard(battlefield, card('Creature — Bear'), { x: i * 300, y: 0 });
+    const positions = () => battlefield.stacks.map((s) => ({ ...s.position }));
+
+    battlefield.arrangeStacks();
+    const first = positions();
+    // Panned to a corner and zoomed in, same shape.
+    battlefield.setView({ x: 4000, y: 4000, width: 400, height: 300 });
+    battlefield.arrangeStacks();
+    expect(positions()).toEqual(first);
+    // And around the middle of the board.
+    const xs = first.map((p) => p.x);
+    const mid = (Math.min(...xs) + Math.max(...xs) + 210) / 2;
+    expect(Math.abs(mid - BOARD_SIZE.width / 2)).toBeLessThan(50);
   });
 
   it('puts a new card in its row when arranging new cards is on', () => {

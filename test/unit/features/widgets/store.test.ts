@@ -108,6 +108,30 @@ describe('useWidgetRegistry (#216)', () => {
     registry.unregister('w');
   });
 
+  it('leaves a shortcut-only command out of the palette, but runs it', () => {
+    const execute = vi.fn();
+    const registry = useWidgetRegistry();
+    registry.register(
+      widget({
+        commands: [
+          { id: 'a', label: 'A', icon: 'i-lucide-plus', execute: () => {} },
+          {
+            id: 'b',
+            label: 'A',
+            icon: 'i-lucide-plus',
+            kbds: 'q',
+            shortcutOnly: true,
+            execute,
+          },
+        ],
+      }),
+    );
+    expect(registry.paletteGroups[0]!.items.map((i) => i.label)).toEqual(['A']);
+    press('q');
+    expect(execute).toHaveBeenCalledOnce();
+    registry.unregister('w');
+  });
+
   it("lists a command's choices as its palette item's children (#221)", () => {
     const picked: string[] = [];
     const registry = useWidgetRegistry();

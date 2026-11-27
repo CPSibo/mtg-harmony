@@ -220,7 +220,7 @@ test('Smart arrange lines cards up in a row in view', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'On-deck' })).toBeFocused();
 
   await page.keyboard.press('/');
-  await page.getByRole('option', { name: /^Smart arrange Creatures/ }).click();
+  await page.getByRole('option', { name: /^Smart arrange All cards/ }).click();
 
   await expect(async () => {
     const boxes = await Promise.all(

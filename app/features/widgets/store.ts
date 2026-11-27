@@ -129,7 +129,9 @@ export const useWidgetRegistry = defineStore('widgetRegistry', () => {
           id: w.id,
           label: w.label,
           items: w.commands
-            .filter((c) => c.scope !== 'selection' && applies(c))
+            .filter(
+              (c) => c.scope !== 'selection' && !c.shortcutOnly && applies(c),
+            )
             .map(toItem),
         })),
     ].filter((g) => g.items.length),

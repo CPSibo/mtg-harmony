@@ -27,6 +27,7 @@ export {
   ARRANGE_ROWS,
   arrangeInGrid,
   arrangeInRows,
+  arrangeToFit,
   arrangeRow,
   stackReach,
   rowBand,

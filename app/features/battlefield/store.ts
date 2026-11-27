@@ -25,7 +25,7 @@ import {
 import { findMeldPartner } from './meld';
 import {
   arrangeInGrid,
-  arrangeInRows,
+  arrangeToFit,
   arrangeRow,
   rowBand,
   stackReach,
@@ -244,29 +244,23 @@ export const useBattlefieldStore = defineStore('battlefield', () => {
   }
 
   /**
-   * Lays `targets` out in rows inside the view (#223): creatures, then
-   * everything else, then lands. Each target's position changes once.
+   * Lays every stack out in rows (#223): creatures, then everything else,
+   * then lands, in the middle of the board, shaped to fill the view once
+   * zoomed to fit. Where the view is and its zoom don't matter, only its
+   * shape. Each stack's position changes once.
    */
-  function arrangeStacks(targets: readonly BoardCardStack[]) {
-    const shown = view ?? {
-      x: center.value.x - 1000,
-      y: center.value.y - 600,
-      width: 2000,
-      height: 1200,
-    };
-    const at = arrangeInRows(
-      targets.map((s) => ({
+  function arrangeStacks() {
+    const aspect = view && view.height > 0 ? view.width / view.height : 16 / 9;
+    const at = arrangeToFit(
+      stacks.value.map((s) => ({
         id: s.id,
         row: arrangeRow(s.primary),
         size: stackSize(s),
         position: s.position,
         reach: stackReach(s),
       })),
-      {
-        x: shown.x + ARRANGE_GAP,
-        y: shown.y + ARRANGE_GAP,
-        width: shown.width - ARRANGE_GAP * 2,
-      },
+      { x: BOARD_SIZE.width / 2, y: BOARD_SIZE.height / 2 },
+      aspect,
       ARRANGE_GAP,
     );
     for (const stack of stacks.value) {

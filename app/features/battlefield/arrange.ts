@@ -87,13 +87,17 @@ export function arrangeInRows(
   gap: number,
 ): Map<string, Position> {
   const at = new Map<string, Position>();
+  // Cards keep their reading order: line by line, then left to right. A line
+  // is cards whose tops are within the shortest card's height, so an
+  // arranged layout reads back in the order it was laid out, and arranging
+  // again changes nothing.
+  const lineHeight = Math.min(...items.map((i) => i.size.height)) || 1;
+  const line = (i: ArrangeItem) => Math.floor(i.position.y / lineHeight);
   let y = area.y;
   for (const row of ARRANGE_ROWS) {
     const cards = items
       .filter((i) => i.row === row)
-      .sort(
-        (a, b) => a.position.x - b.position.x || a.position.y - b.position.y,
-      );
+      .sort((a, b) => line(a) - line(b) || a.position.x - b.position.x);
     if (!cards.length) continue;
 
     let x = area.x;
@@ -114,6 +118,64 @@ export function arrangeInRows(
     y += lineHeight + gap * 3;
   }
   return at;
+}
+
+/**
+ * Lays `items` out in rows (`arrangeInRows`) at the width that shows them
+ * biggest in a view of `aspect` (width / height) when zoomed to fit, centred
+ * on `centre`. Returns top-left corners, as `arrangeInRows` does.
+ */
+export function arrangeToFit(
+  items: readonly ArrangeItem[],
+  centre: Position,
+  aspect: number,
+  gap: number,
+): Map<string, Position> {
+  if (!items.length) return new Map();
+  const widths = items.map(
+    (i) => (i.reach?.left ?? 0) + i.size.width + (i.reach?.right ?? 0) + gap,
+  );
+  // Wrap widths worth trying: room for at least n of the widest cards a
+  // line, and for the n widest side by side, for every n.
+  const candidates = new Set<number>();
+  const widest = Math.max(...widths);
+  let sum = 0;
+  [...widths]
+    .sort((a, b) => b - a)
+    .forEach((w, i) => {
+      sum += w;
+      candidates.add(sum);
+      candidates.add(widest * (i + 1));
+    });
+
+  let best: { at: Map<string, Position>; bounds: Rect; fit: number } | null =
+    null;
+  for (const width of candidates) {
+    const at = arrangeInRows(items, { x: 0, y: 0, width }, gap);
+    const bounds = boundsOf(items, at);
+    const fit = Math.min(aspect / bounds.width, 1 / bounds.height);
+    if (!best || fit > best.fit) best = { at, bounds, fit };
+  }
+  const { at, bounds } = best!;
+  const dx = centre.x - (bounds.x + bounds.width / 2);
+  const dy = centre.y - (bounds.y + bounds.height / 2);
+  return new Map([...at].map(([id, p]) => [id, { x: p.x + dx, y: p.y + dy }]));
+}
+
+/** The box round laid-out items, their reach included. */
+function boundsOf(
+  items: readonly ArrangeItem[],
+  at: Map<string, Position>,
+): Rect {
+  let [left, top, right, bottom] = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const i of items) {
+    const p = at.get(i.id)!;
+    left = Math.min(left, p.x - (i.reach?.left ?? 0));
+    right = Math.max(right, p.x + i.size.width + (i.reach?.right ?? 0));
+    top = Math.min(top, p.y);
+    bottom = Math.max(bottom, p.y + i.size.height);
+  }
+  return { x: left, y: top, width: right - left, height: bottom - top };
 }
 
 /**
