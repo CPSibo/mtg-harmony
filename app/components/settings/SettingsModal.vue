@@ -84,6 +84,16 @@
         </UFormField>
 
         <UFormField
+          label="Match the board"
+          description="Show the colours of the cards on the board, changing as cards enter and leave"
+        >
+          <USwitch
+            v-model="boardColorsAuto"
+            :disabled="!boardBackgroundEnabled"
+          />
+        </UFormField>
+
+        <UFormField
           label="Emblem style"
           description="How each colour's emblem is drawn"
         >
@@ -96,7 +106,7 @@
         >
           <USwitch
             v-model="boardSpotlightsEnabled"
-            :disabled="!boardBackgroundEnabled || !boardColors.length"
+            :disabled="!boardBackgroundEnabled || !shownBoardColors.length"
           />
         </UFormField>
 
@@ -271,6 +281,7 @@
 <script setup lang="ts">
 import UFormField from '@nuxt/ui/components/FormField.vue';
 import SettingsBoardColorPicker from '~/components/settings/BoardColorPicker.vue';
+import { useBoardColors } from '~/features/boardBackground/useBoardColors';
 import SettingsEmblemStylePicker from '~/components/settings/EmblemStylePicker.vue';
 // Nuxt UI's plain-Vue Icon; components/Icon.vue is the Nuxt-only variant.
 import UIcon from '@nuxt/ui/runtime/vue/components/Icon.vue';
@@ -318,9 +329,10 @@ const {
   arrangeNewCards,
   arrangeShortcutEnabled,
   boardBackgroundEnabled,
-  boardColors,
+  boardColorsAuto,
   boardSpotlightsEnabled,
 } = storeToRefs(settingsStore);
+const shownBoardColors = useBoardColors();
 
 const flightItems = [
   { label: 'Off', value: 'off' },

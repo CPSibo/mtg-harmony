@@ -75,6 +75,9 @@ export interface AppSettings {
   /** The colours the board background shows, in WUBRGC order; none is a neutral board (#246). */
   boardColors: BoardColor[];
 
+  /** Whether the background shows the colours of the cards on the board instead of `boardColors`. */
+  boardColorsAuto: boolean;
+
   /** Whether the board background washes soft glows of its colours over the board. */
   boardSpotlightsEnabled: boolean;
 
@@ -109,6 +112,7 @@ const defaults: AppSettings = {
   arrangeShortcutEnabled: true,
   boardBackgroundEnabled: true,
   boardColors: [],
+  boardColorsAuto: false,
   boardSpotlightsEnabled: false,
   boardEmblemStyle: DEFAULT_EMBLEM_STYLE,
 };
@@ -175,6 +179,10 @@ export const useSettingsStore = defineStore('settings', () => {
   function setBoardColors(value: readonly BoardColor[]) {
     boardColors.value = normalizeBoardColors(value);
   }
+  const boardColorsAuto = ref<boolean>(defaults.boardColorsAuto);
+  function setBoardColorsAuto(value: boolean) {
+    boardColorsAuto.value = value;
+  }
   const boardSpotlightsEnabled = ref<boolean>(defaults.boardSpotlightsEnabled);
   function setBoardSpotlightsEnabled(value: boolean) {
     boardSpotlightsEnabled.value = value;
@@ -212,6 +220,7 @@ export const useSettingsStore = defineStore('settings', () => {
     arrangeShortcutEnabled.value = defaults.arrangeShortcutEnabled;
     boardBackgroundEnabled.value = defaults.boardBackgroundEnabled;
     boardColors.value = [...defaults.boardColors];
+    boardColorsAuto.value = defaults.boardColorsAuto;
     boardSpotlightsEnabled.value = defaults.boardSpotlightsEnabled;
     boardEmblemStyle.value = defaults.boardEmblemStyle;
   }
@@ -237,6 +246,7 @@ export const useSettingsStore = defineStore('settings', () => {
         arrangeShortcutEnabled: arrangeShortcutEnabled.value,
         boardBackgroundEnabled: boardBackgroundEnabled.value,
         boardColors: boardColors.value,
+        boardColorsAuto: boardColorsAuto.value,
         boardSpotlightsEnabled: boardSpotlightsEnabled.value,
         boardEmblemStyle: boardEmblemStyle.value,
       },
@@ -296,6 +306,9 @@ export const useSettingsStore = defineStore('settings', () => {
     if (Array.isArray(data.boardColors))
       boardColors.value = normalizeBoardColors(data.boardColors);
 
+    if (typeof data.boardColorsAuto === 'boolean')
+      boardColorsAuto.value = data.boardColorsAuto;
+
     if (typeof data.boardSpotlightsEnabled === 'boolean')
       boardSpotlightsEnabled.value = data.boardSpotlightsEnabled;
 
@@ -325,6 +338,7 @@ export const useSettingsStore = defineStore('settings', () => {
       arrangeShortcutEnabled,
       boardBackgroundEnabled,
       boardColors,
+      boardColorsAuto,
       boardSpotlightsEnabled,
       boardEmblemStyle,
     ],
@@ -368,6 +382,9 @@ export const useSettingsStore = defineStore('settings', () => {
     boardColors,
     setBoardColors,
     toggleBoardColor,
+
+    boardColorsAuto,
+    setBoardColorsAuto,
 
     boardSpotlightsEnabled,
     setBoardSpotlightsEnabled,

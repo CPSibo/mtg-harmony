@@ -18,6 +18,7 @@ export {
 } from './spotlights';
 export { shuffleLayout, seededRandom } from './shuffle';
 export { useBoardBackground } from './useBoardBackground';
+export { useBoardColors } from './useBoardColors';
 export {
   DEFAULT_EMBLEM_STYLE,
   EMBLEM_STYLES,
