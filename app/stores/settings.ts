@@ -112,7 +112,7 @@ const defaults: AppSettings = {
   arrangeShortcutEnabled: true,
   boardBackgroundEnabled: true,
   boardColors: [],
-  boardColorsAuto: false,
+  boardColorsAuto: true,
   boardSpotlightsEnabled: false,
   boardEmblemStyle: DEFAULT_EMBLEM_STYLE,
 };

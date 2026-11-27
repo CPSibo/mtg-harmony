@@ -32,6 +32,7 @@ describe('BoardColorPicker', () => {
 
   it('turns colours on and off in the settings', async () => {
     const settings = useSettingsStore();
+    settings.setBoardColorsAuto(false);
     mountInApp(BoardColorPicker);
 
     toggle('Green').click();
