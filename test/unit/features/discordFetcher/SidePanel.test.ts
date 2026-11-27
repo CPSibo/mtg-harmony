@@ -98,7 +98,7 @@ describe('SidePanel (#171)', () => {
     expect(useDiscordFetcherStore().card).toBeNull();
   });
 
-  it('casts the card to the board, clears it and closes', async () => {
+  it('casts the card to the board and shows the next one', async () => {
     await openPanel();
     buttonNamed('Next card').click();
     await flushPromises();
@@ -109,8 +109,74 @@ describe('SidePanel (#171)', () => {
     expect(
       useBattlefieldStore().stacks.map((s) => s.primary.scryfallInfo.name),
     ).toEqual(['Bear 1']);
-    expect(useDiscordFetcherStore().card).toBeNull();
+    expect(useDiscordFetcherStore().card?.scryfallInfo.name).toBe('Bear 2');
+  });
+
+  it('shows the next card after a cast from the palette, while closed', async () => {
+    mountInApp(SidePanel);
+    await flushPromises();
+    await useDiscordFetcherStore().next();
+
+    useWidgetRegistry()
+      .allCommands.find((c) => c.id === 'onDeck.cast')!
+      .execute();
+    await flushPromises();
+
+    expect(useDiscordFetcherStore().card?.scryfallInfo.name).toBe('Bear 2');
     expect(document.body.textContent).not.toContain('Cast to board');
+  });
+
+  describe('after a cast from the open panel', () => {
+    const isOpen = () => document.body.textContent!.includes('Cast to board');
+
+    /** Opens the panel with a card, as a pane `width` px wide. */
+    async function openWithCard(width: number) {
+      await openPanel();
+      buttonNamed('Next card').click();
+      await flushPromises();
+      const panel = document.querySelector<HTMLElement>('[role="dialog"]')!;
+      vi.spyOn(panel, 'getBoundingClientRect').mockReturnValue(
+        new DOMRect(0, 0, width, window.innerHeight),
+      );
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    }
+
+    afterEach(() => vi.useRealTimers());
+
+    it('a side pane stays open briefly, then closes', async () => {
+      await openWithCard(300);
+
+      buttonNamed('Cast to board').click();
+      await flushPromises();
+      await vi.advanceTimersByTimeAsync(700);
+      expect(isOpen()).toBe(true);
+
+      await vi.advanceTimersByTimeAsync(100);
+      await vi.runAllTimersAsync();
+      expect(isOpen()).toBe(false);
+    });
+
+    it('a side pane stays open when pressed meanwhile', async () => {
+      await openWithCard(300);
+
+      buttonNamed('Cast to graveyard').click();
+      await flushPromises();
+      buttonNamed('Next card').dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true }),
+      );
+      await vi.runAllTimersAsync();
+
+      expect(isOpen()).toBe(true);
+    });
+
+    it('a full-screen panel closes at once, uncovering the cast', async () => {
+      await openWithCard(window.innerWidth);
+
+      buttonNamed('Cast to board').click();
+      await flushPromises();
+
+      expect(isOpen()).toBe(false);
+    });
   });
 
   it('steps back to the previous card', async () => {

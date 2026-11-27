@@ -3,6 +3,7 @@ import {
   flightKeyframes,
   flightTiming,
   graveyardKeyframes,
+  revealKeyframes,
   sparkleAngles,
   type ScreenRect,
 } from './keyframes';
@@ -21,7 +22,7 @@ export interface CastSource {
 
 const COLOUR = 'var(--ui-primary, #a78bfa)';
 
-function reducedMotion() {
+export function reducedMotion() {
   return (
     typeof matchMedia === 'function' &&
     matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -294,7 +295,14 @@ export function castSource(
 ): CastSource | null {
   if (!element) return null;
   const { x, y, width, height } = element.getBoundingClientRect();
-  return width && height ? { element, rect: { x, y, width, height } } : null;
+  // Copied now: by the time the flight starts, the element may show another
+  // card, such as On-deck's next one.
+  return width && height
+    ? {
+        element: element.cloneNode(true) as Element,
+        rect: { x, y, width, height },
+      }
+    : null;
 }
 
 /** A board card's root element, found by card ID. */
@@ -544,5 +552,41 @@ export async function playRemoveAnimation(cardId: string) {
     ]);
   } catch {
     // Decoration only.
+  }
+}
+
+/**
+ * Flips a card face up (On-deck's reveal): `back` turns away until it's
+ * edge-on, then `face` turns in from edge-on. Resolves once done, at once
+ * with reduced motion. `face` stays edge-on until its turn starts.
+ */
+export async function playRevealAnimation(
+  face: HTMLElement,
+  back: HTMLElement,
+  duration: number,
+) {
+  if (reducedMotion() || typeof Element.prototype.animate !== 'function')
+    return;
+  const half = duration / 2;
+  const away = back.animate(revealKeyframes(0, 90), {
+    duration: half,
+    easing: 'ease-in',
+    fill: 'forwards',
+  });
+  const into = face.animate(revealKeyframes(-90, 0), {
+    duration: half,
+    delay: half,
+    easing: 'ease-out',
+    fill: 'backwards',
+  });
+  try {
+    await Promise.race([
+      Promise.all([away.finished, into.finished]),
+      new Promise((resolve) => setTimeout(resolve, duration + 100)),
+    ]);
+  } catch {
+    // Cancelled: the card changed or the panel closed mid-flip.
+  } finally {
+    into.cancel();
   }
 }

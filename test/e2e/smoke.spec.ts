@@ -96,6 +96,9 @@ test('the palette fetches, casts and runs board commands', async ({ page }) => {
     page.getByText(`Cast ${card.name} to the board`, { exact: true }),
   ).toBeVisible();
 
+  // The cast closes On-deck; until it has slid out, it's a second dialog.
+  await expect(page.getByRole('dialog', { name: 'On-deck' })).toBeHidden();
+
   await run('Turn selection mode on or off');
   await expect(page.getByRole('status')).toContainText('Selecting');
 
@@ -362,11 +365,12 @@ test('selection mode ends after a box is drawn', async ({ page }) => {
 // #216: a plain tap selects one stack, the target of palette commands.
 test.describe('selecting by tap', () => {
   test.beforeEach(async ({ page }) => {
-    for (let i = 0; i < 2; i++) {
-      await page.getByRole('button', { name: 'On-deck' }).click();
-      await page.getByRole('button', { name: 'Next card' }).click();
-      await page.getByRole('button', { name: 'Cast to board' }).click();
-    }
+    await page.getByRole('button', { name: 'On-deck' }).click();
+    await page.getByRole('button', { name: 'Next card' }).click();
+    await page.getByRole('button', { name: 'Cast to board' }).click();
+    // Casting showed the next card, so the second cast needs no Next.
+    await page.getByRole('button', { name: 'On-deck' }).click();
+    await page.getByRole('button', { name: 'Cast to board' }).click();
     await expect(page.locator('.board-card-stack')).toHaveCount(2);
     // On-deck has finished closing once it hands focus back to its button,
     // so the Tab test starts from there.
@@ -426,7 +430,11 @@ test.describe('selecting by tap', () => {
     await page.keyboard.press('Tab');
     await expect(async () => {
       await page.keyboard.press('Tab');
-      await expect(page.locator('.card-image:focus')).toHaveCount(1);
+      // Short, so each Tab doesn't wait out the default 5 s: the cards come
+      // a few stops after the top row.
+      await expect(page.locator('.card-image:focus')).toHaveCount(1, {
+        timeout: 500,
+      });
     }).toPass();
     await expect(selected(page)).toHaveCount(1);
   });
@@ -1118,7 +1126,9 @@ test('the event log lists what happened and can cast a fetched card again', asyn
     .getByRole('list', { name: 'Events' })
     .getByRole('listitem');
 
+  // Casting showed the next card, which is logged as fetched too.
   await expect(events).toHaveText([
+    new RegExp(`Fetched ${card.name}`),
     new RegExp(`Cast ${card.name}`),
     new RegExp(`Fetched ${card.name}`),
   ]);
@@ -1129,8 +1139,11 @@ test('the event log lists what happened and can cast a fetched card again', asyn
   await expect(log.getByText('No events match.')).toBeVisible();
   await log.getByRole('textbox', { name: 'Filter by card name' }).fill('');
 
-  await log.getByRole('button', { name: `Cast ${card.name}` }).click();
-  await expect(events).toHaveCount(3);
+  await log
+    .getByRole('button', { name: `Cast ${card.name}` })
+    .last()
+    .click();
+  await expect(events).toHaveCount(4);
   await expect(events.first()).toHaveText(new RegExp(`Cast ${card.name}`));
 
   // The open dialog hides the board from the accessibility tree.

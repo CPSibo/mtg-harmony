@@ -12,9 +12,11 @@ import {
   cardImage,
   createBoardCard,
   readSavedCard,
+  useBattlefieldStore,
 } from '~/features/battlefield';
 import { useSettingsStore } from '~/stores/settings';
 import type { BoardCard } from '~/types/PlayArea';
+import type { Position } from '@vueuse/core';
 
 export interface DiscordFetcherStore {
   queue: BoardCard[];
@@ -54,6 +56,7 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
   const scryfall = useScryfall();
   const log = useEventLogStore();
   const settings = useSettingsStore();
+  const board = useBattlefieldStore();
 
   const fetchingCards = ref(false);
 
@@ -292,14 +295,36 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
   }
 
   /**
+   * After a cast, shows the next card, as Discord reveals one. It's Next card
+   * itself, so a card cast after "previous" steps forward one, not to an
+   * unseen card. The cast card is cleared first: if the next one can't come,
+   * nothing is shown.
+   */
+  function nextAfterCast(): Promise<FetchResult> {
+    clearCard();
+    return next();
+  }
+
+  /**
+   * Casts a fresh copy of the card to the board (#23): to a free spot in
+   * view, or centred on a board point. Then shows the next card; `next`
+   * settles once it's shown, or failed to come.
+   */
+  function castToBoard(at?: Position) {
+    if (!card.value) return null;
+    const stack = board.castCard(card.value.scryfallInfo, 'cast', at);
+    return { stack, next: nextAfterCast() };
+  }
+
+  /**
    * Casts the card without putting it on the board (#175), for anything
    * that doesn't stay, such as an instant or sorcery: logs it as cast to the
-   * graveyard and clears it.
+   * graveyard, then shows the next card.
    */
-  function castToGraveyard() {
+  async function castToGraveyard(): Promise<FetchResult | undefined> {
     if (!card.value) return;
     log.record('cast', { card: card.value.scryfallInfo, toGraveyard: true });
-    clearCard();
+    return nextAfterCast();
   }
 
   /**
@@ -383,6 +408,7 @@ export const useDiscordFetcherStore = defineStore('discordFetcher', () => {
     next,
     prev,
     clearCard,
+    castToBoard,
     castToGraveyard,
   };
 });

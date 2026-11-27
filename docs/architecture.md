@@ -411,6 +411,14 @@ Rules the battlefield store enforces:
 'cast', at)` centres the card on it. A drop on the panel or off the board cancels. Where the panel is a side pane,
   it hides once the dragged card has been outside it for 800 ms (#256), uncovering the board behind it. On a phone
   the panel covers the board, so there the button is the way to cast.
+- Casting the On-deck card, to the board or the graveyard, shows the next card, as Discord reveals one
+  (`castToBoard`, `castToGraveyard`). It's Next card itself, so a card cast after Prev steps forward one rather
+  than to an unseen card. If the next card can't come (offline, nothing queued), On-deck shows nothing.
+- A new card from Next or a cast shows face down (a plain back, not Magic's) and flips over in 500 ms
+  (`playRevealAnimation`): at once while the panel is open, otherwise once it has finished opening. Prev shows its
+  card face up. After a cast from an open side pane, the pane stays open for 750 ms so the flip shows, then closes;
+  a press in it keeps it open. A full-screen panel closes at once to uncover the cast, and the flip waits for it to
+  open again. Reduced motion skips the flip and closes at once.
 - `copyCard(card, mode)` puts a copy in a new stack, 40 px down and right of the source, in front. `card` copies
   the card fresh, `counters` keeps its counters, face number and tapped state, and `stack` copies its whole stack
   (primary, attachments and unders, each with its state). Every copied card gets a new ID.

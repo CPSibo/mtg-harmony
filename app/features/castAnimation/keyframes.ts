@@ -125,3 +125,14 @@ export function flightTiming(flight: Exclude<CastFlight, 'off'>) {
     ? { easing: 'linear', landAt: 1 }
     : { easing: 'cubic-bezier(0.22, 0.8, 0.3, 1)', landAt: 0.78 };
 }
+
+/**
+ * One half of On-deck's flip: a turn about the vertical axis between two
+ * angles, in degrees (0 is face on, ±90 edge-on), swelling a little at the
+ * edge-on end as if lifted off the table.
+ */
+export function revealKeyframes(from: number, to: number): Keyframe[] {
+  const pose = (deg: number) =>
+    `perspective(1200px) rotateY(${deg}deg) scale(${1 + (Math.abs(deg) / 90) * 0.06})`;
+  return [{ transform: pose(from) }, { transform: pose(to) }];
+}
