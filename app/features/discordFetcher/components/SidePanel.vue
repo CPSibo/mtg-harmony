@@ -373,6 +373,47 @@ const {
   onPointerUp,
   cancelDrag,
 } = useDragToCast({ onDrop: (at) => cast(at) });
+
+/** How long a drag stays outside the panel before it hides, in ms. */
+const HIDE_AFTER_DRAG_OUT = 800;
+
+// While a card is dragged out of the panel, the panel hides after a moment
+// to uncover the board behind it. Only where it's a side pane: full screen,
+// there's no board beside it to drag to. The panel's box is measured once a
+// drag starts; it can't move during one.
+let panelBox: DOMRect | null = null;
+let hideTimer: ReturnType<typeof setTimeout> | undefined;
+
+const stopHideTimer = () => {
+  clearTimeout(hideTimer);
+  hideTimer = undefined;
+};
+
+watch(ghost, (at, before) => {
+  if (!at) {
+    panelBox = null;
+    stopHideTimer();
+    return;
+  }
+  if (!before) {
+    const panel = display.value?.closest('[role="dialog"]');
+    const box = panel?.getBoundingClientRect();
+    panelBox = box && box.width < window.innerWidth ? box : null;
+  }
+  if (!panelBox || !drawerIsOpen.value) return;
+
+  const inside =
+    at.x >= panelBox.left &&
+    at.x <= panelBox.right &&
+    at.y >= panelBox.top &&
+    at.y <= panelBox.bottom;
+  if (inside) stopHideTimer();
+  else
+    hideTimer ??= setTimeout(() => {
+      hideTimer = undefined;
+      drawerIsOpen.value = false;
+    }, HIDE_AFTER_DRAG_OUT);
+});
 </script>
 
 <style lang="scss" scoped>
